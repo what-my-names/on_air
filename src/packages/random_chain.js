@@ -1009,6 +1009,8 @@ exports.maybe_awake = async function (params) {
         state.miss_count = 0;
         state.last_hit_at = localTime();
         state.jealousy_count = (state.jealousy_count || 0) + 1;
+        // 命中后重置 x（y由x派生，随之归零）：本次唤醒后概率重新从低处爬坡，避免连续分钟高概率必中刷屏
+        state.x = 0;
         if (formula.cooldown_minutes > 0) {
             var d = new Date(Date.now() + formula.cooldown_minutes * 60000);
             var pad = function (n) { return (n < 10 ? "0" : "") + n; };
