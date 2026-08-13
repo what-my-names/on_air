@@ -10,7 +10,7 @@ function Screen(ctx) {
    *   一行操作：触发唤醒 / 重置冷却 / 重置计数
    *   底部：连续未命中 / 上次命中 / 冷却截止（精简状态行）
    *
-   * 全部交互走 ctx.callTool 调 random_chain_v3 工具，与后台 workflow 共用 state.json / formula.json。
+   * 全部交互走 ctx.callTool 调 random_chain 工具，与后台 workflow 共用 state.json / formula.json。
    */
 
   // ===== 状态 =====
@@ -111,9 +111,9 @@ function Screen(ctx) {
   // ===== 刷新状态 =====
   async function refresh() {
     setLoading(true);
-    var r1 = await callTool("random_chain_v3:get_xy");
+    var r1 = await callTool("random_chain:get_xy");
     if (r1.success && r1.data) setSt(r1.data);
-    var r2 = await callTool("random_chain_v3:get_formula");
+    var r2 = await callTool("random_chain:get_formula");
     if (r2.success && r2.data) setFm(r2.data);
     setLoading(false);
     return { st: r1.success ? r1.data : null, fm: r2.success ? r2.data : null };
@@ -144,19 +144,19 @@ function Screen(ctx) {
 
   // ===== 动作 =====
   async function doSaveX() {
-    var r = await callTool("random_chain_v3:set_x", { x: xInput });
+    var r = await callTool("random_chain:set_x", { x: xInput });
     await showMsg(r.success ? ("X 已写入：" + xInput) : ("写入失败：" + (r.message || "")));
     if (r.success) await refresh();
   }
 
   async function doSaveCool() {
-    var r = await callTool("random_chain_v3:update_formula", { cooldown_minutes: coolInput });
+    var r = await callTool("random_chain:update_formula", { cooldown_minutes: coolInput });
     await showMsg(r.success ? ("冷却时间已保存：" + coolInput + " 分钟") : ("保存失败：" + (r.message || "")));
     if (r.success) await refresh();
   }
 
   async function doSaveCardName() {
-    var r = await callTool("random_chain_v3:update_formula", { character_card_name: cardNameInput });
+    var r = await callTool("random_chain:update_formula", { character_card_name: cardNameInput });
     await showMsg(r.success ? "角色卡名字已保存" : ("保存失败：" + (r.message || "")));
     if (r.success) await refresh();
   }
@@ -170,7 +170,7 @@ function Screen(ctx) {
       await showMsg("请先填写 a / b / c 再保存");
       return;
     }
-    var r = await callTool("random_chain_v3:update_formula", params);
+    var r = await callTool("random_chain:update_formula", params);
     await showMsg(r.success ? "公式参数已保存" : ("保存失败：" + (r.message || "")));
     if (r.success) await refresh();
   }
@@ -181,26 +181,26 @@ function Screen(ctx) {
     var gentleOk = !!(st && st.gentle_installed);
     var params = { awake_mode: awakeMode, send_mode: gentleOk ? sendMode : "A1" };
     if (lines.length) params.awake_messages = JSON.stringify(lines);
-    var r = await callTool("random_chain_v3:update_formula", params);
+    var r = await callTool("random_chain:update_formula", params);
     await showMsg(r.success ? "已保存" : ("保存失败：" + (r.message || "")));
     if (r.success) await refresh();
   }
 
   async function doAwake() {
     setMsg("正在触发…");
-    var r = await callTool("random_chain_v3:manual_awake");
+    var r = await callTool("random_chain:manual_awake");
     await showMsg(r.success ? "已触发唤醒" : ("唤醒失败：" + (r.message || "")));
     if (r.success) await refresh();
   }
 
   async function doResetCool() {
-    var r = await callTool("random_chain_v3:reset_cooldown", { minutes: 0 });
+    var r = await callTool("random_chain:reset_cooldown", { minutes: 0 });
     await showMsg(r.success ? "已重置冷却" : ("重置失败：" + (r.message || "")));
     if (r.success) await refresh();
   }
 
   async function doCoax() {
-    var r = await callTool("random_chain_v3:coax");
+    var r = await callTool("random_chain:coax");
     await showMsg(r.success ? "已重置计数" : ("重置失败：" + (r.message || "")));
     if (r.success) await refresh();
   }
