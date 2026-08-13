@@ -39,7 +39,7 @@
         "x": -450.0,
         "y": 60.0
       },
-      "actionType": "random_chain_v3:increment_x"
+      "actionType": "random_chain:increment_x"
     },
     {
       "__type": "com.ai.assistance.operit.data.model.ExecuteNode",
@@ -50,7 +50,7 @@
         "x": 0.0,
         "y": 60.0
       },
-      "actionType": "random_chain_v3:maybe_awake"
+      "actionType": "random_chain:maybe_awake"
     },
     {
       "__type": "com.ai.assistance.operit.data.model.TriggerNode",
@@ -78,7 +78,7 @@
         "x": -450.0,
         "y": 320.0
       },
-      "actionType": "random_chain_v3:check_activity",
+      "actionType": "random_chain:check_activity",
       "actionConfig": {
         "threshold_minutes": {
           "__type": "com.ai.assistance.operit.data.model.ParameterValue.StaticValue",
@@ -129,7 +129,7 @@
         "x": 450.0,
         "y": 320.0
       },
-      "actionType": "random_chain_v3:enter_running"
+      "actionType": "random_chain:enter_running"
     }
   ],
   "connections": [
