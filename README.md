@@ -9,6 +9,8 @@
 > - Operit 官方仓库：https://github.com/AAswordman/Operit
 > - 脚本与工具包开发文档：https://cdn.jsdelivr.net/gh/AAswordman/Operit@main/docs/SCRIPT_DEV_SKILL.md
 
+
+> **支持版本**：本插件在 **Operit AI 1.12.1**（Android）上开发与测试；更早版本可能缺少部分 ToolPkg 能力，建议使用 1.12.1 或更新版本。
 Operit AI 平台的沙盒工具包（ToolPkg）插件：让 AI 在用户沉默一段时间后，按一条平滑上升的概率曲线"自己主动"来找用户说话。
 
 ## 特性
