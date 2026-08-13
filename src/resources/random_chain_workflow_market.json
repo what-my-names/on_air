@@ -1,0 +1,179 @@
+{
+  "name": "随机连三链",
+  "description": "主动消息三链系统。1号链：运行态每分钟 x 累加、按公式算 y(概率)、掷骰子，命中才主动发消息（冷却中静默跳过；未命中静默）。3号链：空闲态每15分钟查一次日志，用户沉默超10分钟就进入运行态。支持联动温柔巡检计数、智能接回复、面板实时查看xy、手动触发、公式编辑与冷却配置。",
+  "nodes": [
+    {
+      "__type": "com.ai.assistance.operit.data.model.TriggerNode",
+      "id": "n1_manual",
+      "name": "手动触发1号链",
+      "description": "手动触发，立即跑一次运行态掷骰流程",
+      "position": {
+        "x": -900.0,
+        "y": 360.0
+      },
+      "triggerType": "manual"
+    },
+    {
+      "__type": "com.ai.assistance.operit.data.model.TriggerNode",
+      "id": "n1_t",
+      "name": "1号链·每分钟掷骰",
+      "description": "运行态掷骰主链，每分钟触发一次。频率可改 interval_ms。",
+      "position": {
+        "x": -900.0,
+        "y": 60.0
+      },
+      "triggerType": "schedule",
+      "triggerConfig": {
+        "schedule_type": "interval",
+        "interval_ms": "60000",
+        "repeat": "true",
+        "enabled": "true"
+      }
+    },
+    {
+      "__type": "com.ai.assistance.operit.data.model.ExecuteNode",
+      "id": "n1_inc",
+      "name": "x累加1",
+      "description": "运行态每分钟把 x 累加1，并自动标记运行态、解除冷却",
+      "position": {
+        "x": -450.0,
+        "y": 60.0
+      },
+      "actionType": "random_chain:increment_x"
+    },
+    {
+      "__type": "com.ai.assistance.operit.data.model.ExecuteNode",
+      "id": "n1_awake",
+      "name": "掷骰·命中才发消息",
+      "description": "运行态核心：按 y 掷骰，命中才真正发主动消息(未命中静默)，含冷却判断。连续命中累加计数，联动温柔巡检。",
+      "position": {
+        "x": 0.0,
+        "y": 60.0
+      },
+      "actionType": "random_chain:maybe_awake"
+    },
+    {
+      "__type": "com.ai.assistance.operit.data.model.TriggerNode",
+      "id": "n3_t",
+      "name": "3号链·每15分钟查日志",
+      "description": "空闲态查用户是否沉默，每15分钟触发。频率可改 interval_ms。",
+      "position": {
+        "x": -900.0,
+        "y": 320.0
+      },
+      "triggerType": "schedule",
+      "triggerConfig": {
+        "schedule_type": "interval",
+        "interval_ms": "900000",
+        "repeat": "true",
+        "enabled": "true"
+      }
+    },
+    {
+      "__type": "com.ai.assistance.operit.data.model.ExecuteNode",
+      "id": "n3_check",
+      "name": "查用户最后一次说话时间",
+      "description": "查日志判断用户是否沉默超过阈值(10分钟窗口)，用户回复则计数清零",
+      "position": {
+        "x": -450.0,
+        "y": 320.0
+      },
+      "actionType": "random_chain:check_activity",
+      "actionConfig": {
+        "threshold_minutes": {
+          "__type": "com.ai.assistance.operit.data.model.ParameterValue.StaticValue",
+          "value": "10"
+        }
+      }
+    },
+    {
+      "__type": "com.ai.assistance.operit.data.model.ExtractNode",
+      "id": "n3_silent",
+      "name": "提取沉默标志(字符串)",
+      "description": "从 check_activity 输出中提取 data.silent_str",
+      "position": {
+        "x": -180.0,
+        "y": 320.0
+      },
+      "source": {
+        "__type": "com.ai.assistance.operit.data.model.ParameterValue.NodeReference",
+        "nodeId": "n3_check"
+      },
+      "mode": "JSON",
+      "expression": "data.silent_str"
+    },
+    {
+      "__type": "com.ai.assistance.operit.data.model.ConditionNode",
+      "id": "n3_cond",
+      "name": "判断用户是否沉默",
+      "description": "silent_str 为 true 才进入运行态",
+      "position": {
+        "x": 0.0,
+        "y": 320.0
+      },
+      "left": {
+        "__type": "com.ai.assistance.operit.data.model.ParameterValue.NodeReference",
+        "nodeId": "n3_silent"
+      },
+      "right": {
+        "__type": "com.ai.assistance.operit.data.model.ParameterValue.StaticValue",
+        "value": "true"
+      }
+    },
+    {
+      "__type": "com.ai.assistance.operit.data.model.ExecuteNode",
+      "id": "n3_run",
+      "name": "若沉默则进入运行态",
+      "description": "用户沉默超阈值，进入运行态并启动 x 累加",
+      "position": {
+        "x": 450.0,
+        "y": 320.0
+      },
+      "actionType": "random_chain:enter_running"
+    }
+  ],
+  "connections": [
+    {
+      "id": "c1auto",
+      "sourceNodeId": "n1_t",
+      "targetNodeId": "n1_inc",
+      "condition": "on_success"
+    },
+    {
+      "id": "c1manual",
+      "sourceNodeId": "n1_manual",
+      "targetNodeId": "n1_inc",
+      "condition": "on_success"
+    },
+    {
+      "id": "c1inc",
+      "sourceNodeId": "n1_inc",
+      "targetNodeId": "n1_awake",
+      "condition": "on_success"
+    },
+    {
+      "id": "c3a",
+      "sourceNodeId": "n3_t",
+      "targetNodeId": "n3_check",
+      "condition": "on_success"
+    },
+    {
+      "id": "c3b",
+      "sourceNodeId": "n3_check",
+      "targetNodeId": "n3_silent",
+      "condition": "on_success"
+    },
+    {
+      "id": "c3c",
+      "sourceNodeId": "n3_silent",
+      "targetNodeId": "n3_cond",
+      "condition": "on_success"
+    },
+    {
+      "id": "c3d",
+      "sourceNodeId": "n3_cond",
+      "targetNodeId": "n3_run",
+      "condition": "true"
+    }
+  ]
+}
