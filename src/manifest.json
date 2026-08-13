@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "toolpkg_id": "com.operit.random_chain",
-  "version": "B1.0.0",
+  "version": "1.0.0-beta",
   "author": [
     "时空指令"
   ],
