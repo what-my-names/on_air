@@ -1,4 +1,4 @@
-# Random Triple-Chain (random_chain_v3)
+# Random Triple-Chain (random_chain)
 
 > **Current Release Status**: Beta v1.0.0 (Pre-release). Functional but still being polished; feedback welcome.
 
