@@ -1,0 +1,35 @@
+{
+  "a": 0.007078203,
+  "b": 6.00914e-7,
+  "c": 3.15168,
+  "idle_threshold_minutes": 10,
+  "cooldown_minutes": 15,
+  "awake_mode": "default",
+  "send_mode": "A1",
+  "max_wake_stops": 5,
+  "chat_id": "",
+  "character_card_name": "",
+  "awake_messages": [
+    "想你了，你现在在忙吗？",
+    "好久没听到你的消息了，有点惦记你",
+    "突然想到你，就来找你聊天了",
+    "你在干嘛呀？今天过得怎么样？",
+    "忙完了吗？有空聊两句吗？"
+  ],
+  "ai_gateway": {
+    "enabled": false,
+    "current_api": 0,
+    "apis": [
+      {
+        "name": "DeepSeek",
+        "base_url": "https://api.deepseek.com/v1",
+        "api_key": "",
+        "current_model": "deepseek-chat",
+        "models": []
+      }
+    ]
+  },
+  "chain1_interval_ms": 60000,
+  "chain3_interval_ms": 900000,
+  "chat_id_source": "auto"
+}
