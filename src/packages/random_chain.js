@@ -88,6 +88,11 @@ METADATA
             "name": "enter_running",
             "description": { "zh": "由3号链在检测到沉默超阈值时调用，进入运行态并启动x累加", "en": "Enter running state" },
             "parameters": []
+        },
+        {
+            "name": "api_docs",
+            "description": { "zh": "返回全部工具的 API 文档（名称、参数、返回格式、调用示例），供其他插件/工作流接入", "en": "Return full API docs of all tools for other plugins" },
+            "parameters": []
         }
     ]
 }
@@ -1133,5 +1138,28 @@ exports.enter_running = async function (params) {
     });
 };
 
-
-
+// api_docs：对外 API 文档。其他插件/工作流直接调 random_chain:api_docs 即可拿到全部接入说明。
+exports.api_docs = async function (params) {
+    var docs = {
+        prefix: "random_chain",
+        plugin: "随机连三链 / Random Chain",
+        note: "调用格式：random_chain:工具名，参数传对象，返回 {success, message, data}。",
+        tools: [
+            { name: "get_xy", zh: "读取当前随机连状态", params: [], returns: "data: {x, y, f, running, miss_count, last_hit_at, last_user_ts, cooldown_until, idle_threshold_minutes, a, b, c, character_card_name, gentle_installed, gentle_jealousy}", example: "random_chain:get_xy" },
+            { name: "compute_y", zh: "按公式 y=100*f/(1+f), f=a*x+b*x^c 计算概率", params: [{ name: "x", type: "number", required: false, desc: "缺省用状态里的 x" }], returns: "data: {x, f, y}", example: "random_chain:compute_y {x:20}" },
+            { name: "set_x", zh: "手动设置 x 值", params: [{ name: "x", type: "number", required: true }], returns: "data: {x, y}", example: "random_chain:set_x {x:5}" },
+            { name: "increment_x", zh: "x 累加 1（运行态每分钟）", params: [], returns: "data: {x, y, running}", example: "random_chain:increment_x" },
+            { name: "check_activity", zh: "检查用户最后一次说话时间；阈值内说过话则清嫉妒计数", params: [{ name: "threshold_minutes", type: "number", required: false, desc: "沉默阈值分钟数(可选)" }], returns: "data: {last_user_ts, minutes_since, silent_str, cleared}", example: "random_chain:check_activity {threshold_minutes:10}" },
+            { name: "roll_dice", zh: "按当前 y 为概率掷骰，roll<=y*10 判为命中", params: [], returns: "data: {roll, y, hit}", example: "random_chain:roll_dice" },
+            { name: "manual_awake", zh: "手动触发一次主动唤醒消息", params: [], returns: "data: {hit, message, cooldown_until}", example: "random_chain:manual_awake" },
+            { name: "coax", zh: "安抚：复位嫉妒计数并联动温柔巡检回落", params: [], returns: "data: {jealousy_count, jealousy_stopped, gentle_jealousy}", example: "random_chain:coax" },
+            { name: "reset_cooldown", zh: "重置/设置冷却", params: [{ name: "minutes", type: "number", required: true, desc: ">0 设 N 分钟后结束；<=0 立即清除" }], returns: "data: {cooldown_until}", example: "random_chain:reset_cooldown {minutes:0}" },
+            { name: "update_formula", zh: "更新公式与配置参数", params: [{ name: "a/b/c", type: "number", required: false }, { name: "idle_threshold_minutes", type: "number", required: false }, { name: "cooldown_minutes", type: "number", required: false }, { name: "awake_messages", type: "string(json数组)", required: false }, { name: "send_mode", type: "string(A1/A2)", required: false }, { name: "awake_mode", type: "string(default/custom)", required: false }, { name: "max_wake_stops", type: "number", required: false }, { name: "character_card_name", type: "string", required: false }], returns: "data: {formula}", example: "random_chain:update_formula {a:0.007,b:0.0000006,c:3.15}" },
+            { name: "get_formula", zh: "读取当前公式与配置", params: [], returns: "data: {a, b, c, idle_threshold_minutes, cooldown_minutes, send_mode, awake_mode, max_wake_stops, character_card_name}", example: "random_chain:get_formula" },
+            { name: "maybe_awake", zh: "运行态核心：按 y 掷骰命中才发消息(未命中静默)，含冷却判断", params: [], returns: "data: {roll, y, hit, jealousy_count, message, cooldown_until, send_mode, awake_mode, reply}", example: "random_chain:maybe_awake" },
+            { name: "enter_running", zh: "进入运行态并启动 x 累加", params: [], returns: "data: {running, x, y}", example: "random_chain:enter_running" },
+            { name: "api_docs", zh: "返回本文档", params: [], returns: "data: {prefix, plugin, note, tools[]}", example: "random_chain:api_docs" }
+        ]
+    };
+    complete({ success: true, message: "API 文档已生成，共 " + docs.tools.length + " 个工具", data: docs });
+};
