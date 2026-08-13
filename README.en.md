@@ -60,6 +60,31 @@ formula.example.json               # config example (copy to formula.json)
 
 Do not commit real runtime data (`formula.json`, `state.json`) to the repo.
 
+
+## Public API (for other plugins / workflows)
+
+Every tool exported by this plugin is auto-registered by the Operit framework, so other plugins and workflows can call them directly with the `random_chain:` prefix.
+
+**Getting started**: call `random_chain:api_docs` first to get full docs for all tools (parameters, return shape, examples).
+
+| Tool | Purpose | Example |
+| --- | --- | --- |
+| get_xy | Read current state (x, y, cooldown, formula) | `random_chain:get_xy` |
+| compute_y | Compute probability y from the formula | `random_chain:compute_y {x:20}` |
+| set_x | Manually set x | `random_chain:set_x {x:5}` |
+| increment_x | Increment x by 1 | `random_chain:increment_x` |
+| check_activity | Check the user's last speaking time | `random_chain:check_activity {threshold_minutes:10}` |
+| roll_dice | Roll with current y as probability | `random_chain:roll_dice` |
+| manual_awake | Manually trigger one wake message | `random_chain:manual_awake` |
+| coax | Coax: reset counters and link Gentle Guardian | `random_chain:coax` |
+| reset_cooldown | Reset / set cooldown | `random_chain:reset_cooldown {minutes:0}` |
+| update_formula | Update formula and config params | `random_chain:update_formula {a:0.007}` |
+| get_formula | Read formula config | `random_chain:get_formula` |
+| maybe_awake | Running-state roll; only a hit sends a message | `random_chain:maybe_awake` |
+| enter_running | Enter running state and start accumulation | `random_chain:enter_running` |
+| api_docs | Return the API docs of all tools | `random_chain:api_docs` |
+
+All tools return `{success, message, data}`; parameters are passed as an object and are optional unless marked required.
 ## License
 
 MIT License
