@@ -60,6 +60,31 @@ formula.example.json               # 配置示例（复制为 formula.json 使�
 
 真实运行数据（`formula.json`、`state.json`）不要提交到仓库。
 
+
+## 对外 API（供其他插件/工作流调用）
+
+本插件导出的全部工具由 Operit 框架自动注册，其他插件与工作流可直接调用，前缀为 `random_chain:`。
+
+**入门**：先调 `random_chain:api_docs`，即可拿到全部工具的完整说明（参数、返回格式、调用示例）。
+
+| 工具 | 功能 | 示例 |
+| --- | --- | --- |
+| get_xy | 读取当前状态（x、y、冷却、公式） | `random_chain:get_xy` |
+| compute_y | 按公式计算概率 y | `random_chain:compute_y {x:20}` |
+| set_x | 手动设置 x | `random_chain:set_x {x:5}` |
+| increment_x | x 累加 1 | `random_chain:increment_x` |
+| check_activity | 查用户最近说话时间 | `random_chain:check_activity {threshold_minutes:10}` |
+| roll_dice | 按 y 为概率掷骰 | `random_chain:roll_dice` |
+| manual_awake | 手动触发一次唤醒消息 | `random_chain:manual_awake` |
+| coax | 安抚复位计数并联动温柔巡检 | `random_chain:coax` |
+| reset_cooldown | 重置/设置冷却 | `random_chain:reset_cooldown {minutes:0}` |
+| update_formula | 更新公式与配置参数 | `random_chain:update_formula {a:0.007}` |
+| get_formula | 读取公式配置 | `random_chain:get_formula` |
+| maybe_awake | 运行态掷骰，命中才发消息 | `random_chain:maybe_awake` |
+| enter_running | 进入运行态并启动累加 | `random_chain:enter_running` |
+| api_docs | 返回全部工具的 API 文档 | `random_chain:api_docs` |
+
+所有工具统一返回 `{success, message, data}`；参数传对象，除标注必填外均可省略。
 ## 许可
 
 MIT License
