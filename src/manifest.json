@@ -1,0 +1,55 @@
+{
+  "schema_version": 1,
+  "toolpkg_id": "com.operit.random_chain_v3",
+  "version": "B1.0.0",
+  "author": [
+    "时空指令"
+  ],
+  "main": "main.js",
+  "name": "random_chain_v3",
+  "display_name": {
+    "zh": "随机连三链",
+    "en": "Random Chain"
+  },
+  "description": {
+    "zh": "随机连三链系统：空闲态每15分钟查日志判断用户是否沉默(10分钟窗口)，运行态每分钟x累加、按公式算y(概率)、掷骰子命中则主动发消息。支持联动温柔巡检计数、智能接回复、面板实时查看xy、手动触发、公式编辑与冷却配置。",
+    "en": "Random triple-chain system."
+  },
+  "category": "COMPANION",
+  "subpackages": [
+    {
+      "id": "random_chain_v3",
+      "entry": "packages/random_chain.js",
+      "enabled_by_default": true,
+      "display_name": {
+        "zh": "随机连三链",
+        "en": "Random Chain"
+      },
+      "description": {
+        "zh": "随机连三链工具集",
+        "en": "Random chain tools"
+      }
+    }
+  ],
+  "resources": [
+    {
+      "key": "random_chain_workflow",
+      "path": "resources/random_chain_workflow_market.json",
+      "mime": "application/json"
+    }
+  ],
+  "workflow_templates": [
+    {
+      "id": "random_chain_main",
+      "display_name": {
+        "zh": "随机连三链主链",
+        "en": "Random Chain Main"
+      },
+      "description": {
+        "zh": "空闲态每15分钟查日志判断沉默，运行态每分钟x累加+算y+掷骰发消息",
+        "en": "Random triple-chain main workflow"
+      },
+      "resource_key": "random_chain_workflow"
+    }
+  ]
+}
