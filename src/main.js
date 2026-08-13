@@ -28,7 +28,7 @@ function registerToolPkg() {
 
     ToolPkg.registerNavigationEntry({
         id: "random_chain_sidebar_entry",
-        route: "toolpkg:com.operit.random_chain_v3:ui:random_chain_sidebar",
+        route: "toolpkg:com.operit.random_chain:ui:random_chain_sidebar",
         surface: "main_sidebar_plugins",
         title: {
             zh: "随机连三链",
