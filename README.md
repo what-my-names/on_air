@@ -1,5 +1,7 @@
 # 随机连三链（random_chain_v3）
 
+> **创作声明**：本项目为"新手 AI 创作"——由新手开发者与 AI 助手协作开发，代码与文档尚在成长中，欢迎指正、提 Issue 或 PR。
+
 > **平台声明**：本插件专为 **Operit AI**（Android 智能助手应用）开发，运行在其沙盒工具包（ToolPkg）运行时中，不适用于其他平台。
 >
 > - Operit 官方仓库：https://github.com/AAswordman/Operit
