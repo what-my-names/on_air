@@ -9,6 +9,8 @@
 > - Operit official repo: https://github.com/AAswordman/Operit
 > - Script & toolpkg development docs: https://cdn.jsdelivr.net/gh/AAswordman/Operit@main/docs/SCRIPT_DEV_SKILL.md
 
+
+> **Supported version**: developed and tested on **Operit AI 1.12.1** (Android); earlier versions may lack some ToolPkg capabilities, 1.12.1 or newer is recommended.
 A sandboxed ToolPkg plugin for Operit AI: after the user goes silent for a while, the AI "takes the initiative" to message the user, following a smoothly rising probability curve.
 
 ## Features
