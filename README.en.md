@@ -1,6 +1,6 @@
 # Random Triple-Chain (random_chain)
 
-> **Current Release Status**: Beta v1.0.0 (Pre-release). Functional but still being polished; feedback welcome.
+> **Current Release Status**: v1.0.0-beta (Pre-release). Functional but still being polished; feedback welcome.
 
 > **Authorship Notice**: This project is a "novice × AI creation" — co-developed by a novice developer together with an AI assistant. The code and docs are still growing; corrections, issues and PRs are welcome.
 
@@ -85,6 +85,18 @@ Every tool exported by this plugin is auto-registered by the Operit framework, s
 | api_docs | Return the API docs of all tools | `random_chain:api_docs` |
 
 All tools return `{success, message, data}`; parameters are passed as an object and are optional unless marked required.
+
+## Versioning (SemVer)
+
+Versions follow semantic versioning X.Y.Z:
+
+| Change | Version bump | Example |
+| --- | --- | --- |
+| Small fix (backward-compatible) | Patch +1 | v1.0.0 → v1.0.1 |
+| New feature / bigger improvement (backward-compatible) | Minor +1, patch reset to 0 | v1.0.5 → v1.1.0 |
+| Breaking change | Major +1, minor & patch reset to 0 | v1.9.2 → v2.0.0 |
+
+Beta releases carry a `-beta` suffix (e.g. `v1.0.0-beta`); stable releases use a plain version number.
 ## License
 
 MIT License
