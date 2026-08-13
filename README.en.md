@@ -1,5 +1,7 @@
 # Random Triple-Chain (random_chain_v3)
 
+> **Current Release Status**: Beta v1.0.0 (Pre-release). Functional but still being polished; feedback welcome.
+
 > **Authorship Notice**: This project is a "novice × AI creation" — co-developed by a novice developer together with an AI assistant. The code and docs are still growing; corrections, issues and PRs are welcome.
 
 > **Platform Notice**: This plugin is built exclusively for **Operit AI** (an Android AI assistant app) and runs inside its sandboxed ToolPkg runtime. It does not work on other platforms.
