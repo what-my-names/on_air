@@ -1,5 +1,6 @@
 # 随机连三链（random_chain）
 
+[English](README.en.md)
 > **当前发布状态**：测试版 v1.0.0-beta（Pre-release），功能可用但仍在打磨，欢迎反馈。
 
 > **创作声明**：本项目为"新手 AI 创作"——由新手开发者与 AI 助手协作开发，代码与文档尚在成长中，欢迎指正、提 Issue 或 PR。
