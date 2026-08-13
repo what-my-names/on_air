@@ -1,12 +1,12 @@
 {
   "schema_version": 1,
-  "toolpkg_id": "com.operit.random_chain_v3",
+  "toolpkg_id": "com.operit.random_chain",
   "version": "B1.0.0",
   "author": [
     "时空指令"
   ],
   "main": "main.js",
-  "name": "random_chain_v3",
+  "name": "random_chain",
   "display_name": {
     "zh": "随机连三链",
     "en": "Random Chain"
@@ -18,7 +18,7 @@
   "category": "COMPANION",
   "subpackages": [
     {
-      "id": "random_chain_v3",
+      "id": "random_chain",
       "entry": "packages/random_chain.js",
       "enabled_by_default": true,
       "display_name": {
