@@ -1,4 +1,4 @@
-# 随机连三链（random_chain_v3）
+# 随机连三链（random_chain）
 
 > **当前发布状态**：测试版 v1.0.0（Pre-release），功能可用但仍在打磨，欢迎反馈。
 
