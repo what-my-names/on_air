@@ -1,5 +1,5 @@
 /*
- * random_chain — ToolPkg 入口
+ * on_air — ToolPkg 入口
  *
  * 对照 gentle_guardian/main.js 的真实 API 签名：
  *   - require UI 文件获取 Screen 函数
@@ -16,23 +16,23 @@ var Screen = ui.default || ui;
 
 function registerToolPkg() {
     ToolPkg.registerUiRoute({
-        id: "random_chain_sidebar",
+        id: "on_air_sidebar",
         runtime: "compose_dsl",
         screen: Screen,
         params: {},
         title: {
-            zh: "随机连三链",
-            en: "Random Chain",
+            zh: "随机上线",
+            en: "On Air",
         }
     });
 
     ToolPkg.registerNavigationEntry({
-        id: "random_chain_sidebar_entry",
-        route: "toolpkg:com.operit.random_chain:ui:random_chain_sidebar",
+        id: "on_air_sidebar_entry",
+        route: "toolpkg:com.operit.on_air:ui:on_air_sidebar",
         surface: "main_sidebar_plugins",
         title: {
-            zh: "随机连三链",
-            en: "Random Chain",
+            zh: "随机上线",
+            en: "On Air",
         },
         order: 1,
     });
