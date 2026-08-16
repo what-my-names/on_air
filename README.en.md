@@ -1,6 +1,7 @@
-# Random Triple-Chain (random_chain)
+# On Air (随机上线)
 
 [中文](README.md)
+
 > **Current Release Status**: v1.7.10-beta (Pre-release). Functional but still being polished; feedback welcome.
 
 > **Authorship Notice**: This project is a "novice × AI creation" — co-developed by a novice developer together with an AI assistant. The code and docs are still growing; corrections, issues and PRs are welcome.
@@ -10,9 +11,12 @@
 > - Operit official repo: https://github.com/AAswordman/Operit
 > - Script & toolpkg development docs: https://cdn.jsdelivr.net/gh/AAswordman/Operit@main/docs/SCRIPT_DEV_SKILL.md
 
-
 > **Supported version**: developed and tested on **Operit AI 1.12.1** (Android); earlier versions may lack some ToolPkg capabilities, 1.12.1 or newer is recommended.
-A sandboxed ToolPkg plugin for Operit AI: after the user goes silent for a while, the AI "takes the initiative" to message the user, following a smoothly rising probability curve.
+
+**On Air**: an Operit AI plugin that pretends to be a real person. It never clocks in on a schedule — instead it quietly comes online at random times and reaches out to you on its own.
+
+- **Not a timer, but a probability**: the longer you stay silent, the more likely it shows up. While idle it checks your silence every 15 minutes; once running it rolls a dice every minute, and a hit means it pops in to talk.
+- **Not a robot, but "maybe they're around right now"**: the wake message exposes no mechanism keywords — the AI speaks as if it suddenly felt like chatting with you, and it plays the part all the way.
 
 ## Features
 
@@ -41,18 +45,18 @@ A sandboxed ToolPkg plugin for Operit AI: after the user goes silent for a while
 src/
   main.js                          # entry
   manifest.json                    # toolpkg manifest
-  packages/random_chain.js         # core logic (tool implementation)
+  packages/on_air.js               # core logic (tool implementation)
   ui/xy_panel/index.ui.js          # sidebar panel
-  resources/random_chain_workflow_market.json  # workflow template
+  resources/on_air_workflow_market.json  # workflow template
 formula.example.json               # config example (copy to formula.json)
 ```
 
 ## Installation
 
-1. Place the whole directory into the Operit AI plugin dir on the device: `/sdcard/Download/Operit/plugins/random_chain/`
+1. Place the whole directory into the Operit AI plugin dir on the device: `/sdcard/Download/Operit/plugins/on_air/`
 2. In the Operit AI app, use "debug burn" to install `src/manifest.json` (or import a packaged `.toolpkg` into the external package dir)
-3. Import the workflows (three chains) provided by `resources/random_chain_workflow_market.json`
-4. Open "Random Triple-Chain" in the sidebar panel and tweak parameters as needed
+3. Import the workflows (three chains) provided by `resources/on_air_workflow_market.json`
+4. Open "On Air" in the sidebar panel and tweak parameters as needed
 
 ## Configuration (formula.json)
 
@@ -78,29 +82,28 @@ formula.example.json               # config example (copy to formula.json)
 
 Do not commit real runtime data (`formula.json`, `state.json`) to the repo.
 
-
 ## Public API (for other plugins / workflows)
 
-Every tool exported by this plugin is auto-registered by the Operit framework, so other plugins and workflows can call them directly with the `random_chain:` prefix.
+Every tool exported by this plugin is auto-registered by the Operit framework, so other plugins and workflows can call them directly with the `on_air:` prefix.
 
-**Getting started**: call `random_chain:api_docs` first to get full docs for all tools (parameters, return shape, examples).
+**Getting started**: call `on_air:api_docs` first to get full docs for all tools (parameters, return shape, examples).
 
 | Tool | Purpose | Example |
 | --- | --- | --- |
-| get_xy | Read current state (x, y, cooldown, formula) | `random_chain:get_xy` |
-| compute_y | Compute probability y from the formula | `random_chain:compute_y {x:20}` |
-| set_x | Manually set x | `random_chain:set_x {x:5}` |
-| increment_x | Increment x by 1 | `random_chain:increment_x` |
-| check_activity | Check the user's last speaking time | `random_chain:check_activity {threshold_minutes:10}` |
-| roll_dice | Roll with current y as probability | `random_chain:roll_dice` |
-| manual_awake | Manually trigger one wake message | `random_chain:manual_awake` |
-| coax | Coax: reset counters and link Gentle Guardian | `random_chain:coax` |
-| reset_cooldown | Reset / set cooldown | `random_chain:reset_cooldown {minutes:0}` |
-| update_formula | Update formula and config params | `random_chain:update_formula {a:0.007}` |
-| get_formula | Read formula config | `random_chain:get_formula` |
-| maybe_awake | Running-state roll; only a hit sends a message | `random_chain:maybe_awake` |
-| enter_running | Enter running state and start accumulation | `random_chain:enter_running` |
-| api_docs | Return the API docs of all tools | `random_chain:api_docs` |
+| get_xy | Read current state (x, y, cooldown, formula) | `on_air:get_xy` |
+| compute_y | Compute probability y from the formula | `on_air:compute_y {x:20}` |
+| set_x | Manually set x | `on_air:set_x {x:5}` |
+| increment_x | Increment x by 1 | `on_air:increment_x` |
+| check_activity | Check the user's last speaking time | `on_air:check_activity {threshold_minutes:10}` |
+| roll_dice | Roll with current y as probability | `on_air:roll_dice` |
+| manual_awake | Manually trigger one wake message | `on_air:manual_awake` |
+| coax | Coax: reset counters and link Gentle Guardian | `on_air:coax` |
+| reset_cooldown | Reset / set cooldown | `on_air:reset_cooldown {minutes:0}` |
+| update_formula | Update formula and config params | `on_air:update_formula {a:0.007}` |
+| get_formula | Read formula config | `on_air:get_formula` |
+| maybe_awake | Running-state roll; only a hit sends a message | `on_air:maybe_awake` |
+| enter_running | Enter running state and start accumulation | `on_air:enter_running` |
+| api_docs | Return the API docs of all tools | `on_air:api_docs` |
 
 All tools return `{success, message, data}`; parameters are passed as an object and are optional unless marked required.
 
@@ -115,6 +118,7 @@ Versions follow semantic versioning X.Y.Z:
 | Breaking change | Major +1, minor & patch reset to 0 | v1.9.2 → v2.0.0 |
 
 Beta releases carry a `-beta` suffix (e.g. `v1.0.0-beta`); stable releases use a plain version number.
+
 ## License
 
 MIT License
