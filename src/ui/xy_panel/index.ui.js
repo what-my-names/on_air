@@ -1,6 +1,6 @@
 function Screen(ctx) {
   /*
-   * 随机连三链 — 侧边栏面板 v6（简洁版，纯 Compose DSL）
+   * 随机上线 — 侧边栏面板 v6（简洁版，纯 Compose DSL）
    *
    * 布局（按需求拍板）：
    *   顶部：标题 + 运行状态徽章
@@ -10,7 +10,7 @@ function Screen(ctx) {
    *   一行操作：触发唤醒 / 重置冷却 / 重置计数
    *   底部：连续未命中 / 上次命中 / 冷却截止（精简状态行）
    *
-   * 全部交互走 ctx.callTool 调 random_chain 工具，与后台 workflow 共用 state.json / formula.json。
+   * 全部交互走 ctx.callTool 调 on_air 工具，与后台 workflow 共用 state.json / formula.json。
    */
 
   // ===== 状态 =====
@@ -195,9 +195,9 @@ function Screen(ctx) {
   // ===== 刷新状态 =====
   async function refresh() {
     setLoading(true);
-    var r1 = await callTool("random_chain:get_xy");
+    var r1 = await callTool("on_air:get_xy");
     if (r1.success && r1.data) setSt(r1.data);
-    var r2 = await callTool("random_chain:get_formula");
+    var r2 = await callTool("on_air:get_formula");
     if (r2.success && r2.data) setFm(r2.data);
     setLoading(false);
     return { st: r1.success ? r1.data : null, fm: r2.success ? r2.data : null };
@@ -266,19 +266,19 @@ function Screen(ctx) {
 
   // ===== 动作 =====
   async function doSaveX() {
-    var r = await callTool("random_chain:set_x", { x: xInput });
+    var r = await callTool("on_air:set_x", { x: xInput });
     await showMsg(r.success ? ("X 已写入：" + xInput) : ("写入失败：" + (r.message || "")));
     if (r.success) await refresh();
   }
 
   async function doSaveCool() {
-    var r = await callTool("random_chain:update_formula", { cooldown_minutes: coolInput });
+    var r = await callTool("on_air:update_formula", { cooldown_minutes: coolInput });
     await showMsg(r.success ? ("冷却时间已保存：" + coolInput + " 分钟") : ("保存失败：" + (r.message || "")));
     if (r.success) await refresh();
   }
 
   async function doSaveCardName() {
-    var r = await callTool("random_chain:update_formula", { character_card_name: cardNameInput });
+    var r = await callTool("on_air:update_formula", { character_card_name: cardNameInput });
     await showMsg(r.success ? "角色卡名字已保存" : ("保存失败：" + (r.message || "")));
     if (r.success) await refresh();
   }
@@ -293,7 +293,7 @@ function Screen(ctx) {
     if (String(quietDayEnd || "").trim()) params.quiet_day_end = String(quietDayEnd).trim();
     if (String(quietNightStart || "").trim()) params.quiet_night_start = String(quietNightStart).trim();
     if (String(quietNightEnd || "").trim()) params.quiet_night_end = String(quietNightEnd).trim();
-    var r = await callTool("random_chain:update_formula", params);
+    var r = await callTool("on_air:update_formula", params);
     if (r.success) {
       await showMsg("静默状态已保存：" + (params.quiet_enabled
         ? ("白天段" + (params.quiet_day_enabled ? "开" : "关") + "（" + (params.quiet_day_start || "—") + "~" + (params.quiet_day_end || "—") + "），夜间段" + (params.quiet_night_enabled ? "开" : "关") + "（" + (params.quiet_night_start || "—") + "~" + (params.quiet_night_end || "—") + "）")
@@ -309,7 +309,7 @@ function Screen(ctx) {
     setMsg("正在分析聊天记录的时间分布…");
     var params = {};
     if (String(chatNameInput || "").trim()) params.chat_name = String(chatNameInput).trim();
-    var r = await callTool("random_chain:suggest_quiet", params);
+    var r = await callTool("on_air:suggest_quiet", params);
     setSuggestBusy(false);
     if (r.success && r.data && r.data.suggestion) {
       setSuggest(r.data.suggestion);
@@ -332,7 +332,7 @@ function Screen(ctx) {
     }
     setSuggestBusy(true);
     setMsg("正在按名字查找对话…");
-    var r = await callTool("random_chain:link_agent", { chat_name: name });
+    var r = await callTool("on_air:link_agent", { chat_name: name });
     setSuggestBusy(false);
     if (r.success && r.data && r.data.chat_id) {
       setLinkedChat(String(r.data.chat_id));
@@ -365,7 +365,7 @@ function Screen(ctx) {
       quiet_night_start: String(suggest.night_start || ""),
       quiet_night_end: String(suggest.night_end || "")
     };
-    var r = await callTool("random_chain:update_formula", params);
+    var r = await callTool("on_air:update_formula", params);
     if (r.success) {
       await showMsg("AI 建议已应用并开启静默：白天 " + params.quiet_day_start + "~" + params.quiet_day_end +
         "，夜间 " + params.quiet_night_start + "~" + params.quiet_night_end);
@@ -435,7 +435,7 @@ function Screen(ctx) {
       willAdd = true;
     }
     setCalDates(next);   // 乐观更新：点击瞬间立即变色，不等保存
-    var r = await callTool("random_chain:update_formula", { quiet_dates: JSON.stringify(next) });
+    var r = await callTool("on_air:update_formula", { quiet_dates: JSON.stringify(next) });
     if (r.success) {
       var saved = (r.data && r.data.quiet_dates && typeof r.data.quiet_dates === "object") ? r.data.quiet_dates : next;
       setCalDates(saved);   // 与后端保存结果对齐
@@ -451,26 +451,26 @@ function Screen(ctx) {
   }
   async function doSaveSchoolAuto(nv) {
     var v = (nv !== undefined && nv !== null) ? (nv === true) : (schoolAuto === true);
-    var r = await callTool("random_chain:update_formula", { school_day_auto_quiet: v });
+    var r = await callTool("on_air:update_formula", { school_day_auto_quiet: v });
     await showMsg(r.success ? (v ? "上学日静默：已开启" : "上学日静默：已关闭") : ("保存失败：" + (r.message || "")));
     if (r.success) await refresh();
   }
   async function doSaveStudentMode(nv) {
     var v = (nv !== undefined && nv !== null) ? (nv === true) : (studentMode === true);
-    var r = await callTool("random_chain:update_formula", { student_mode: v });
+    var r = await callTool("on_air:update_formula", { student_mode: v });
     await showMsg(r.success ? (v ? "学生模式：已开启" : "学生模式：已关闭") : ("保存失败：" + (r.message || "")));
     if (r.success) await refresh();
   }
   async function doSaveDateQuiet(nv) {
     var v = (nv !== undefined && nv !== null) ? (nv === true) : (dateQuietOn === true);
-    var r = await callTool("random_chain:update_formula", { date_quiet_enabled: v });
+    var r = await callTool("on_air:update_formula", { date_quiet_enabled: v });
     await showMsg(r.success ? (v ? "日期静默总开关：已开启" : "日期静默总开关：已关闭") : ("保存失败：" + (r.message || "")));
     if (r.success) await refresh();
   }
   async function doFetchHolidays() {
     setHolidayBusy(true);
     setMsg("正在联网拉取节假日信息…");
-    var r = await callTool("random_chain:fetch_holidays");
+    var r = await callTool("on_air:fetch_holidays");
     setHolidayBusy(false);
     await showMsg(r.message || (r.success ? "已更新" : "拉取失败"));
     if (r.success) await refresh();
@@ -485,7 +485,7 @@ function Screen(ctx) {
       await showMsg("请先填写 a / b / c 再保存");
       return;
     }
-    var r = await callTool("random_chain:update_formula", params);
+    var r = await callTool("on_air:update_formula", params);
     await showMsg(r.success ? "公式参数已保存" : ("保存失败：" + (r.message || "")));
     if (r.success) await refresh();
   }
@@ -496,26 +496,26 @@ function Screen(ctx) {
     var gentleOk = !!(st && st.gentle_installed);
     var params = { awake_mode: awakeMode, send_mode: gentleOk ? sendMode : "A1" };
     if (lines.length) params.awake_messages = JSON.stringify(lines);
-    var r = await callTool("random_chain:update_formula", params);
+    var r = await callTool("on_air:update_formula", params);
     await showMsg(r.success ? "已保存" : ("保存失败：" + (r.message || "")));
     if (r.success) await refresh();
   }
 
   async function doAwake() {
     setMsg("正在触发…");
-    var r = await callTool("random_chain:manual_awake");
+    var r = await callTool("on_air:manual_awake");
     await showMsg(r.success ? "已触发唤醒" : ("唤醒失败：" + (r.message || "")));
     if (r.success) await refresh();
   }
 
   async function doResetCool() {
-    var r = await callTool("random_chain:reset_cooldown", { minutes: 0 });
+    var r = await callTool("on_air:reset_cooldown", { minutes: 0 });
     await showMsg(r.success ? "已重置冷却" : ("重置失败：" + (r.message || "")));
     if (r.success) await refresh();
   }
 
   async function doCoax() {
-    var r = await callTool("random_chain:coax");
+    var r = await callTool("on_air:coax");
     await showMsg(r.success ? "已重置计数" : ("重置失败：" + (r.message || "")));
     if (r.success) await refresh();
   }
@@ -554,7 +554,7 @@ function Screen(ctx) {
 
   // ---- 顶部：标题 + 状态 ----
   children.push(ctx.UI.Row({ verticalAlignment: "center", fillMaxWidth: true }, [
-    ctx.UI.Text({ text: "随机连三链", style: "headlineSmall", fontWeight: "bold", color: "#FFFFFF", weight: 1 }),
+    ctx.UI.Text({ text: "随机上线", style: "headlineSmall", fontWeight: "bold", color: "#FFFFFF", weight: 1 }),
     ctx.UI.Text({ text: statusText(), style: "labelLarge", color: "#FFFFFF" })
   ]));
 
