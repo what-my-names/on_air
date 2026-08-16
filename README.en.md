@@ -1,7 +1,7 @@
 # Random Triple-Chain (random_chain)
 
 [中文](README.md)
-> **Current Release Status**: v1.0.1-beta (Pre-release). Functional but still being polished; feedback welcome.
+> **Current Release Status**: v1.7.10-beta (Pre-release). Functional but still being polished; feedback welcome.
 
 > **Authorship Notice**: This project is a "novice × AI creation" — co-developed by a novice developer together with an AI assistant. The code and docs are still growing; corrections, issues and PRs are welcome.
 
@@ -26,7 +26,14 @@ A sandboxed ToolPkg plugin for Operit AI: after the user goes silent for a while
 - **Chinese-only replies**: all wake-up wording is forced to Chinese output
 - **Cooldown & consecutive-hit cap**: cooldown after each hit; proactive messages stop automatically when consecutive hits reach the cap
 - **Gentle Guardian linkage**: when the "Gentle Guardian" plugin is running, its jealousy counter is updated (capped, no penalty tier)
-- **Sidebar panel**: live x/y state, manual trigger, reset cooldown/counter, edit formula params, character card name, wording and send mode
+- **Quiet periods**: independent day/night quiet segments with customizable time ranges (for shift work, naps, classes, etc.)
+- **Calendar quiet**: three-color calendar highlight (today purple, quiet days dark, others bright); any date can be tapped for full-day hard quiet — one tap to apply, tap again to cancel
+- **School-day auto quiet**: ordinary days (non-holiday, non-weekend, non-vacation in student mode) are automatically hard-quiet all day
+- **Student mode switch**: on = summer/winter vacation counts as special days (stay colorful); off = adult mode, vacations treated as ordinary days
+- **Date quiet master switch**: one tap disables all date-level quiet (tapped quiet days and school-day auto quiet)
+- **Built-in 2026 Chinese public holidays**: fetches holidays online after 12:00 daily to auto-recognize special days
+- **Privacy-safe sample stats**: only message timestamps and sender identity are read to detect silence — message content is never read or stored
+- **Sidebar panel**: live x/y state, manual trigger, reset cooldown/counter, edit formula params, character card name, wording, quiet & calendar settings
 
 ## Directory Layout
 
@@ -60,6 +67,14 @@ formula.example.json               # config example (copy to formula.json)
 | character_card_name | Character card located by name when waking; empty follows current chat |
 | awake_messages | Custom wording library (one phrase per line) |
 | ai_gateway | Optional: call an LLM API directly to generate wording |
+| quiet_enabled | Quiet master switch (period quiet) |
+| quiet_day_enabled / quiet_night_enabled | Independent day / night segment switches |
+| quiet_day_start / quiet_day_end | Day segment HH:MM (default 09:00~18:00) |
+| quiet_night_start / quiet_night_end | Night segment HH:MM (default 22:00~09:00, overnight) |
+| quiet_dates | Tapped full-day quiet date map, e.g. `{"2026-08-18":"full"}` |
+| school_day_auto_quiet | School-day auto quiet switch |
+| student_mode | Student mode switch |
+| date_quiet_enabled | Date quiet master switch |
 
 Do not commit real runtime data (`formula.json`, `state.json`) to the repo.
 
