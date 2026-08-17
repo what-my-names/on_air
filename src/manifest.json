@@ -12,8 +12,8 @@
     "en": "On Air"
   },
   "description": {
-    "zh": "随机上线：装成真人的 Operit AI 插件。不是定时器，是概率——你沉默得越久，它上线的概率就越高。空闲时每15分钟检查一次你的沉默，进入运行后每分钟掷一次骰子，掷中了就主动来找你说话。支持联动温柔巡检、智能接回复、面板实时查看概率、手动触发、公式与冷却配置；内置静默时段、日历静默日、上学日自动静默与学生模式。",
-    "en": "On Air: an Operit AI plugin that pretends to be a real person. Not a timer, but a probability - the longer you stay silent, the more likely it comes online. Checks your silence every 15 minutes while idle, rolls a dice every minute while running, and speaks up on its own when it hits. Supports gentle-guardian linkage, smart replies, a real-time panel, manual trigger, formula and cooldown settings, quiet periods, calendar quiet days, school-day auto quiet and student mode."
+    "zh": "随机上线：装成真人的 Operit AI 插件。你沉默得越久，它上线的概率就越高，会在随机时间主动来找你说话。",
+    "en": "On Air: an Operit AI plugin that pretends to be a real person. The longer you stay silent, the higher the chance it comes online and reaches out."
   },
   "category": "COMPANION",
   "subpackages": [
