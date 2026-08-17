@@ -12,8 +12,8 @@
     "en": "On Air"
   },
   "description": {
-    "zh": "随机上线：装成真人的 Operit AI 插件。你沉默得越久，它上线的概率就越高，会在随机时间主动来找你说话。",
-    "en": "On Air: an Operit AI plugin that pretends to be a real person. The longer you stay silent, the higher the chance it comes online and reaches out."
+    "zh": "随机上线：装成真人的 Operit AI 插件。你沉默得越久，它上线的概率就越高，会在随机时间主动来找你说话。支持静默时段、日历静默、上学日自动静默与学生模式。",
+    "en": "On Air: an Operit AI plugin that pretends to be a real person. The longer you stay silent, the higher the chance it comes online and reaches out. Supports quiet periods, calendar quiet days, school-day auto quiet and student mode."
   },
   "category": "COMPANION",
   "subpackages": [
