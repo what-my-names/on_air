@@ -7,8 +7,8 @@ METADATA
         "en": "On Air"
     },
     "description": {
-        "zh": "随机上线系统：空闲态每15分钟查日志判断用户是否沉默，运行态每分钟x累加、按公式算y(概率)、掷骰子命中则主动发消息。支持面板实时查看xy状态、手动触发、公式编辑与冷却配置。内置日历：每天12点后联网拉取节假日，可点选全天静默日或开启节假日自动静默。",
-        "en": "On Air system: idle checks logs every 15min, running increments x each minute, computes y via formula, rolls dice to call owner proactively. Built-in calendar with holiday auto-fetch after 12:00 daily and per-day full-day quiet."
+        "zh": "随机上线：装成真人的 Operit AI 插件。你沉默得越久，它上线的概率就越高，会在随机时间主动来找你说话。v1.2 静默时段；v1.3 作息样本统计；v1.4 日夜静默独立开关；v1.5 内置日历与节假日；v1.6 静默逻辑反转；v1.7 学生模式与日期级静默。",
+        "en": "On Air: an Operit AI plugin that pretends to be a real person. The longer you stay silent, the higher the chance it comes online and reaches out. v1.2 quiet periods; v1.3 schedule sample stats; v1.4 independent day/night quiet; v1.5 built-in calendar & holidays; v1.6 quiet logic reversed; v1.7 student mode & date quiet."
     },
     "enabledByDefault": true,
     "category": "COMPANION",
