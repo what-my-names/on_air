@@ -13,6 +13,13 @@ function Screen(ctx) {
    * 全部交互走 ctx.callTool 调 on_air 工具，与后台 workflow 共用 state.json / formula.json。
    */
 
+  // ===== 黑白极简（常驻：白底 + 黑字）=====
+  // ===== 黑白极简（常驻）=====
+  var P = {
+    bg: "#FFFFFF", card: "#F5F5F5", btn: "#222222", accent: "#222222",
+    text: "#222222", quietDay: "#222222", normalDay: "#F0F0F0", today: "#555555",
+    specialDay: "#C0C0C0", btnText: "#FFFFFF"
+  };
   // ===== 状态 =====
   var loadingState = ctx.useState("loading", true);
   var loading = loadingState[0];
@@ -554,122 +561,122 @@ function Screen(ctx) {
 
   // ---- 顶部：标题 + 状态 ----
   children.push(ctx.UI.Row({ verticalAlignment: "center", fillMaxWidth: true }, [
-    ctx.UI.Text({ text: "随机上线", style: "headlineSmall", fontWeight: "bold", color: "#FFFFFF", weight: 1 }),
-    ctx.UI.Text({ text: statusText(), style: "labelLarge", color: "#FFFFFF" })
+    ctx.UI.Text({ text: "随机上线", style: "headlineSmall", fontWeight: "bold", color: P.text, weight: 1 }),
+    ctx.UI.Text({ text: statusText(), style: "labelLarge", color: P.text })
   ]));
 
   // ---- 大字号唤醒概率 y ----
-  children.push(ctx.UI.Card({ containerColor: "rgb(34,34,34)", backgroundColor: "#222222", shape: { cornerRadius: 0 }, padding: 0, elevation: 0, fillMaxWidth: true }, [
-    ctx.UI.Column({ backgroundColor: "#222222", fillMaxWidth: true, padding: 14, spacing: 2 }, [
-      ctx.UI.Text({ text: "唤醒概率 y", style: "bodySmall", color: "#FFFFFF" }),
-      ctx.UI.Text({ text: (stY != null) ? String(stY) + "%" : "…%", style: "headlineLarge", fontWeight: "bold", color: "#FFFFFF" }),
-      ctx.UI.Text({ text: (stX != null) ? "当前 X = " + stX + " 分钟" : "状态读取中…", style: "bodySmall", color: "#FFFFFF" })
+  children.push(ctx.UI.Card({ containerColor: P.card, backgroundColor: P.card, shape: { cornerRadius: 16, type: "rounded" }, padding: 0, elevation: 0, fillMaxWidth: true }, [
+    ctx.UI.Column({ backgroundColor: P.card, fillMaxWidth: true, padding: 14, spacing: 2 }, [
+      ctx.UI.Text({ text: "唤醒概率 y", style: "bodySmall", color: P.text }),
+      ctx.UI.Text({ text: (stY != null) ? String(stY) + "%" : "…%", style: "headlineLarge", fontWeight: "bold", color: P.accent }),
+      ctx.UI.Text({ text: (stX != null) ? "当前 X = " + stX + " 分钟" : "状态读取中…", style: "bodySmall", color: P.text })
     ])
   ]));
 
   // ---- 卡1 参数 ----
   var card1 = [];
-  card1.push(ctx.UI.Text({ text: "X（离开时长 / 分钟）", style: "bodySmall", color: "#FFFFFF" }));
-  card1.push(ctx.UI.TextField({color: "#FFFFFF", textColor: "#FFFFFF", contentColor: "#FFFFFF", 
+  card1.push(ctx.UI.Text({ text: "X（离开时长 / 分钟）", style: "bodySmall", color: P.text }));
+  card1.push(ctx.UI.TextField({ 
     value: xInput,
     onValueChange: setXInput,
     singleLine: true,
     placeholder: (stX != null) ? String(stX) : "如 21"
-  }));
+  , style: { color: "#222222" } }));
   card1.push(ctx.UI.Row({ verticalAlignment: "center" }, [
-    ctx.UI.Text({ text: "写入后 y ≈ " + yPreview + "%", style: "bodySmall", color: "#FFFFFF", weight: 1 }),
+    ctx.UI.Text({ text: "写入后 y ≈ " + yPreview + "%", style: "bodySmall", color: P.text, weight: 1 }),
     ctx.UI.Spacer({ width: 8 }),
-    ctx.UI.Button({ containerColor: "#BFFF00", shape: { cornerRadius: 12 }, text: "写入", onClick: doSaveX })
+    ctx.UI.Button({ contentColor: P.btnText, color: P.btnText, textColor: P.btnText, containerColor: P.btn, shape: { cornerRadius: 12, type: "rounded" }, text: "写入", onClick: doSaveX })
   ]));
   card1.push(ctx.UI.Spacer({ height: 4 }));
-  card1.push(ctx.UI.Text({ text: "公式参数（f = a·x + b·x^c）", style: "bodySmall", color: "#FFFFFF" }));
-  card1.push(ctx.UI.TextField({color: "#FFFFFF", textColor: "#FFFFFF", contentColor: "#FFFFFF", 
+  card1.push(ctx.UI.Text({ text: "公式参数（f = a·x + b·x^c）", style: "bodySmall", color: P.text }));
+  card1.push(ctx.UI.TextField({ 
     value: aInput,
     onValueChange: setAInput,
     singleLine: true,
-    placeholder: "a 如 0.007078203"
-  }));
-  card1.push(ctx.UI.TextField({color: "#FFFFFF", textColor: "#FFFFFF", contentColor: "#FFFFFF", 
+    placeholder: ctx.UI.Text({ text: "a 如 0.007078203", color: "#222222" })
+  , style: { color: "#222222" } }));
+  card1.push(ctx.UI.TextField({ 
     value: bInput,
     onValueChange: setBInput,
     singleLine: true,
-    placeholder: "b 如 6.00914e-07"
-  }));
-  card1.push(ctx.UI.TextField({color: "#FFFFFF", textColor: "#FFFFFF", contentColor: "#FFFFFF", 
+    placeholder: ctx.UI.Text({ text: "b 如 6.00914e-07", color: "#222222" })
+  , style: { color: "#222222" } }));
+  card1.push(ctx.UI.TextField({ 
     value: cInput,
     onValueChange: setCInput,
     singleLine: true,
-    placeholder: "c 如 3.15168"
-  }));
+    placeholder: ctx.UI.Text({ text: "c 如 3.15168", color: "#222222" })
+  , style: { color: "#222222" } }));
   card1.push(ctx.UI.Row({ verticalAlignment: "center" }, [
     ctx.UI.Spacer({ weight: 1 }),
-    ctx.UI.Button({ containerColor: "#BFFF00", shape: { cornerRadius: 12 }, text: "保存参数", onClick: doSaveAbc })
+    ctx.UI.Button({ contentColor: P.btnText, color: P.btnText, textColor: P.btnText, containerColor: P.btn, shape: { cornerRadius: 12, type: "rounded" }, text: "保存参数", onClick: doSaveAbc })
   ]));
   card1.push(ctx.UI.Spacer({ height: 4 }));
-  card1.push(ctx.UI.Text({ text: "唤醒后冷却（分钟）", style: "bodySmall", color: "#FFFFFF" }));
-  card1.push(ctx.UI.TextField({color: "#FFFFFF", textColor: "#FFFFFF", contentColor: "#FFFFFF", 
+  card1.push(ctx.UI.Text({ text: "唤醒后冷却（分钟）", style: "bodySmall", color: P.text }));
+  card1.push(ctx.UI.TextField({ 
     value: coolInput,
     onValueChange: setCoolInput,
     singleLine: true,
-    placeholder: "15"
-  }));
+    placeholder: ctx.UI.Text({ text: "15", color: "#222222" })
+  , style: { color: "#222222" } }));
   card1.push(ctx.UI.Row({ verticalAlignment: "center" }, [
     ctx.UI.Spacer({ weight: 1 }),
-    ctx.UI.Button({ containerColor: "#BFFF00", shape: { cornerRadius: 12 }, text: "保存冷却", onClick: doSaveCool })
+    ctx.UI.Button({ contentColor: P.btnText, color: P.btnText, textColor: P.btnText, containerColor: P.btn, shape: { cornerRadius: 12, type: "rounded" }, text: "保存冷却", onClick: doSaveCool })
   ]));
   card1.push(ctx.UI.Spacer({ height: 4 }));
-  card1.push(ctx.UI.Text({ text: "角色卡名字（唤醒时按名字用这张角色卡；留空=跟随当前对话）", style: "bodySmall", color: "#FFFFFF" }));
-  card1.push(ctx.UI.TextField({color: "#FFFFFF", textColor: "#FFFFFF", contentColor: "#FFFFFF", 
+  card1.push(ctx.UI.Text({ text: "角色卡名字（唤醒时按名字用这张角色卡；留空=跟随当前对话）", style: "bodySmall", color: P.text }));
+  card1.push(ctx.UI.TextField({ 
     value: cardNameInput,
     onValueChange: setCardNameInput,
     singleLine: true,
-    placeholder: "例如角色卡的名字"
-  }));
+    placeholder: ctx.UI.Text({ text: "例如角色卡的名字", color: "#222222" })
+  , style: { color: "#222222" } }));
   card1.push(ctx.UI.Row({ verticalAlignment: "center" }, [
     ctx.UI.Spacer({ weight: 1 }),
-    ctx.UI.Button({ containerColor: "#BFFF00", shape: { cornerRadius: 12 }, text: "保存角色卡", onClick: doSaveCardName })
+    ctx.UI.Button({ contentColor: P.btnText, color: P.btnText, textColor: P.btnText, containerColor: P.btn, shape: { cornerRadius: 12, type: "rounded" }, text: "保存角色卡", onClick: doSaveCardName })
   ]));
-  children.push(ctx.UI.Card({ containerColor: "rgb(34,34,34)", backgroundColor: "#222222", shape: { cornerRadius: 0 }, padding: 0, elevation: 0, fillMaxWidth: true }, [
-    ctx.UI.Column({ backgroundColor: "#222222", fillMaxWidth: true, padding: 14, spacing: 8 }, [
-      ctx.UI.Text({ text: "参数", style: "titleMedium", fontWeight: "semiBold", color: "#FFFFFF" })
+  children.push(ctx.UI.Card({ containerColor: P.card, backgroundColor: P.card, shape: { cornerRadius: 16, type: "rounded" }, padding: 0, elevation: 0, fillMaxWidth: true }, [
+    ctx.UI.Column({ backgroundColor: P.card, fillMaxWidth: true, padding: 14, spacing: 8 }, [
+      ctx.UI.Text({ text: "参数", style: "titleMedium", fontWeight: "semiBold", color: P.accent })
     ].concat(card1))
   ]));
 
   // ---- 卡2 话术 ----
   var card2 = [];
   card2.push(ctx.UI.Row({ spacing: 8 }, [
-    ctx.UI.Button({containerColor: "#BFFF00", shape: { cornerRadius: 12 }, 
+    ctx.UI.Button({ contentColor: P.btnText, color: P.btnText, textColor: P.btnText,containerColor: P.btn, shape: { cornerRadius: 12, type: "rounded" }, 
       text: (awakeMode === "default" ? "✔ " : "") + "默认模式",
       weight: 1,
       onClick: function () { setAwakeMode("default"); }
     }),
-    ctx.UI.Button({containerColor: "#BFFF00", shape: { cornerRadius: 12 }, 
+    ctx.UI.Button({ contentColor: P.btnText, color: P.btnText, textColor: P.btnText,containerColor: P.btn, shape: { cornerRadius: 12, type: "rounded" }, 
       text: (awakeMode === "custom" ? "✔ " : "") + "自定义",
       weight: 1,
       onClick: function () { setAwakeMode("custom"); }
     })
   ]));
   if (awakeMode === "custom") {
-    card2.push(ctx.UI.Text({ text: "格式说明：每行写一句，命中后随机抽一句发送；想清空就把框留空保存", style: "bodySmall", color: "#FFFFFF" }));
-    card2.push(ctx.UI.TextField({color: "#FFFFFF", textColor: "#FFFFFF", contentColor: "#FFFFFF", 
+    card2.push(ctx.UI.Text({ text: "格式说明：每行写一句，命中后随机抽一句发送；想清空就把框留空保存", style: "bodySmall", color: P.text }));
+    card2.push(ctx.UI.TextField({ 
       value: talkInput,
       onValueChange: setTalkInput,
       minLines: 4,
-      placeholder: "每行写一句，如：想你了，最近在忙吗？"
-    }));
+      placeholder: ctx.UI.Text({ text: "每行写一句，如：想你了，最近在忙吗？", color: "#222222" })
+    , style: { color: "#222222" } }));
   }
   if (awakeMode === "default") {
     // 发送方式 A1/A2：只在"默认模式"下显示；A2 仅检测到温柔巡检时才出现
     var gentleOk2 = !!(st && st.gentle_installed);
-    card2.push(ctx.UI.Text({ text: "发送方式", style: "bodySmall", color: "#FFFFFF" }));
+    card2.push(ctx.UI.Text({ text: "发送方式", style: "bodySmall", color: P.text }));
     if (gentleOk2) {
       card2.push(ctx.UI.Row({ spacing: 8 }, [
-        ctx.UI.Button({containerColor: "#BFFF00", shape: { cornerRadius: 12 }, 
+        ctx.UI.Button({ contentColor: P.btnText, color: P.btnText, textColor: P.btnText,containerColor: P.btn, shape: { cornerRadius: 12, type: "rounded" }, 
           text: (sendMode === "A1" ? "✔ " : "") + "A1",
           weight: 1,
           onClick: function () { setSendMode("A1"); }
         }),
-        ctx.UI.Button({containerColor: "#BFFF00", shape: { cornerRadius: 12 }, 
+        ctx.UI.Button({ contentColor: P.btnText, color: P.btnText, textColor: P.btnText,containerColor: P.btn, shape: { cornerRadius: 12, type: "rounded" }, 
           text: (sendMode === "A2" ? "✔ " : "") + "A2",
           weight: 1,
           onClick: function () { setSendMode("A2"); }
@@ -677,7 +684,7 @@ function Screen(ctx) {
       ]));
     } else {
       card2.push(ctx.UI.Row({ spacing: 8 }, [
-        ctx.UI.Button({containerColor: "#BFFF00", shape: { cornerRadius: 12 }, 
+        ctx.UI.Button({ contentColor: P.btnText, color: P.btnText, textColor: P.btnText,containerColor: P.btn, shape: { cornerRadius: 12, type: "rounded" }, 
           text: (sendMode === "A1" ? "✔ " : "") + "A1",
           weight: 1,
           onClick: function () { setSendMode("A1"); }
@@ -689,13 +696,13 @@ function Screen(ctx) {
         ? "A1：AI 主动发，只落对话正文不弹气泡（默认）。A2：装了温柔巡检时优先借它的自动回复通道。"
         : "未检测到温柔巡检，只能使用 A1；安装温柔巡检后会出现 A2 选项。",
       style: "bodySmall",
-      color: "#FFFFFF"
+      color: P.text
     }));
   }
-  card2.push(ctx.UI.Button({ containerColor: "#BFFF00", shape: { cornerRadius: 12 }, text: "保存话术 / 发送方式", fillMaxWidth: true, onClick: doSaveTalk }));
-  children.push(ctx.UI.Card({ containerColor: "rgb(34,34,34)", backgroundColor: "#222222", shape: { cornerRadius: 0 }, padding: 0, elevation: 0, fillMaxWidth: true }, [
-    ctx.UI.Column({ backgroundColor: "#222222", fillMaxWidth: true, padding: 14, spacing: 8 }, [
-      ctx.UI.Text({ text: "话术", style: "titleMedium", fontWeight: "semiBold", color: "#FFFFFF" })
+  card2.push(ctx.UI.Button({ contentColor: P.btnText, color: P.btnText, textColor: P.btnText, containerColor: P.btn, shape: { cornerRadius: 12, type: "rounded" }, text: "保存话术 / 发送方式", fillMaxWidth: true, onClick: doSaveTalk }));
+  children.push(ctx.UI.Card({ containerColor: P.card, backgroundColor: P.card, shape: { cornerRadius: 16, type: "rounded" }, padding: 0, elevation: 0, fillMaxWidth: true }, [
+    ctx.UI.Column({ backgroundColor: P.card, fillMaxWidth: true, padding: 14, spacing: 8 }, [
+      ctx.UI.Text({ text: "话术", style: "titleMedium", fontWeight: "semiBold", color: P.accent })
     ].concat(card2))
   ]));
 
@@ -704,15 +711,15 @@ function Screen(ctx) {
   card3.push(ctx.UI.Text({
     text: "免打扰：静默时段内停止 X 累加、掷骰与主动唤醒。若检测到主人打开 Operit / 发消息，会自动解除静默并告知喵～",
     style: "bodySmall",
-    color: "#FFFFFF"
+    color: P.text
   }));
   card3.push(ctx.UI.Row({ spacing: 8 }, [
-    ctx.UI.Button({containerColor: "#BFFF00", shape: { cornerRadius: 12 }, 
+    ctx.UI.Button({ contentColor: P.btnText, color: P.btnText, textColor: P.btnText,containerColor: P.btn, shape: { cornerRadius: 12, type: "rounded" }, 
       text: (quietEnabled ? "✔ " : "") + "开启",
       weight: 1,
       onClick: function () { setQuietEnabled(true); }
     }),
-    ctx.UI.Button({containerColor: "#BFFF00", shape: { cornerRadius: 12 }, 
+    ctx.UI.Button({ contentColor: P.btnText, color: P.btnText, textColor: P.btnText,containerColor: P.btn, shape: { cornerRadius: 12, type: "rounded" }, 
       text: (!quietEnabled ? "✔ " : "") + "关闭",
       weight: 1,
       onClick: function () { setQuietEnabled(false); }
@@ -720,106 +727,106 @@ function Screen(ctx) {
   ]));
   // 白天段（带独立开关：假期白天全天在线时可关掉）
   card3.push(ctx.UI.Row({ spacing: 8 }, [
-    ctx.UI.Text({ text: "白天段（默认备注：给白天黑夜倒班的人群，如白天补觉 9:00~18:00）", style: "bodySmall", color: "#FFFFFF", weight: 1 }),
-    ctx.UI.Button({containerColor: "#BFFF00", shape: { cornerRadius: 12 }, 
+    ctx.UI.Text({ text: "白天段（默认备注：给白天黑夜倒班的人群，如白天补觉 9:00~18:00）", style: "bodySmall", color: P.text, weight: 1 }),
+    ctx.UI.Button({ contentColor: P.btnText, color: P.btnText, textColor: P.btnText,containerColor: P.btn, shape: { cornerRadius: 12, type: "rounded" }, 
       text: quietDayOn ? "白天静默：开" : "白天静默：关",
       onClick: function () { setQuietDayOn(!quietDayOn); }
     })
   ]));
   card3.push(ctx.UI.Row({ spacing: 8 }, [
     ctx.UI.Column({ weight: 1 }, [
-      ctx.UI.Text({ text: "开始 HH:MM", style: "bodySmall", color: "#FFFFFF" }),
-      ctx.UI.TextField({color: "#FFFFFF",  value: quietDayStart, onValueChange: setQuietDayStart, singleLine: true, placeholder: "09:00" })
+      ctx.UI.Text({ text: "开始 HH:MM", style: "bodySmall", color: P.text }),
+      ctx.UI.TextField({  value: quietDayStart, onValueChange: setQuietDayStart, singleLine: true, placeholder: ctx.UI.Text({ text: "09:00", color: "#222222" }) , style: { color: "#222222" } })
     ]),
     ctx.UI.Column({ weight: 1 }, [
-      ctx.UI.Text({ text: "结束 HH:MM", style: "bodySmall", color: "#FFFFFF" }),
-      ctx.UI.TextField({color: "#FFFFFF",  value: quietDayEnd, onValueChange: setQuietDayEnd, singleLine: true, placeholder: "18:00" })
+      ctx.UI.Text({ text: "结束 HH:MM", style: "bodySmall", color: P.text }),
+      ctx.UI.TextField({  value: quietDayEnd, onValueChange: setQuietDayEnd, singleLine: true, placeholder: ctx.UI.Text({ text: "18:00", color: "#222222" }) , style: { color: "#222222" } })
     ])
   ]));
   // 夜间段（带独立开关）
   card3.push(ctx.UI.Row({ spacing: 8 }, [
-    ctx.UI.Text({ text: "夜间段（如睡觉 22:00~09:00，支持跨天）", style: "bodySmall", color: "#FFFFFF", weight: 1 }),
-    ctx.UI.Button({containerColor: "#BFFF00", shape: { cornerRadius: 12 }, 
+    ctx.UI.Text({ text: "夜间段（如睡觉 22:00~09:00，支持跨天）", style: "bodySmall", color: P.text, weight: 1 }),
+    ctx.UI.Button({ contentColor: P.btnText, color: P.btnText, textColor: P.btnText,containerColor: P.btn, shape: { cornerRadius: 12, type: "rounded" }, 
       text: quietNightOn ? "夜间静默：开" : "夜间静默：关",
       onClick: function () { setQuietNightOn(!quietNightOn); }
     })
   ]));
   card3.push(ctx.UI.Row({ spacing: 8 }, [
     ctx.UI.Column({ weight: 1 }, [
-      ctx.UI.Text({ text: "开始 HH:MM", style: "bodySmall", color: "#FFFFFF" }),
-      ctx.UI.TextField({color: "#FFFFFF",  value: quietNightStart, onValueChange: setQuietNightStart, singleLine: true, placeholder: "22:00" })
+      ctx.UI.Text({ text: "开始 HH:MM", style: "bodySmall", color: P.text }),
+      ctx.UI.TextField({  value: quietNightStart, onValueChange: setQuietNightStart, singleLine: true, placeholder: ctx.UI.Text({ text: "22:00", color: "#222222" }) , style: { color: "#222222" } })
     ]),
     ctx.UI.Column({ weight: 1 }, [
-      ctx.UI.Text({ text: "结束 HH:MM", style: "bodySmall", color: "#FFFFFF" }),
-      ctx.UI.TextField({color: "#FFFFFF",  value: quietNightEnd, onValueChange: setQuietNightEnd, singleLine: true, placeholder: "09:00" })
+      ctx.UI.Text({ text: "结束 HH:MM", style: "bodySmall", color: P.text }),
+      ctx.UI.TextField({  value: quietNightEnd, onValueChange: setQuietNightEnd, singleLine: true, placeholder: ctx.UI.Text({ text: "09:00", color: "#222222" }) , style: { color: "#222222" } })
     ])
   ]));
   card3.push(ctx.UI.Text({
     text: isQuietNow() ? "当前正处于静默时段，系统暂停计算与唤醒（检测到设备活动会自动解除）。" : "提示：两段时间都可自定义，每段均支持跨天区间。",
     style: "bodySmall",
-    color: "#FFFFFF"
+    color: P.text
   }));
-  card3.push(ctx.UI.Button({ containerColor: "#BFFF00", shape: { cornerRadius: 12 }, text: "保存静默设置", fillMaxWidth: true, onClick: doSaveQuiet }));
+  card3.push(ctx.UI.Button({ contentColor: P.btnText, color: P.btnText, textColor: P.btnText, containerColor: P.btn, shape: { cornerRadius: 12, type: "rounded" }, text: "保存静默设置", fillMaxWidth: true, onClick: doSaveQuiet }));
 // AI 智能建议区
   card3.push(ctx.UI.Spacer({ height: 4 }));
-  card3.push(ctx.UI.Text({ text: "AI 智能建议（结合时间与主人习惯，正在测试中）", style: "bodySmall", fontWeight: "semiBold", color: "#FFFFFF" }));
+  card3.push(ctx.UI.Text({ text: "AI 智能建议（结合时间与主人习惯，正在测试中）", style: "bodySmall", fontWeight: "semiBold", color: P.text }));
   card3.push(ctx.UI.Text({
     text: "使用你常用对话的聊天记录来分析作息，仅读取发言时间，不读取聊天内容。",
     style: "bodySmall",
-    color: "#FFFFFF"
+    color: P.text
   }));
   // 聊天记录选择（对话名字）
-  card3.push(ctx.UI.Text({ text: "对话名字（用它常用对话的聊天记录来分析）", style: "bodySmall", color: "#FFFFFF" }));
-  card3.push(ctx.UI.TextField({color: "#FFFFFF",  value: chatNameInput, onValueChange: setChatNameInput, singleLine: true, placeholder: "对话的名字，如：猫娘" }));
-  card3.push(ctx.UI.Button({ containerColor: "#BFFF00", shape: { cornerRadius: 12 }, text: (suggestBusy ? "查找中…" : "按名字选中对话"), fillMaxWidth: true, onClick: doLinkAgent }));
+  card3.push(ctx.UI.Text({ text: "对话名字（用它常用对话的聊天记录来分析）", style: "bodySmall", color: P.text }));
+  card3.push(ctx.UI.TextField({  value: chatNameInput, onValueChange: setChatNameInput, singleLine: true, placeholder: ctx.UI.Text({ text: "对话的名字，如：猫娘", color: "#222222" }) , style: { color: "#222222" } }));
+  card3.push(ctx.UI.Button({ contentColor: P.btnText, color: P.btnText, textColor: P.btnText, containerColor: P.btn, shape: { cornerRadius: 12, type: "rounded" }, text: (suggestBusy ? "查找中…" : "按名字选中对话"), fillMaxWidth: true, onClick: doLinkAgent }));
   if (linkedChat) {
     card3.push(ctx.UI.Text({
       text: "已选中对话ID：" + linkedChat,
       style: "bodySmall",
-      color: "#FFFFFF"
+      color: P.text
     }));
   }
   card3.push(ctx.UI.Text({
     text: "点按钮后自动按名字找到对话并配置好，不需要发送任何消息。",
     style: "bodySmall",
-    color: "#FFFFFF"
+    color: P.text
   }));
   card3.push(ctx.UI.Text({
     text: "提示：请开启 Operit 的额外信息（时间）输入，AI 才能结合当前时间分析。",
     style: "bodySmall",
-    color: "#FFFFFF"
+    color: P.text
   }));
-  card3.push(ctx.UI.Button({containerColor: "#BFFF00", shape: { cornerRadius: 12 }, 
+  card3.push(ctx.UI.Button({ contentColor: P.btnText, color: P.btnText, textColor: P.btnText,containerColor: P.btn, shape: { cornerRadius: 12, type: "rounded" }, 
     text: (suggestBusy ? "分析中…" : "分析常用对话聊天记录并建议静默时间"),
     fillMaxWidth: true,
     onClick: doSuggest
   }));
   if (suggest) {
-    card3.push(ctx.UI.Card({ containerColor: "rgb(34,34,34)", backgroundColor: "#222222", shape: { cornerRadius: 0 }, padding: 0, elevation: 0, fillMaxWidth: true }, [
-      ctx.UI.Column({ backgroundColor: "#222222", fillMaxWidth: true, padding: 10, spacing: 4 }, [
+    card3.push(ctx.UI.Card({ containerColor: P.card, backgroundColor: P.card, shape: { cornerRadius: 16, type: "rounded" }, padding: 0, elevation: 0, fillMaxWidth: true }, [
+      ctx.UI.Column({ backgroundColor: P.card, fillMaxWidth: true, padding: 10, spacing: 4 }, [
         ctx.UI.Text({
           text: "建议：白天 " + (suggest.day_start || "—") + "~" + (suggest.day_end || "—") + "，夜间 " + (suggest.night_start || "—") + "~" + (suggest.night_end || "—"),
           style: "bodyMedium",
           fontWeight: "semiBold",
-          color: "#FFFFFF"
+          color: P.text
         }),
         ctx.UI.Text({
           text: (suggest.reason || ""),
           style: "bodySmall",
-          color: "#FFFFFF"
+          color: P.text
         }),
         ctx.UI.Text({
           text: "来源：" + (suggest.source === "ai" ? "AI 分析" : "本地算法") + " · " + (suggest.generated_at || "") + (suggest.sample_count != null ? " · 样本 " + suggest.sample_count + " 条" : ""),
           style: "bodySmall",
-          color: "#FFFFFF"
+          color: P.text
         })
       ])
     ]));
-    card3.push(ctx.UI.Button({ containerColor: "#BFFF00", shape: { cornerRadius: 12 }, text: "一键应用建议并开启静默", fillMaxWidth: true, onClick: doApplySuggest }));
+    card3.push(ctx.UI.Button({ contentColor: P.btnText, color: P.btnText, textColor: P.btnText, containerColor: P.btn, shape: { cornerRadius: 12, type: "rounded" }, text: "一键应用建议并开启静默", fillMaxWidth: true, onClick: doApplySuggest }));
   }
-  children.push(ctx.UI.Card({ containerColor: "rgb(34,34,34)", backgroundColor: "#222222", shape: { cornerRadius: 0 }, padding: 0, elevation: 0, fillMaxWidth: true }, [
-    ctx.UI.Column({ backgroundColor: "#222222", fillMaxWidth: true, padding: 14, spacing: 8 }, [
-      ctx.UI.Text({ text: "静默状态", style: "titleMedium", fontWeight: "semiBold", color: "#FFFFFF" })
+  children.push(ctx.UI.Card({ containerColor: P.card, backgroundColor: P.card, shape: { cornerRadius: 16, type: "rounded" }, padding: 0, elevation: 0, fillMaxWidth: true }, [
+    ctx.UI.Column({ backgroundColor: P.card, fillMaxWidth: true, padding: 14, spacing: 8 }, [
+      ctx.UI.Text({ text: "静默状态", style: "titleMedium", fontWeight: "semiBold", color: P.accent })
     ].concat(card3))
   ]));
 
@@ -828,19 +835,19 @@ function Screen(ctx) {
   card4.push(ctx.UI.Text({
     text: "内置日历：每天 12:00 后自动联网拉取节假日（普通 HTTP 请求，零 token 消耗）。所有日子点一下即可标记/取消全天静默。",
     style: "bodySmall",
-    color: "#FFFFFF"
+    color: P.text
   }));
   // 月份导航
   card4.push(ctx.UI.Row({ spacing: 8, verticalAlignment: "center" }, [
-    ctx.UI.Button({ containerColor: "#BFFF00", shape: { cornerRadius: 12 }, text: "上月", onClick: doCalPrevMonth }),
-    ctx.UI.Text({ text: calYear + " 年 " + (calMonth + 1) + " 月", style: "bodyMedium", fontWeight: "semiBold", color: "#FFFFFF", weight: 1 }),
-    ctx.UI.Button({ containerColor: "#BFFF00", shape: { cornerRadius: 12 }, text: "下月", onClick: doCalNextMonth })
+    ctx.UI.Button({ contentColor: P.btnText, color: P.btnText, textColor: P.btnText, containerColor: P.btn, shape: { cornerRadius: 12, type: "rounded" }, text: "上月", onClick: doCalPrevMonth }),
+    ctx.UI.Text({ text: calYear + " 年 " + (calMonth + 1) + " 月", style: "bodyMedium", fontWeight: "semiBold", color: P.text, weight: 1 }),
+    ctx.UI.Button({ contentColor: P.btnText, color: P.btnText, textColor: P.btnText, containerColor: P.btn, shape: { cornerRadius: 12, type: "rounded" }, text: "下月", onClick: doCalNextMonth })
   ]));
   // 周标题
   var weekNames = ["日", "一", "二", "三", "四", "五", "六"];
   var headRow = [];
   for (var _wi = 0; _wi < 7; _wi++) {
-    headRow.push(ctx.UI.Text({ text: weekNames[_wi], style: "labelSmall", color: "#FFFFFF", weight: 1 }));
+    headRow.push(ctx.UI.Text({ text: weekNames[_wi], style: "labelSmall", color: P.text, weight: 1 }));
   }
   card4.push(ctx.UI.Row({ spacing: 2 }, headRow));
   // 日期网格：null=空白占位；点日期切换全天静默标记
@@ -858,20 +865,23 @@ function Screen(ctx) {
           var isH2 = inHolidayList(ds2);
           var isQ2 = (calDates && calDates[ds2] === "full");
           var isT2 = (ds2 === todayLocal);
-          // 周末（周六/周日）、寒暑假与节假日同为特殊日（紫色高亮、不参与静默）
+          // 周末（周六/周日）、寒暑假与节假日同为特殊日（不参与自动静默）
           var wkDay = new Date(calYear, calMonth, dayNum).getDay();
           var isWk = (wkDay === 0 || wkDay === 6);
-          var isSw = isSummerWinter(ds2);
+          var isSw = (studentMode === true) ? isSummerWinter(ds2) : false;
           var isSp = (isH2 || isWk || isSw);
-          // 颜色：今天=#BFFF00 黄绿，被静默日=#222222 深灰，特殊日=紫，普通日=默认；容器色与文字色配套
+          // 上学日自动静默：总开关开 + 上学日静默开 + 非节假日 + 非周末 + （学生模式时非寒暑假）
+          var isAutoQuiet2 = (dateQuietOn === true && schoolAuto === true && !isH2 && !isWk && !(studentMode === true && isSw));
+          // 黑白极简：静默日黑底白字（含上学日自动静默），今天深灰底白字，普通日浅灰底黑字
           var btnParams = {
             text: String(dayNum),
             weight: 1,
             onClick: function () { doToggleQuietDate(ds2); }
           };
-          if (isQ2) { btnParams.containerColor = "#222222"; btnParams.color = "#FFFFFF"; btnParams.textColor = "#FFFFFF"; btnParams.contentColor = "#FFFFFF"; }
-          else if (isT2) { btnParams.containerColor = "#9C27B0"; btnParams.color = "#FFFFFF"; btnParams.textColor = "#FFFFFF"; btnParams.contentColor = "#FFFFFF"; }
-          else { btnParams.containerColor = "#BFFF00"; btnParams.color = "#222222"; btnParams.textColor = "#222222"; btnParams.contentColor = "#222222"; }
+          if ((dateQuietOn === true && (isQ2 || isAutoQuiet2))) { btnParams.containerColor = P.quietDay; btnParams.color = P.btnText; btnParams.textColor = P.btnText; btnParams.contentColor = P.btnText; }
+          else if (isT2) { btnParams.containerColor = P.today; btnParams.color = P.btnText; btnParams.textColor = P.btnText; btnParams.contentColor = P.btnText; }
+          else if (isSp) { btnParams.containerColor = P.specialDay; btnParams.color = P.btnText; btnParams.textColor = P.btnText; btnParams.contentColor = P.btnText; }
+          else { btnParams.containerColor = P.normalDay; btnParams.color = P.text; btnParams.textColor = P.text; btnParams.contentColor = P.text; }
           rowItems.push(ctx.UI.Button(btnParams));
         })(cell);
       }
@@ -879,19 +889,19 @@ function Screen(ctx) {
     card4.push(ctx.UI.Row({ spacing: 2 }, rowItems));
   }
   card4.push(ctx.UI.Text({
-    text: "颜色：深色(#222222)=被静默日(工作日)；亮色(#BFFF00)=非静默日；紫色=当前日期。所有日子点一下即可静默、再点取消。",
+    text: "颜色：纯黑=静默日；中灰=节假日/周末/寒暑假（学生模式开时）；浅灰=普通日；深灰=今天。点日子可静默/取消。",
     style: "bodySmall",
-    color: "#FFFFFF"
+    color: P.text
   }));
   // 日期静默总开关（点一下立即保存）
   card4.push(ctx.UI.Row({ spacing: 8 }, [
     ctx.UI.Text({
       text: "日期静默总开关：关闭后点选静默日和上学日自动静默全部失效",
       style: "bodySmall",
-      color: "#FFFFFF",
+      color: P.text,
       weight: 1
     }),
-    ctx.UI.Button({containerColor: "#BFFF00", shape: { cornerRadius: 12 }, 
+    ctx.UI.Button({ contentColor: P.btnText, color: P.btnText, textColor: P.btnText,containerColor: P.btn, shape: { cornerRadius: 12, type: "rounded" }, 
       text: dateQuietOn ? "总开关：开" : "总开关：关",
       onClick: function () {
         switchEdited.dateQuietOn = true;
@@ -906,10 +916,10 @@ function Screen(ctx) {
     ctx.UI.Text({
       text: "学生模式（寒暑假）：开=学生（寒暑假算特殊日保持彩色）；关=成年人（寒暑假按普通日处理）",
       style: "bodySmall",
-      color: "#FFFFFF",
+      color: P.text,
       weight: 1
     }),
-    ctx.UI.Button({containerColor: "#BFFF00", shape: { cornerRadius: 12 }, 
+    ctx.UI.Button({ contentColor: P.btnText, color: P.btnText, textColor: P.btnText,containerColor: P.btn, shape: { cornerRadius: 12, type: "rounded" }, 
       text: studentMode ? "学生模式：开" : "学生模式：关",
       onClick: function () {
         switchEdited.studentMode = true;
@@ -924,10 +934,10 @@ function Screen(ctx) {
     ctx.UI.Text({
       text: "上学日自动静默：普通日（非节假日、非周六周日、学生模式下非寒暑假）自动全天静默（硬静默，不因设备活动解除）",
       style: "bodySmall",
-      color: "#FFFFFF",
+      color: P.text,
       weight: 1
     }),
-    ctx.UI.Button({containerColor: "#BFFF00", shape: { cornerRadius: 12 }, 
+    ctx.UI.Button({ contentColor: P.btnText, color: P.btnText, textColor: P.btnText,containerColor: P.btn, shape: { cornerRadius: 12, type: "rounded" }, 
       text: schoolAuto ? "上学日静默：开" : "上学日静默：关",
       onClick: function () {
         switchEdited.schoolAuto = true;
@@ -944,54 +954,54 @@ function Screen(ctx) {
         ? ("节假日表更新于 " + holidayFetchDate + "，共 " + (holidayDates ? holidayDates.length : 0) + " 天")
         : "节假日表尚未联网更新（暂用内置 2026 年表）",
       style: "bodySmall",
-      color: "#FFFFFF",
+      color: P.text,
       weight: 1
     }),
-    ctx.UI.Button({ containerColor: "#BFFF00", shape: { cornerRadius: 12 }, text: holidayBusy ? "更新中…" : "立即更新", onClick: doFetchHolidays })
+    ctx.UI.Button({ contentColor: P.btnText, color: P.btnText, textColor: P.btnText, containerColor: P.btn, shape: { cornerRadius: 12, type: "rounded" }, text: holidayBusy ? "更新中…" : "立即更新", onClick: doFetchHolidays })
   ]));
-  children.push(ctx.UI.Card({ containerColor: "rgb(34,34,34)", backgroundColor: "#222222", shape: { cornerRadius: 0 }, padding: 0, elevation: 0, fillMaxWidth: true }, [
-    ctx.UI.Column({ backgroundColor: "#222222", fillMaxWidth: true, padding: 14, spacing: 8 }, [
-      ctx.UI.Text({ text: "日历与节假日", style: "titleMedium", fontWeight: "semiBold", color: "#FFFFFF" })
+  children.push(ctx.UI.Card({ containerColor: P.card, backgroundColor: P.card, shape: { cornerRadius: 16, type: "rounded" }, padding: 0, elevation: 0, fillMaxWidth: true }, [
+    ctx.UI.Column({ backgroundColor: P.card, fillMaxWidth: true, padding: 14, spacing: 8 }, [
+      ctx.UI.Text({ text: "日历与节假日", style: "titleMedium", fontWeight: "semiBold", color: P.accent })
     ].concat(card4))
   ]));
 
   // ---- 一行操作：触发 / 重置冷却 / 重置计数 ----
   children.push(ctx.UI.Row({ spacing: 8, fillMaxWidth: true }, [
-    ctx.UI.Button({ containerColor: "#BFFF00", shape: { cornerRadius: 12 }, text: "触发唤醒", fillMaxWidth: true, weight: 1, onClick: doAwake }),
-    ctx.UI.Button({ containerColor: "#BFFF00", shape: { cornerRadius: 12 }, text: "重置冷却", fillMaxWidth: true, weight: 1, onClick: doResetCool }),
-    ctx.UI.Button({ containerColor: "#BFFF00", shape: { cornerRadius: 12 }, text: "重置计数", fillMaxWidth: true, weight: 1, onClick: doCoax })
+    ctx.UI.Button({ contentColor: P.btnText, color: P.btnText, textColor: P.btnText, containerColor: P.btn, shape: { cornerRadius: 12, type: "rounded" }, text: "触发唤醒", fillMaxWidth: true, weight: 1, onClick: doAwake }),
+    ctx.UI.Button({ contentColor: P.btnText, color: P.btnText, textColor: P.btnText, containerColor: P.btn, shape: { cornerRadius: 12, type: "rounded" }, text: "重置冷却", fillMaxWidth: true, weight: 1, onClick: doResetCool }),
+    ctx.UI.Button({ contentColor: P.btnText, color: P.btnText, textColor: P.btnText, containerColor: P.btn, shape: { cornerRadius: 12, type: "rounded" }, text: "重置计数", fillMaxWidth: true, weight: 1, onClick: doCoax })
   ]));
 
   // ---- 底部精简状态 ----
-  children.push(ctx.UI.Card({ containerColor: "rgb(34,34,34)", backgroundColor: "#222222", shape: { cornerRadius: 0 }, padding: 0, elevation: 0, fillMaxWidth: true }, [
-    ctx.UI.Column({ backgroundColor: "#222222", fillMaxWidth: true, padding: 14, spacing: 4 }, [
-      ctx.UI.Text({ text: "连续未命中：" + (stMiss != null ? stMiss + " 次" : "…"), style: "bodySmall", color: "#FFFFFF" }),
-      ctx.UI.Text({ text: "上次命中：" + (stLastHit || "—"), style: "bodySmall", color: "#FFFFFF" }),
-      ctx.UI.Text({ text: "冷却截止：" + (stCool || "—"), style: "bodySmall", color: "#FFFFFF" }),
-      ctx.UI.Text({ text: "角色卡：" + (stCardName || "跟随当前对话"), style: "bodySmall", color: "#FFFFFF" }),
+  children.push(ctx.UI.Card({ containerColor: P.card, backgroundColor: P.card, shape: { cornerRadius: 16, type: "rounded" }, padding: 0, elevation: 0, fillMaxWidth: true }, [
+    ctx.UI.Column({ backgroundColor: P.card, fillMaxWidth: true, padding: 14, spacing: 4 }, [
+      ctx.UI.Text({ text: "连续未命中：" + (stMiss != null ? stMiss + " 次" : "…"), style: "bodySmall", color: P.text }),
+      ctx.UI.Text({ text: "上次命中：" + (stLastHit || "—"), style: "bodySmall", color: P.text }),
+      ctx.UI.Text({ text: "冷却截止：" + (stCool || "—"), style: "bodySmall", color: P.text }),
+      ctx.UI.Text({ text: "角色卡：" + (stCardName || "跟随当前对话"), style: "bodySmall", color: P.text }),
       ctx.UI.Text({
         text: ((st && st.gentle_installed)
           ? ("温柔巡检：已安装，醋意联动开启" + (st.gentle_jealousy != null ? "（当前醋意值 " + st.gentle_jealousy + "）" : ""))
           : "温柔巡检：未安装，无醋意联动"),
         style: "bodySmall",
-        color: "#FFFFFF"
+        color: P.text
       })
     ])
   ]));
 
   // ---- 消息提示 ----
   if (msg) {
-    children.push(ctx.UI.Card({ containerColor: "rgb(34,34,34)", backgroundColor: "#222222", shape: { cornerRadius: 0 }, padding: 0, elevation: 0, fillMaxWidth: true }, [
-      ctx.UI.Row({ backgroundColor: "#222222", fillMaxWidth: true, padding: 14, verticalAlignment: "center" }, [
-        ctx.UI.Text({ text: msg, style: "bodyMedium", color: "#FFFFFF", weight: 1 })
+    children.push(ctx.UI.Card({ containerColor: P.card, backgroundColor: P.card, shape: { cornerRadius: 16, type: "rounded" }, padding: 0, elevation: 0, fillMaxWidth: true }, [
+      ctx.UI.Row({ backgroundColor: P.card, fillMaxWidth: true, padding: 14, verticalAlignment: "center" }, [
+        ctx.UI.Text({ text: msg, style: "bodyMedium", color: P.text, weight: 1 })
       ])
     ]));
   }
 
   // ---- 刷新 ----
-  children.push(ctx.UI.Button({ containerColor: "#BFFF00", shape: { cornerRadius: 12 }, text: "刷新状态", fillMaxWidth: true, onClick: doRefresh }));
+  children.push(ctx.UI.Button({ contentColor: P.btnText, color: P.btnText, textColor: P.btnText, containerColor: P.btn, shape: { cornerRadius: 12, type: "rounded" }, text: "刷新状态", fillMaxWidth: true, onClick: doRefresh }));
 
-  return ctx.UI.LazyColumn({ containerColor: "#BFFF00", backgroundColor: "#BFFF00",
+  return ctx.UI.LazyColumn({ containerColor: P.bg, backgroundColor: P.bg,
     onLoad: async function () {
       await initOnce();
     },
