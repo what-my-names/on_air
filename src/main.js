@@ -13,6 +13,8 @@ var __importDefault = function(mod) {
 };
 var ui = __importDefault(require("./ui/xy_panel/index.ui.js"));
 var Screen = ui.default || ui;
+var promptUi = __importDefault(require("./ui/prompt_panel/index.ui.js"));
+var PromptScreen = promptUi.default || promptUi;
 
 function registerToolPkg() {
     ToolPkg.registerUiRoute({
@@ -23,6 +25,17 @@ function registerToolPkg() {
         title: {
             zh: "随机上线",
             en: "On Air",
+        }
+    });
+
+    ToolPkg.registerUiRoute({
+        id: "on_air_prompts",
+        runtime: "compose_dsl",
+        screen: PromptScreen,
+        params: {},
+        title: {
+            zh: "提示词设置",
+            en: "Prompts"
         }
     });
 
