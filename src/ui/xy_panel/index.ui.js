@@ -15,10 +15,13 @@ function Screen(ctx) {
 
   // ===== 黑白极简（常驻：白底 + 黑字）=====
   // ===== 黑白极简（常驻）=====
+  var scheme = (ctx.MaterialTheme && ctx.MaterialTheme.colorScheme) ? ctx.MaterialTheme.colorScheme : {};
   var P = {
-    bg: "#FFFFFF", card: "#F5F5F5", btn: "#222222", accent: "#222222",
-    text: "#222222", quietDay: "#222222", normalDay: "#F0F0F0", today: "#555555",
-    specialDay: "#C0C0C0", btnText: "#FFFFFF"
+    bg: scheme.background || "#FFFFFF", card: scheme.surfaceVariant || "#F5F5F5",
+    btn: scheme.primary || "#222222", accent: scheme.primary || "#222222",
+    text: scheme.onSurface || "#222222", quietDay: scheme.primary || "#222222",
+    normalDay: scheme.surfaceVariant || "#F0F0F0", today: scheme.onSurfaceVariant || "#555555",
+    specialDay: scheme.outline || "#C0C0C0", btnText: scheme.onPrimary || "#FFFFFF"
   };
   // ===== 状态 =====
   var loadingState = ctx.useState("loading", true);
@@ -998,6 +1001,10 @@ function Screen(ctx) {
     ]));
   }
 
+  // ---- 提示词设置入口（v1.9.0）----
+  children.push(ctx.UI.Button({ contentColor: P.btnText, color: P.btnText, textColor: P.btnText, containerColor: P.btn, shape: { cornerRadius: 12, type: "rounded" }, text: "✎ 提示词设置（自定义递给 AI 的话）", fillMaxWidth: true, onClick: function () {
+    if (ctx.navigate) ctx.navigate("toolpkg:com.operit.on_air:ui:on_air_prompts");
+  } }));
   // ---- 刷新 ----
   children.push(ctx.UI.Button({ contentColor: P.btnText, color: P.btnText, textColor: P.btnText, containerColor: P.btn, shape: { cornerRadius: 12, type: "rounded" }, text: "刷新状态", fillMaxWidth: true, onClick: doRefresh }));
 
