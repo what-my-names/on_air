@@ -20,6 +20,10 @@
 
 ## 特性
 
+- **全部提示词可自定义（8 处）**：手动/自动触发引导语、自定义包装前缀、温柔巡检通道、置气消息、静默解除通知、档位话术库都能在面板里**整段改写**，每格预填当前完整文案；留空回落默认，可一键恢复默认
+- **二级页面面板**：主页只留状态与入口，参数 / 提示词 / 免打扰 / 日期 为独立子页，各有「返回主页」
+- **面板配色跟随宿主主题**：自动适配深浅色，不再硬编码黑白
+- **占位符（可选）**：`{档位}` `{次数}` `{话术}` `{时间}` `{原因}` `{静默时段}` `{上限}`，想在提示词里插入实时信息时使用
 - **三链状态机**：空闲态定时巡查、运行态每分钟累加、命中即唤醒 AI 主动发言
 - **平滑概率公式**：`f = a·x + b·x^c`，`y = 100·f / (1 + f)`，x 为沉默分钟数
   - 默认参数 `a=0.007078203`、`b=6.00914e-07`、`c=3.15168`
@@ -37,7 +41,7 @@
 - **日期静默总开关**：一键关闭全部日期级静默（点选静默日与上学日自动静默）
 - **内置 2026 中国法定节假日**：每天 12 点后联网拉取节假日，自动识别特殊日
 - **样本统计（隐私保护）**：仅读取消息时间戳与发言人标识判断沉默，不读取、不保存正文内容
-- **侧边栏面板**：实时查看 x/y 状态、手动触发、重置冷却/计数、编辑公式参数、角色卡名字、话术、静默与日历配置
+- **侧边栏面板（二级页面）**：主页实时查看 x/y 状态与操作行；参数 / 提示词与话术 / 免打扰 / 日期静默 各自独立子页
 
 ## 目录结构
 
@@ -46,7 +50,11 @@ src/
   main.js                          # 入口
   manifest.json                    # 工具包清单
   packages/on_air.js               # 核心逻辑（工具实现）
-  ui/xy_panel/index.ui.js          # 侧边栏面板
+  ui/xy_panel/index.ui.js          # 侧边栏主页面板
+  ui/params_panel/index.ui.js      # 子页：参数
+  ui/prompt_panel/index.ui.js      # 子页：提示词与话术
+  ui/quiet_panel/index.ui.js       # 子页：免打扰
+  ui/dates_panel/index.ui.js       # 子页：日期静默
   resources/on_air_workflow_market.json  # 工作流模板
 formula.example.json               # 配置示例（复制为 formula.json 使用）
 ```
@@ -70,7 +78,12 @@ formula.example.json               # 配置示例（复制为 formula.json 使�
 | max_wake_stops | 连续命中主动消息停止上限 |
 | character_card_name | 唤醒时按名字定位的角色卡；留空跟随当前对话 |
 | awake_messages | 自定义话术库（每行一句） |
-| ai_gateway | 可选：直调大模型接口自产话术 |
+| prompt_manual_default / prompt_manual_prefix | 手动触发的提示词模板（default / custom 两种模式） |
+| prompt_auto_default / prompt_auto_prefix | 自动触发的提示词模板（default / custom 两种模式） |
+| prompt_gentle | 温柔巡检自动回复通道的提示词模板 |
+| prompt_stop | 置气消息模板（连续命中达上限时发出） |
+| prompt_quiet_lifted | 静默解除通知模板 |
+| jealousy_tiers | 档位话术库（4 档，每档多条） |
 | quiet_enabled | 静默总开关（时段静默） |
 | quiet_day_enabled / quiet_night_enabled | 白天段 / 夜间段独立开关 |
 | quiet_day_start / quiet_day_end | 白天段起止 HH:MM（默认 09:00~18:00） |
@@ -103,6 +116,9 @@ formula.example.json               # 配置示例（复制为 formula.json 使�
 | get_formula | 读取公式配置 | `on_air:get_formula` |
 | maybe_awake | 运行态掷骰，命中才发消息 | `on_air:maybe_awake` |
 | enter_running | 进入运行态并启动累加 | `on_air:enter_running` |
+| suggest_quiet | 按发言习惯建议静默时段（可一键应用） | `on_air:suggest_quiet {apply:true}` |
+| link_agent | 按对话名反查并保存目标对话 | `on_air:link_agent {chat_name:"猫娘"}` |
+| fetch_holidays | 立即联网拉取今年+明年法定节假日 | `on_air:fetch_holidays` |
 | api_docs | 返回全部工具的 API 文档 | `on_air:api_docs` |
 
 所有工具统一返回 `{success, message, data}`；参数传对象，除标注必填外均可省略。
