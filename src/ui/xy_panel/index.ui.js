@@ -628,10 +628,6 @@ function Screen(ctx) {
     ]));
   }
 
-  // ---- 提示词设置入口（v1.9.0）----
-  children.push(ctx.UI.Button({ contentColor: P.btnText, color: P.btnText, textColor: P.btnText, containerColor: P.btn, shape: { cornerRadius: 12, type: "rounded" }, text: "✎ 提示词设置（自定义递给 AI 的话）", fillMaxWidth: true, onClick: function () {
-    if (ctx.navigate) ctx.navigate("toolpkg:com.operit.on_air:ui:on_air_prompts");
-  } }));
   // ---- 刷新 ----
   children.push(ctx.UI.Button({ contentColor: P.btnText, color: P.btnText, textColor: P.btnText, containerColor: P.btn, shape: { cornerRadius: 12, type: "rounded" }, text: "刷新状态", fillMaxWidth: true, onClick: doRefresh }));
 
