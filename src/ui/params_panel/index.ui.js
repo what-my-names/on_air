@@ -1,4 +1,45 @@
 function Screen(ctx) {
+
+    // ===== 工具调用辅助（v1.9.2）：兼容 UI 侧 callTool 返回（字符串/对象/裸数据）=====
+    function unwrapRaw(o) {
+        if (!o || typeof o !== "object") return o;
+        var keys = [];
+        for (var k in o) { keys.push(k); }
+        if (keys.length === 1) {
+            var only = keys[0];
+            if (only === "result" || only === "content" || only === "text") {
+                var v = o[only];
+                if (typeof v === "string") { try { return JSON.parse(v); } catch (e3) { return v; } }
+                return v;
+            }
+        }
+        return o;
+    }
+    function parseResult(raw) {
+        raw = unwrapRaw(raw);
+        if (typeof raw === "string") {
+            try { return JSON.parse(raw); } catch (e) { return { success: false, message: raw }; }
+        }
+        if (raw && typeof raw === "object") {
+            if (raw.success !== undefined) return raw;
+            if (raw.data !== undefined) return { success: true, data: raw.data, message: raw.message };
+            return { success: true, data: raw };
+        }
+        return { success: false, message: "空返回" };
+    }
+    async function callTool(toolName, params) {
+        try {
+            var raw = await ctx.callTool(toolName, params || {});
+            var res = parseResult(raw);
+            if (res && res.success === false) {
+                try { res.rawPreview = (typeof raw === "string") ? String(raw).slice(0, 150) : JSON.stringify(raw).slice(0, 150); } catch (e4) { res.rawPreview = ""; }
+            }
+            return res;
+        } catch (e) {
+            return { success: false, message: String((e && e.message) || e) };
+        }
+    }
+
     /*
      * 随机上线 — 参数页（v1.9.0 二级页面）
      * X（离开时长）/ 公式 a·b·c / 唤醒冷却 / 角色卡名 / 停止上限
@@ -22,7 +63,7 @@ function Screen(ctx) {
 
     async function load() {
         try {
-            var r = await ctx.callTool("on_air:get_formula", {});
+            var r = await callTool("on_air:get_formula", {});
             var d = (r && r.success && r.data) ? r.data : null;
             if (d) {
                 setAv(String(d.a)); setBv(String(d.b)); setCv(String(d.c));
@@ -44,7 +85,7 @@ function Screen(ctx) {
     async function save(extra, okText) {
         setBusy(true);
         try {
-            var r = await ctx.callTool("on_air:update_formula", extra);
+            var r = await callTool("on_air:update_formula", extra);
             setMsg(r && r.success ? okText : ("保存失败：" + ((r && r.message) || "")));
         } catch (e) { setMsg("保存出错：" + String((e && e.message) || e)); }
         setBusy(false);
@@ -63,7 +104,7 @@ function Screen(ctx) {
     box.push(ctx.UI.Button({ contentColor: surfaceVariant, color: surfaceVariant, textColor: surfaceVariant, containerColor: primary, shape: { cornerRadius: 12, type: "rounded" }, text: busy ? "写入中…" : "写入 X", fillMaxWidth: true, onClick: async function () {
         setBusy(true);
         try {
-            var r = await ctx.callTool("on_air:set_x", { x: parseFloat(xv) });
+            var r = await callTool("on_air:set_x", { x: parseFloat(xv) });
             setMsg(r && r.success ? "X 已写入：" + xv : ("写入失败：" + ((r && r.message) || "")));
         } catch (e) { setMsg("写入出错：" + String((e && e.message) || e)); }
         setBusy(false);
@@ -106,7 +147,7 @@ function Screen(ctx) {
     }
 
     return ctx.UI.LazyColumn({
-        onLoad: async function () { if (!loaded) await load(); },
+        onLoad: async function () { await load(); },
         fillMaxSize: true, padding: 16, spacing: 12
     }, children);
 }
