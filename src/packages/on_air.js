@@ -68,7 +68,7 @@ METADATA
                  { "name": "idle_threshold_minutes", "type": "number", "description": "沉默阈值", "required": false },
                  { "name": "cooldown_minutes", "type": "number", "description": "冷却分钟数", "required": false },
                  { "name": "awake_messages", "type": "string", "description": "主动消息话术数组(json字符串)", "required": false },
-                 { "name": "send_mode", "type": "string", "description": "主动消息投递方式：A1=工具内唤醒落正文不弹(AI自己主动发) / A2=工具内AI主动发落正文不弹(默认)，仅支持 A1/A2", "required": false },
+                 { "name": "send_mode", "type": "string", "description": "发送通道：A1=on_air 自己唤醒 AI（默认）；A2=借温柔巡检的自动回复通道（需温柔巡检在运行，未装则自动回落 A1）", "required": false },
                  { "name": "awake_mode", "type": "string", "description": "话术模式：default=唤醒AI自己发挥(带上下文) / custom=用本地自定义话术库", "required": false },
                  { "name": "max_wake_stops", "type": "number", "description": "连续命中主动消息停止上限(默认5；装有温柔巡检时可改为4给温柔巡检让位)", "required": false },
                  { "name": "character_card_name", "type": "string", "description": "角色卡名字：唤醒时按名字定位角色卡（留空=跟随当前对话绑定的角色卡）", "required": false },
@@ -180,7 +180,7 @@ var DEFAULT_FORMULA = {
     idle_threshold_minutes: 10,     // 沉默阈值（锁定版：10分钟窗口）：用户超过10分钟没说话就启动x累加
     cooldown_minutes: 15,           // 冷却分钟数(预留)
     awake_mode: "default",          // 话术模式：default=唤醒AI自己发挥(带最近上下文，无需API) / custom=用本地自定义话术库
-    send_mode: "A1",                // 主动消息投递方式：A1=工具内唤醒落正文不弹(AI自己主动发、默认) / A2=工具内AI主动发落正文不弹，仅支持 A1/A2
+    send_mode: "A1",                // 发送通道：A1=on_air 自己唤醒 AI（默认）/ A2=借温柔巡检的自动回复通道（未装温柔巡检时自动回落 A1）
     // 说明：A1为默认。诉求"要AI自己主动发，而不是让工作流(作为用户端)发"。
     // A1 = maybe_awake 内部用 sendToAi(Tools.Chat.sendMessage, 带 hide_user_message:true + persist_turn:true)直接唤醒AI发言。
     max_wake_stops: 5,              // 连续命中主动消息停止上限：第N次命中计数爆表停止主动消息(默认5；装有温柔巡检时面板可改为4给温柔巡检让位)
