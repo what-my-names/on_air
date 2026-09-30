@@ -75,7 +75,7 @@ METADATA
                   { "name": "quiet_dates", "type": "string", "description": "全天静默日映射(json字符串，如 {\"2026-08-18\":\"full\"})：任意日期都可点选为全天静默(硬静默不因设备活动解除)", "required": false },
                   { "name": "school_day_auto_quiet", "type": "boolean", "description": "上学日自动静默：true=普通日(非节假日、非周六周日、学生模式下非寒暑假)自动全天硬静默", "required": false },
                   { "name": "student_mode", "type": "boolean", "description": "学生模式：true=寒暑假算特殊日(保持彩色)；false=成年人模式，寒暑假按普通日处理", "required": false },
-                  { "name": "date_quiet_enabled", "type": "boolean", "description": "日期静默总开关：true=点选静默日与上学日自动静默生效；false=全部日期级静默失效", "required": false }
+                  { "name": "date_quiet_enabled", "type": "boolean", "description": "日期静默总开关：true=点选静默日与上学日自动静默生效；false=全部日期级静默失效", "required": false },
                    { "name": "prompt_manual_default", "type": "string", "description": "手动触发(default模式)给AI的提示词模板(空=用默认)", "required": false },
                    { "name": "prompt_manual_prefix", "type": "string", "description": "手动触发(custom模式)包装前缀模板(可用{话术})", "required": false },
                    { "name": "prompt_auto_default", "type": "string", "description": "自动触发(default模式)提示词模板(可用{档位}{次数})", "required": false },
@@ -208,20 +208,6 @@ var DEFAULT_FORMULA = {
         ["都找你好几次啦还不够吗……你再不回应，我可真的要伤心了", "我的耐心快用完了，你理理我好不好嘛……"],
         ["第{次数}次了！你再不理我，我就不主动找你了～", "你到底在忙什么呀！我都急得团团转了，快理理我！"]
     ],
-    // ===== AI 网关：直调 DeepSeek 等 API 由 AI 自己决定怎么发消息/找话题/表达情绪 =====
-    ai_gateway: {
-        enabled: false,            // true=用 AI 自产话术(直调 API)；false=用本地话术库
-        current_api: 0,            // 当前生效的 API 索引（apis 数组）
-        apis: [                    // 多 API 列表，全部在面板填
-            {
-                name: "DeepSeek",                                     // API 名称
-                base_url: "https://api.deepseek.com/v1",             // BaseURL（默认 deepseek）
-                api_key: "",                                          // API Key（面板自己填）
-                current_model: "deepseek-chat",                       // 当前选中的模型
-                models: []                                            // 自动探测到的模型列表（填 key 后由 /models 接口拉取）
-            }
-        ]
-    },
     // ===== 静默状态（免打扰）：静默时段内停止 x 累加、掷骰与主动唤醒，避免睡觉/上课时被计算打扰 =====
     // 支持两段自定义静默区间：白天段 + 夜间段（都可跨天，如夜间 22:00~09:00）
     // 静默中若检测到设备活动（打开 Operit 窗口 / 主人发消息）会立即解除静默并主动告知。
@@ -588,30 +574,6 @@ async function loadFormula() {
     if (typeof out.student_mode !== "boolean") out.student_mode = DEFAULT_FORMULA.student_mode;
     if (typeof out.date_quiet_enabled !== "boolean") out.date_quiet_enabled = DEFAULT_FORMULA.date_quiet_enabled;
     if (typeof out.holiday_fetch_date !== "string") out.holiday_fetch_date = "";
-    // 保证 ai_gateway 结构完整（多 API 或多模型时用户可能在面板动态增删）
-    if (!out.ai_gateway || typeof out.ai_gateway !== "object") {
-        out.ai_gateway = DEFAULT_FORMULA.ai_gateway;
-    } else {
-        if (typeof out.ai_gateway.enabled !== "boolean") out.ai_gateway.enabled = false;
-        if (typeof out.ai_gateway.current_api !== "number" || isNaN(out.ai_gateway.current_api)) out.ai_gateway.current_api = 0;
-        if (!Array.isArray(out.ai_gateway.apis) || out.ai_gateway.apis.length === 0) {
-            out.ai_gateway.apis = DEFAULT_FORMULA.ai_gateway.apis;
-        } else {
-            // 规范化每个 api 项
-            var defApi = DEFAULT_FORMULA.ai_gateway.apis[0];
-            for (var gi = 0; gi < out.ai_gateway.apis.length; gi++) {
-                var ap = out.ai_gateway.apis[gi];
-                if (typeof ap !== "object" || ap === null) { out.ai_gateway.apis[gi] = JSON.parse(JSON.stringify(defApi)); continue; }
-                if (typeof ap.name !== "string") ap.name = defApi.name;
-                if (typeof ap.base_url !== "string" || !ap.base_url) ap.base_url = defApi.base_url;
-                if (typeof ap.api_key !== "string") ap.api_key = "";
-                if (typeof ap.current_model !== "string") ap.current_model = "";
-                if (!Array.isArray(ap.models)) ap.models = [];
-            }
-            // current_api 不越界
-            if (out.ai_gateway.current_api >= out.ai_gateway.apis.length) out.ai_gateway.current_api = 0;
-        }
-    }
     // chat_id 自动填充：公式里未配置目标对话时，探测当前窗口对话ID并回填持久化（免手动配置）。
     // 公式里已有 chat_id 时优先使用配置值，不覆盖。
     if (!out.chat_id || !String(out.chat_id).trim()) {
@@ -649,7 +611,7 @@ async function loadFormula() {
     return out;
 }
 
-// ==================== AI 网关：直调 API 由 AI 自己决定怎么发消息/找话题/表达情绪 ====================
+// ==================== HTTP 客户端（供节假日表拉取使用）====================
 // OkHttp 是运行时全局对象（无需 require）。构建带超时的 HTTP 客户端（对齐 github.js 的 createHttpClient 模式）。
 function createHttpClient(timeoutMs) {
     var t = (typeof timeoutMs === "number" && timeoutMs > 0) ? timeoutMs : 3e4;
@@ -734,46 +696,6 @@ async function maybeFetchHoliday() {
     } catch (e) { /* 全部静默 */ }
     finally {
         holidayFetching = false;
-    }
-}
-
-// 协议规范化：把用户可能填的裸域名/base 路径加工成带 /v1 的地址（尽力而为）
-function normBaseUrl(url) {
-    if (!url) return "https://api.deepseek.com/v1";
-    var s = String(url).trim();
-    if (!s) return "https://api.deepseek.com/v1";
-    // 去掉末尾斜杠
-    while (s.endsWith("/")) s = s.slice(0, -1);
-    // 若已是 /v1 或 /v1/ 结尾，保留
-    if (/\/v1$/i.test(s)) return s;
-    return s + "/v1";
-}
-
-// 自动探测当前 api key 可用的模型列表：GET {base}/models，Headers 带 Authorization。
-// 成功返回 { ok:true, models:[{id,label}...] }；失败返回 { ok:false, error }。key 不写入日志。
-async function probeModels(api) {
-    var base = normBaseUrl(api && api.base_url);
-    var key = (api && api.api_key) || "";
-    try {
-        var client = createHttpClient(2e4);
-        var req = client.newRequest()
-            .url(base + "/models")
-            .method("GET")
-            .headers({ "Authorization": "Bearer " + key })
-            .build();
-        var resp = await req.execute();
-        if (!resp.isSuccessful()) {
-            return { ok: false, error: "HTTP " + resp.statusCode + " " + (resp.statusMessage || "") };
-        }
-        var data = resp.json();
-        var arr = (data && Array.isArray(data.data)) ? data.data : [];
-        var models = arr.map(function (m, idx) {
-            var id = m && m.id;
-            return { id: id, label: (m && m.id) ? String(m.id) : ("模型" + (idx + 1)) };
-        }).filter(function (m) { return m.id; });
-        return { ok: true, models: models };
-    } catch (e) {
-        return { ok: false, error: String((e && e.message) || e) };
     }
 }
 
@@ -1701,15 +1623,20 @@ exports.get_formula = async function (params) {
             awake_mode: formula.awake_mode || "default",
             max_wake_stops: formula.max_wake_stops || 5,
             awake_messages: formula.awake_messages,
-            prompt_manual_default: formula.prompt_manual_default,
-            prompt_manual_prefix: formula.prompt_manual_prefix,
-            prompt_auto_default: formula.prompt_auto_default,
-            prompt_auto_prefix: formula.prompt_auto_prefix,
-            prompt_gentle: formula.prompt_gentle,
-            prompt_stop: formula.prompt_stop,
-            prompt_quiet_lifted: formula.prompt_quiet_lifted,
-            jealousy_tiers: formula.jealousy_tiers,
+            prompt_manual_default: pickPrompt(formula, "prompt_manual_default"),
+            prompt_manual_prefix: pickPrompt(formula, "prompt_manual_prefix"),
+            prompt_auto_default: pickPrompt(formula, "prompt_auto_default"),
+            prompt_auto_prefix: pickPrompt(formula, "prompt_auto_prefix"),
+            prompt_gentle: pickPrompt(formula, "prompt_gentle"),
+            prompt_stop: pickPrompt(formula, "prompt_stop"),
+            prompt_quiet_lifted: pickPrompt(formula, "prompt_quiet_lifted"),
+            jealousy_tiers: (Array.isArray(formula.jealousy_tiers) && formula.jealousy_tiers.length) ? formula.jealousy_tiers : DEFAULT_FORMULA.jealousy_tiers,
+            awake_mode: formula.awake_mode || "default",
+            awake_messages: (Array.isArray(formula.awake_messages) && formula.awake_messages.length) ? formula.awake_messages : DEFAULT_FORMULA.awake_messages,
+            send_mode: formula.send_mode || "A1",
             quiet_enabled: formula.quiet_enabled,
+            quiet_day_enabled: formula.quiet_day_enabled,
+            quiet_night_enabled: formula.quiet_night_enabled,
             quiet_day_start: formula.quiet_day_start,
             quiet_day_end: formula.quiet_day_end,
             quiet_night_start: formula.quiet_night_start,
@@ -1727,7 +1654,7 @@ exports.get_formula = async function (params) {
 
 // ============ AI 智能建议静默时间 ============
 // 收集用户最近消息的发言小时分布（最近 200 条），结合当前时间与用户习惯：
-//  - 配置了 AI 网关（enabled + key）→ 调 LLM 生成建议区间与理由
+//  - 本地滑窗算法：基于发言小时分布找出最不活跃区间
 //  - 否则 → 本地滑窗算法：白天窗口与夜间窗口各找最不活跃的连续区间
 // 建议结果持久化到 formula.quiet_suggest（面板可显示）；apply=true 时一键应用并开启静默。
 function describeHourStats(hours) {
@@ -1819,55 +1746,6 @@ exports.suggest_quiet = async function (params) {
     var desc = describeHourStats(stats.hours);
     var suggestion = null;
     var source = "local";
-
-    // 方式1：AI 网关生成建议
-    var cfg = formula.ai_gateway;
-    var api = (cfg && cfg.apis && cfg.apis.length) ? (cfg.apis[cfg.current_api] || cfg.apis[0]) : null;
-    var hasAi = !!(cfg && cfg.enabled && api && api.api_key && api.current_model);
-    if (hasAi) {
-        var base = normBaseUrl(api.base_url);
-        var model = api.current_model;
-        var prompt = "当前时间：" + localTime() + "。用户最近 " + stats.sampleCount + " 条消息的发言小时分布（小时:条数）："
-            + (desc.text || "暂无记录")
-            + "。请结合这些习惯，给出两段适合静默（完全不打扰用户）的时间区间：白天段和夜间段。"
-            + "要求：白天段落在 8:00~20:00 之间，夜间段可以跨天（如 22:00~09:00），优先覆盖用户最不活跃的时段。"
-            + "只输出一个 JSON 对象：{\"day_start\":\"HH:MM\",\"day_end\":\"HH:MM\",\"night_start\":\"HH:MM\",\"night_end\":\"HH:MM\",\"reason\":\"一句中文说明\"}，不要输出其它内容。";
-        try {
-            var client = createHttpClient(4e4);
-            var req = client.newRequest()
-                .url(base + "/chat/completions")
-                .method("POST")
-                .headers({ "Authorization": "Bearer " + api.api_key, "Content-Type": "application/json" })
-                .body(JSON.stringify({
-                    model: model,
-                    messages: [{ role: "user", content: prompt }],
-                    max_tokens: 300,
-                    temperature: 0.3
-                }), "json")
-                .build();
-            var resp = await req.execute();
-            if (resp.isSuccessful()) {
-                var data = resp.json();
-                var content = data && data.choices && data.choices[0] && data.choices[0].message && data.choices[0].message.content;
-                if (typeof content === "string" && content.trim()) {
-                    var jsonMatch = content.match(/\{[\s\S]*\}/);
-                    if (jsonMatch) {
-                        var parsed = JSON.parse(jsonMatch[0]);
-                        var ok = parseHm(parsed.day_start) !== null && parseHm(parsed.day_end) !== null
-                            && parseHm(parsed.night_start) !== null && parseHm(parsed.night_end) !== null;
-                        if (ok) {
-                            suggestion = {
-                                day_start: parsed.day_start, day_end: parsed.day_end,
-                                night_start: parsed.night_start, night_end: parsed.night_end,
-                                reason: String(parsed.reason || "AI 根据你的发言习惯生成")
-                            };
-                            source = "ai";
-                        }
-                    }
-                }
-            }
-        } catch (e) { /* AI 失败回落本地算法 */ }
-    }
 
     // 方式2：本地滑窗算法兜底
     if (!suggestion) {
