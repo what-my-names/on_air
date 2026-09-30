@@ -26,6 +26,9 @@ function Screen(ctx) {
     var sS = ctx.useState("p_s", "");
     var sQ = ctx.useState("p_q", "");
     var sT = ctx.useState("p_t", "");
+    var sMode = ctx.useState("p_mode", "default");
+    var sTalk = ctx.useState("p_talk", "");
+    var sSend = ctx.useState("p_send", "A1");
     var vMD = sMD[0], setMD = sMD[1];
     var vMP = sMP[0], setMP = sMP[1];
     var vAD = sAD[0], setAD = sAD[1];
@@ -34,6 +37,9 @@ function Screen(ctx) {
     var vS = sS[0], setS = sS[1];
     var vQ = sQ[0], setQ = sQ[1];
     var vT = sT[0], setT = sT[1];
+    var vMode = sMode[0], setMode = sMode[1];
+    var vTalk = sTalk[0], setTalk = sTalk[1];
+    var vSend = sSend[0], setSend = sSend[1];
 
     // ===== 页面状态 =====
     var msgState = ctx.useState("p_msg", "");
@@ -64,6 +70,9 @@ function Screen(ctx) {
                     }
                     setT(lines.join("\n"));
                 }
+                setMode(d.awake_mode || "default");
+                setTalk(Array.isArray(d.awake_messages) ? d.awake_messages.join("\n") : "");
+                setSend(d.send_mode || "A1");
             }
         } catch (e) { /* 读取失败保持空 */ }
         setLoaded(true);
@@ -82,6 +91,10 @@ function Screen(ctx) {
                 prompt_stop: String(vS == null ? "" : vS),
                 prompt_quiet_lifted: String(vQ == null ? "" : vQ)
             };
+            params.awake_mode = vMode;
+            params.send_mode = vSend;
+            var talkLines = String(vTalk == null ? "" : vTalk).split("\n").map(function (s) { return s.trim(); }).filter(Boolean);
+            if (talkLines.length) params.awake_messages = JSON.stringify(talkLines);
             var lines = String(vT == null ? "" : vT).split("\n");
             var tiers = [];
             for (var i = 0; i < lines.length; i++) {
@@ -157,6 +170,24 @@ function Screen(ctx) {
             ctx.UI.Column({ backgroundColor: surfaceVariant, fillMaxWidth: true, padding: 14, spacing: 6 }, box)
         ]));
     }
+
+    // 话术模式 + 话术库（v1.9.0 补回：拆页时丢失的入口）
+    var tb = [];
+    tb.push(ctx.UI.Text({ text: "话术模式", style: "bodyMedium", fontWeight: "semiBold", color: onSurface }));
+    tb.push(ctx.UI.Row({ spacing: 8, fillMaxWidth: true }, [
+        ctx.UI.Button({ contentColor: vMode === "default" ? surfaceVariant : onSurface, color: vMode === "default" ? surfaceVariant : onSurface, textColor: vMode === "default" ? surfaceVariant : onSurface, containerColor: vMode === "default" ? primary : surfaceVariant, shape: { cornerRadius: 12, type: "rounded" }, text: (vMode === "default" ? "✔ " : "") + "AI 自己发挥", weight: 1, onClick: function () { setMode("default"); } }),
+        ctx.UI.Button({ contentColor: vMode === "custom" ? surfaceVariant : onSurface, color: vMode === "custom" ? surfaceVariant : onSurface, textColor: vMode === "custom" ? surfaceVariant : onSurface, containerColor: vMode === "custom" ? primary : surfaceVariant, shape: { cornerRadius: 12, type: "rounded" }, text: (vMode === "custom" ? "✔ " : "") + "用本地话术库", weight: 1, onClick: function () { setMode("custom"); } })
+    ]));
+    tb.push(ctx.UI.Text({ text: "话术库（每行一句；custom 模式下随机抽一句，也可用 {话术} 占位插入）", style: "bodySmall", color: onSurfaceVariant }));
+    tb.push(ctx.UI.TextField({ value: vTalk, onValueChange: setTalk, singleLine: false, placeholder: ctx.UI.Text({ text: "想你了，你现在在忙吗？", color: onSurfaceVariant }), style: { color: onSurface } }));
+    tb.push(ctx.UI.Text({ text: "发送方式（A1/A2 均为唤醒落正文、不弹悬浮窗）", style: "bodySmall", color: onSurfaceVariant }));
+    tb.push(ctx.UI.Row({ spacing: 8, fillMaxWidth: true }, [
+        ctx.UI.Button({ contentColor: vSend === "A1" ? surfaceVariant : onSurface, color: vSend === "A1" ? surfaceVariant : onSurface, textColor: vSend === "A1" ? surfaceVariant : onSurface, containerColor: vSend === "A1" ? primary : surfaceVariant, shape: { cornerRadius: 12, type: "rounded" }, text: (vSend === "A1" ? "✔ " : "") + "A1", weight: 1, onClick: function () { setSend("A1"); } }),
+        ctx.UI.Button({ contentColor: vSend === "A2" ? surfaceVariant : onSurface, color: vSend === "A2" ? surfaceVariant : onSurface, textColor: vSend === "A2" ? surfaceVariant : onSurface, containerColor: vSend === "A2" ? primary : surfaceVariant, shape: { cornerRadius: 12, type: "rounded" }, text: (vSend === "A2" ? "✔ " : "") + "A2", weight: 1, onClick: function () { setSend("A2"); } })
+    ]));
+    children.push(ctx.UI.Card({ containerColor: surfaceVariant, backgroundColor: surfaceVariant, shape: { cornerRadius: 16, type: "rounded" }, padding: 0, elevation: 0, fillMaxWidth: true }, [
+        ctx.UI.Column({ backgroundColor: surfaceVariant, fillMaxWidth: true, padding: 14, spacing: 6 }, tb)
+    ]));
 
     // 8 档位话术库
     children.push(ctx.UI.Card({ containerColor: surfaceVariant, backgroundColor: surfaceVariant, shape: { cornerRadius: 16, type: "rounded" }, padding: 0, elevation: 0, fillMaxWidth: true }, [
