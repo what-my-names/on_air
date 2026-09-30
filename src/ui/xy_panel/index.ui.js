@@ -214,9 +214,10 @@ function Screen(ctx) {
   }
 
   async function initOnce() {
-    if (initedState[0]) return;
+    var alreadyInited = initedState[0];
     setInited(true);
-    var fresh = await refresh();
+    var fresh = await refresh();   // v1.9.2：数据每次进入都刷新
+    if (alreadyInited) return;     // 输入框只在首次回填，避免覆盖正在编辑的内容
     var s = fresh.st;
     var f = fresh.fm;
     if (s && typeof s.x === "number") setXInput(String(s.x));
