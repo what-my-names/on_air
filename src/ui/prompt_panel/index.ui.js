@@ -1,4 +1,45 @@
 function Screen(ctx) {
+
+    // ===== 工具调用辅助（v1.9.2）：兼容 UI 侧 callTool 返回（字符串/对象/裸数据）=====
+    function unwrapRaw(o) {
+        if (!o || typeof o !== "object") return o;
+        var keys = [];
+        for (var k in o) { keys.push(k); }
+        if (keys.length === 1) {
+            var only = keys[0];
+            if (only === "result" || only === "content" || only === "text") {
+                var v = o[only];
+                if (typeof v === "string") { try { return JSON.parse(v); } catch (e3) { return v; } }
+                return v;
+            }
+        }
+        return o;
+    }
+    function parseResult(raw) {
+        raw = unwrapRaw(raw);
+        if (typeof raw === "string") {
+            try { return JSON.parse(raw); } catch (e) { return { success: false, message: raw }; }
+        }
+        if (raw && typeof raw === "object") {
+            if (raw.success !== undefined) return raw;
+            if (raw.data !== undefined) return { success: true, data: raw.data, message: raw.message };
+            return { success: true, data: raw };
+        }
+        return { success: false, message: "空返回" };
+    }
+    async function callTool(toolName, params) {
+        try {
+            var raw = await ctx.callTool(toolName, params || {});
+            var res = parseResult(raw);
+            if (res && res.success === false) {
+                try { res.rawPreview = (typeof raw === "string") ? String(raw).slice(0, 150) : JSON.stringify(raw).slice(0, 150); } catch (e4) { res.rawPreview = ""; }
+            }
+            return res;
+        } catch (e) {
+            return { success: false, message: String((e && e.message) || e) };
+        }
+    }
+
     /*
      * 随机上线 — 提示词与话术设置页（v1.9.1）
      *
@@ -27,6 +68,7 @@ function Screen(ctx) {
     var talkS = ctx.useState("q1_talk", ""); var vTalk = talkS[0], setTalk = talkS[1];
     var modeS = ctx.useState("q1_mode", "default"); var vMode = modeS[0], setMode = modeS[1];
     var sendS = ctx.useState("q1_send", "A1"); var vSend = sendS[0], setSend = sendS[1];
+    var baseS = ctx.useState("q1_base", "{}"); var baseRaw = baseS[0], setBase = baseS[1];
 
     // ===== 页面状态 =====
     var msgS = ctx.useState("q1_msg", ""); var msg = msgS[0], setMsg = msgS[1];
@@ -43,21 +85,21 @@ function Screen(ctx) {
     // ===== 分组定义 =====
     var GROUPS = [
         { title: "一、触发引导（4 处）", items: [
-            { k: "prompt_manual_default", label: "1 手动触发 · 默认模式", hint: "AI 自己组织语言", val: function () { return vMD; }, set: setMD },
-            { k: "prompt_manual_prefix", label: "2 手动触发 · 自定义前缀", hint: "可用 {话术} 指定插入点", val: function () { return vMP; }, set: setMP },
-            { k: "prompt_auto_default", label: "3 自动触发 · 默认模式", hint: "可用 {档位} {次数}", val: function () { return vAD; }, set: setAD },
-            { k: "prompt_auto_prefix", label: "4 自动触发 · 自定义前缀", hint: "可用 {话术} {档位} {次数}", val: function () { return vAP; }, set: setAP }
+            { k: "prompt_manual_default", label: "1 手动触发 · 默认模式", hint: "何时用：你在主页点「立刻唤醒」，且话术模式＝AI 自己发挥时，这段作为内部提醒发给 AI。\n占位符：无（这里就是让 AI 自己组织语言）", val: function () { return vMD; }, set: setMD },
+            { k: "prompt_manual_prefix", label: "2 手动触发 · 自定义前缀", hint: "何时用：点「立刻唤醒」且话术模式＝用话术库时；随机抽到的那句话插到 {话术} 的位置（没写占位符就拼在末尾）。\n占位符：{话术}", val: function () { return vMP; }, set: setMP },
+            { k: "prompt_auto_default", label: "3 自动触发 · 默认模式", hint: "何时用：冷却时间到、掷骰命中后自动唤醒，且话术模式＝AI 自己发挥。\n占位符：{档位} {次数}", val: function () { return vAD; }, set: setAD },
+            { k: "prompt_auto_prefix", label: "4 自动触发 · 自定义前缀", hint: "何时用：自动唤醒且话术模式＝用话术库。\n占位符：{话术} {档位} {次数}", val: function () { return vAP; }, set: setAP }
         ]},
         { title: "二、特殊场景（3 处）", items: [
-            { k: "prompt_gentle", label: "5 温柔巡检通道", hint: "装了温柔巡检时走这条", val: function () { return vG; }, set: setG },
-            { k: "prompt_stop", label: "6 置气消息", hint: "连续命中达上限时发出；可用 {次数} {上限}", val: function () { return vS; }, set: setS },
-            { k: "prompt_quiet_lifted", label: "7 静默解除通知", hint: "可用 {原因} {静默时段}", val: function () { return vQ; }, set: setQ }
+            { k: "prompt_gentle", label: "5 温柔巡检通道", hint: "何时用：发送方式＝A2 且温柔巡检在运行时，改走它的自动回复通道发出。\n占位符：无", val: function () { return vG; }, set: setG },
+            { k: "prompt_stop", label: "6 置气消息", hint: "何时用：连续主动找人达到上限（默认 5 次）都没回应时，真正发出去的这句置气话。\n占位符：{次数} {上限}", val: function () { return vS; }, set: setS },
+            { k: "prompt_quiet_lifted", label: "7 静默解除通知", hint: "何时用：静默时段里检测到设备活动、临时解除静默时发出的通知。\n占位符：{原因} {静默时段}", val: function () { return vQ; }, set: setQ }
         ]},
-        { title: "三、话术与发送（3 项）", items: [
-            { k: "jealousy_tiers", label: "8 档位话术库", hint: "一行一档，档内多条用 | 分隔", val: function () { return vT; }, set: setT },
-            { k: "awake_messages", label: "9 话术库", hint: "每行一句；custom 模式下随机抽一句", val: function () { return vTalk; }, set: setTalk },
-            { k: "awake_mode", label: "10 话术模式", hint: "default=AI 自己发挥 / custom=用话术库", val: null, set: null },
-            { k: "send_mode", label: "11 发送方式", hint: "A1=自己唤醒 / A2=借温柔巡检通道（需装温柔巡检，未装自动回落 A1）", val: null, set: null }
+        { title: "三、话术与发送（4 项）", items: [
+            { k: "jealousy_tiers", label: "8 档位话术库", hint: "何时用：话术模式＝用话术库时随机抽一句；档位越高（找人次数越多）用越靠后的档，共 4 档。\n格式：一行一档，档内多条用 | 分隔", val: function () { return vT; }, set: setT },
+            { k: "awake_messages", label: "9 话术库", hint: "何时用：话术模式＝用话术库时，从这里面随机抽一句当作开口。\n格式：每行一句", val: function () { return vTalk; }, set: setTalk },
+            { k: "awake_mode", label: "10 话术模式", hint: "default ＝ 让 AI 结合上下文自己发挥（不依赖话术库）；custom ＝ 从「话术库」里随机抽一句当作开口。", val: null, set: null },
+            { k: "send_mode", label: "11 发送方式", hint: "A1 ＝ on_air 自己唤醒 AI（默认，不依赖别的插件）；A2 ＝ 借温柔巡检的自动回复通道发出（需温柔巡检在运行；未装或没在跑会自动回落 A1）。", val: null, set: null }
         ]}
     ];
 
@@ -87,9 +129,9 @@ function Screen(ctx) {
     async function load() {
         setErrMsg("");
         try {
-            var r = await ctx.callTool("on_air:get_formula", {});
+            var r = await callTool("on_air:get_formula", {});
             if (!r || !r.success || !r.data) {
-                setErrMsg("读取配置失败：" + ((r && r.message) || "返回为空"));
+                setErrMsg("读取配置失败：" + ((r && r.message) || "返回为空") + (r && r.rawPreview ? "｜原始：" + r.rawPreview : ""));
                 return;
             }
             var d = r.data;
@@ -110,6 +152,25 @@ function Screen(ctx) {
             setMode(d.awake_mode || "default");
             setSend(d.send_mode || "A1");
             setCust(JSON.stringify(d.prompt_customized || {}));
+            var tierText = "";
+            if (Array.isArray(d.jealousy_tiers)) {
+                var tls = [];
+                for (var ti = 0; ti < d.jealousy_tiers.length; ti++) { tls.push(Array.isArray(d.jealousy_tiers[ti]) ? d.jealousy_tiers[ti].join("|") : ""); }
+                tierText = tls.join("\n");
+            }
+            setBase(JSON.stringify({
+                prompt_manual_default: d.prompt_manual_default || "",
+                prompt_manual_prefix: d.prompt_manual_prefix || "",
+                prompt_auto_default: d.prompt_auto_default || "",
+                prompt_auto_prefix: d.prompt_auto_prefix || "",
+                prompt_gentle: d.prompt_gentle || "",
+                prompt_stop: d.prompt_stop || "",
+                prompt_quiet_lifted: d.prompt_quiet_lifted || "",
+                jealousy_tiers: tierText,
+                awake_messages: Array.isArray(d.awake_messages) ? d.awake_messages.join("\n") : "",
+                awake_mode: d.awake_mode || "default",
+                send_mode: d.send_mode || "A1"
+            }));
         } catch (e) {
             setErrMsg("读取出错：" + String((e && e.message) || e));
         }
@@ -119,17 +180,15 @@ function Screen(ctx) {
         setBusy(true);
         setErrMsg("");
         try {
-            var params = {
-                prompt_manual_default: String(vMD || ""),
-                prompt_manual_prefix: String(vMP || ""),
-                prompt_auto_default: String(vAD || ""),
-                prompt_auto_prefix: String(vAP || ""),
-                prompt_gentle: String(vG || ""),
-                prompt_stop: String(vS || ""),
-                prompt_quiet_lifted: String(vQ || ""),
-                awake_mode: vMode,
-                send_mode: vSend
-            };
+            var baseObj = {};
+            try { baseObj = JSON.parse(baseRaw || "{}"); } catch (e0) { baseObj = {}; }
+            var unchanged = function (k, cur) { return baseObj[k] !== undefined && String(baseObj[k]) === String(cur == null ? "" : cur); };
+            var params = {};
+            var changedCount = 0;
+            var strFields = [["prompt_manual_default", vMD], ["prompt_manual_prefix", vMP], ["prompt_auto_default", vAD], ["prompt_auto_prefix", vAP], ["prompt_gentle", vG], ["prompt_stop", vS], ["prompt_quiet_lifted", vQ]];
+            for (var sf = 0; sf < strFields.length; sf++) {
+                if (!unchanged(strFields[sf][0], strFields[sf][1])) { params[strFields[sf][0]] = String(strFields[sf][1] || ""); changedCount++; }
+            }
             var tl = String(vT || "").split("\n");
             var tiers = [];
             for (var i = 0; i < tl.length; i++) {
@@ -140,10 +199,13 @@ function Screen(ctx) {
                 for (var j = 0; j < segs.length; j++) { var x = segs[j].trim(); if (x) parts.push(x); }
                 if (parts.length) tiers.push(parts);
             }
-            if (tiers.length) params.jealousy_tiers = JSON.stringify(tiers);
+            if (!unchanged("jealousy_tiers", vT)) { params.jealousy_tiers = JSON.stringify(tiers); changedCount++; }
             var tkl = String(vTalk || "").split("\n").map(function (x) { return x.trim(); }).filter(Boolean);
-            if (tkl.length) params.awake_messages = JSON.stringify(tkl);
-            var r = await ctx.callTool("on_air:update_formula", params);
+            if (!unchanged("awake_messages", vTalk)) { params.awake_messages = JSON.stringify(tkl); changedCount++; }
+            if (!unchanged("awake_mode", vMode)) { params.awake_mode = vMode; changedCount++; }
+            if (!unchanged("send_mode", vSend)) { params.send_mode = vSend; changedCount++; }
+            if (!changedCount) { setMsg("没有改动，无需保存"); setBusy(false); return; }
+            var r = await callTool("on_air:update_formula", params);
             setMsg(r && r.success ? "已保存（留空的格子会回落内置默认）" : "");
             if (!r || !r.success) setErrMsg("保存失败：" + ((r && r.message) || ""));
             if (r && r.success) await load();
@@ -157,7 +219,7 @@ function Screen(ctx) {
         setBusy(true);
         setErrMsg("");
         try {
-            var r = await ctx.callTool("on_air:update_formula", { reset_prompts: true });
+            var r = await callTool("on_air:update_formula", { reset_prompts: true });
             if (r && r.success) { setMsg("已恢复全部默认"); await load(); }
             else { setErrMsg("恢复失败：" + ((r && r.message) || "")); }
         } catch (e) { setErrMsg("恢复出错：" + String((e && e.message) || e)); }
@@ -169,8 +231,8 @@ function Screen(ctx) {
     // ===== 渲染 =====
     var children = [];
     children.push(ctx.UI.Text({ text: "提示词与话术", style: "titleMedium", fontWeight: "semiBold", color: onSurface }));
-    children.push(ctx.UI.Text({ text: "这里是插件递给 AI 的全部内容。收起时看摘要，点标题展开编辑；留空 = 用内置默认。", style: "bodySmall", color: onSurfaceVariant }));
-    children.push(ctx.UI.Text({ text: "可选占位符：{档位} {次数} {话术} {时间} {原因} {静默时段} {上限}", style: "bodySmall", color: onSurfaceVariant }));
+    children.push(ctx.UI.Text({ text: "框里预填的就是当前真正会发出去的文案（没改过 = 内置默认原文）。可以整段改写；把格子清空再保存 = 回落内置默认。", style: "bodySmall", color: onSurfaceVariant }));
+    children.push(ctx.UI.Text({ text: "点标题展开/收起；没动过的格子保存时会自动跳过，不会误标成「已改」。", style: "bodySmall", color: onSurfaceVariant }));
 
     if (errMsg) {
         children.push(ctx.UI.Card({ containerColor: surfaceVariant, backgroundColor: surfaceVariant, shape: { cornerRadius: 12, type: "rounded" }, padding: 0, elevation: 0, fillMaxWidth: true }, [
