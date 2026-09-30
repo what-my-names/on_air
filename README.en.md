@@ -20,7 +20,9 @@
 
 ## Features
 
-- **All prompts customizable (8 slots)**: manual/auto trigger guidance, custom wrapper prefix, Gentle-Guardian channel, sulk message, quiet-lifted notice, and the tier wording library can all be rewritten in full from the panel; each box is pre-filled with the current text, empty falls back to the built-in default, and one tap restores defaults
+- **All prompts & wording customizable (11 items, collapsible groups)**: three groups (Trigger guidance x4 / Special cases x3 / Wording & delivery x4). Collapsed shows title + default-or-modified tag + summary; tap the title to expand. Each box is pre-filled with the current text, empty falls back to the built-in default, one tap restores defaults
+- **A1/A2 delivery channels really differ**: `A1` = on_air wakes the AI itself (default); `A2` = borrow the Gentle-Guardian auto-reply channel (requires Gentle-Guardian running; falls back to A1 automatically) — documented in both the panel and the tool signature
+- **Read failures are reported**: if the panel cannot load the config it shows the reason at the top instead of showing a row of empty boxes
 - **Two-level panel**: the home page keeps only status and entries; Params / Prompts / Quiet / Dates are separate sub-pages, each with a back-to-home button
 - **Panel colors follow the host theme**: adapts to light/dark automatically, no more hard-coded black & white
 - **Optional placeholders**: `{档位}` `{次数}` `{话术}` `{时间}` `{原因}` `{静默时段}` `{上限}` — use them when you want live values inside a prompt
