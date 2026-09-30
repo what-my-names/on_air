@@ -7,8 +7,8 @@ METADATA
         "en": "On Air"
     },
     "description": {
-        "zh": "随机上线：装成真人的 Operit AI 插件。你沉默得越久，它上线的概率就越高，会在随机时间主动来找你说话。v1.2 静默时段；v1.3 作息样本统计；v1.4 日夜静默独立开关；v1.5 内置日历与节假日；v1.6 静默逻辑反转；v1.7 学生模式与日期级静默；v1.9 全部提示词可自定义（8 处，含置气消息与档位话术库）、修复置气消息从未发出的问题、面板拆分为二级页面（参数/提示词/免打扰/日期）、面板配色跟随宿主主题。",
-        "en": "On Air: an Operit AI plugin that pretends to be a real person. The longer you stay silent, the higher the chance it comes online and reaches out. v1.2 quiet periods; v1.3 schedule sample stats; v1.4 independent day/night quiet; v1.5 built-in calendar & holidays; v1.6 quiet logic reversed; v1.7 student mode & date quiet; v1.9 all prompts customizable (8 slots incl. sulk message & tier scripts), fixed sulk message never being sent, new Prompts settings page, panel colors follow host theme."
+        "zh": "随机上线：装成真人的 Operit AI 插件。你沉默得越久，它上线的概率就越高，会在随机时间主动来找你说话。v1.2 静默时段；v1.3 作息样本统计；v1.4 日夜静默独立开关；v1.5 内置日历与节假日；v1.6 静默逻辑反转；v1.7 学生模式与日期级静默；v1.9.1 提示词折叠分组 + A1/A2 真区别；v1.9 全部提示词可自定义（8 处，含置气消息与档位话术库）、修复置气消息从未发出的问题、面板拆分为二级页面（参数/提示词/免打扰/日期）、面板配色跟随宿主主题。",
+        "en": "On Air: an Operit AI plugin that pretends to be a real person. The longer you stay silent, the higher the chance it comes online and reaches out. v1.2 quiet periods; v1.3 schedule sample stats; v1.4 independent day/night quiet; v1.5 built-in calendar & holidays; v1.6 quiet logic reversed; v1.7 student mode & date quiet; v1.9.1 collapsible prompt groups + real A1/A2 difference; v1.9 all prompts customizable (8 slots incl. sulk message & tier scripts), fixed sulk message never being sent, new Prompts settings page, panel colors follow host theme."
     },
     "enabledByDefault": true,
     "category": "COMPANION",
@@ -1631,9 +1631,16 @@ exports.get_formula = async function (params) {
             prompt_stop: pickPrompt(formula, "prompt_stop"),
             prompt_quiet_lifted: pickPrompt(formula, "prompt_quiet_lifted"),
             jealousy_tiers: (Array.isArray(formula.jealousy_tiers) && formula.jealousy_tiers.length) ? formula.jealousy_tiers : DEFAULT_FORMULA.jealousy_tiers,
-            awake_mode: formula.awake_mode || "default",
-            awake_messages: (Array.isArray(formula.awake_messages) && formula.awake_messages.length) ? formula.awake_messages : DEFAULT_FORMULA.awake_messages,
-            send_mode: formula.send_mode || "A1",
+            prompt_customized: (function () {
+                var m = {};
+                for (var pci = 0; pci < PROMPT_KEYS.length; pci++) {
+                    var pck = PROMPT_KEYS[pci];
+                    m[pck] = (typeof formula[pck] === "string" && formula[pck].trim() !== "");
+                }
+                m.jealousy_tiers = !!(Array.isArray(formula.jealousy_tiers) && formula.jealousy_tiers.length);
+                m.awake_messages = !!(Array.isArray(formula.awake_messages) && formula.awake_messages.length);
+                return m;
+            })(),
             quiet_enabled: formula.quiet_enabled,
             quiet_day_enabled: formula.quiet_day_enabled,
             quiet_night_enabled: formula.quiet_night_enabled,
@@ -2015,20 +2022,24 @@ exports.maybe_awake = async function (params) {
     }
 
     // ============ 锁定版：接回复逻辑（仅 A1/A2，收敛删除 B/C） ============
-    // 温柔巡检在跑 -> 调用温柔巡检的自动回复(唤醒AI)
-    // 未装 -> on_air 自己唤醒AI回复
+    // A1 -> on_air 自己唤醒 AI；A2 -> 借温柔巡检的自动回复（需温柔巡检在运行）
     // 只支持 send_mode = A1 / A2（均不弹悬浮窗 = hide_user_message:true + persist_turn:true，工具内唤醒只落正文）
     var sendMode = formula.send_mode || "A1";
     // 兜底：若配置里还有旧值 B/C，强制归位到 A1
     if (sendMode !== "A1" && sendMode !== "A2") sendMode = "A1";
-    var replyMode = gentleRunning ? "gentle_recruit" : "self_chat";
+    // ===== v1.9.1：恢复 A1/A2 真区别 =====
+    // A1 = on_air 自己唤醒 AI（Tools.Chat.sendMessage）
+    // A2 = 借温柔巡检的自动回复通道（前提：温柔巡检在运行；未装则自动回落 A1）
+    var wantGentle = (sendMode === "A2");
+    var useGentle = wantGentle && !!gentleRunning;
+    var replyMode = useGentle ? "gentle_recruit" : "self_chat";
     // 统一由 maybe_awake 工具内部发送（AI 自己主动发，而非工作流作为用户端发）。
-    // A1/A2 一致：工具内唤醒落正文不弹（hide_user_message:true + persist_turn:true）。
+    // 两者最终都落正文、不弹悬浮窗（hide_user_message:true + persist_turn:true）。
 
     var chatRef = null;
     {
         // maybe_awake 工具内部 AI 主动发送（只落正文、不弹小窗）
-        if (gentleRunning) {
+        if (useGentle) {
             // 温柔巡检已安装：借它的自动回复(唤醒AI说话)。
             try {
                 await sendToAi(formula, buildPrompt(formula, "prompt_gentle", { "档位": String(tierIndex2 + 1), "次数": String(state.jealousy_count) }));
