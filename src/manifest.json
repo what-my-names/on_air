@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "toolpkg_id": "com.operit.on_air",
-  "version": "1.9.1-beta",
+  "version": "1.9.2-beta",
   "author": [
     "时空指令"
   ],
@@ -12,8 +12,8 @@
     "en": "On Air"
   },
   "description": {
-    "zh": "随机上线：装成真人的 Operit AI 插件。你沉默得越久，它上线的概率就越高，会在随机时间主动来找你说话。v1.2 静默时段；v1.3 作息样本统计；v1.4 日夜静默独立开关；v1.5 内置日历与节假日；v1.6 静默逻辑反转；v1.7 学生模式与日期级静默；v1.9.1 提示词折叠分组 + A1/A2 真区别；v1.9 全部提示词可自定义（8 处，含置气消息与档位话术库）、修复置气消息从未发出的问题、面板拆分为二级页面（参数/提示词/免打扰/日期）、面板配色跟随宿主主题。",
-    "en": "On Air: an Operit AI plugin that pretends to be a real person. The longer you stay silent, the higher the chance it comes online and reaches out. v1.2 quiet periods; v1.3 schedule sample stats; v1.4 independent day/night quiet; v1.5 built-in calendar & holidays; v1.6 quiet logic reversed; v1.7 student mode & date quiet; v1.9.1 collapsible prompt groups + real A1/A2 difference; v1.9 all prompts customizable (8 slots incl. sulk message & tier scripts), fixed sulk message never being sent, new Prompts settings page, panel colors follow host theme."
+    "zh": "随机上线：装成真人的 Operit AI 插件。你沉默得越久，它上线的概率就越高，会在随机时间主动来找你说话。v1.2 静默时段；v1.3 作息样本统计；v1.4 日夜静默独立开关；v1.5 内置日历与节假日；v1.6 静默逻辑反转；v1.7 学生模式与日期级静默；v1.9.1 提示词折叠分组 + A1/A2 真区别；v1.9.2 修复子页面读不到配置（参数/提示词/免打扰/日期四页读取失效，现在改为兼容返回并在读不到时明确报错）、提示词与话术框预填当前真实文案、逐项标注「何时用/占位符」、未改动的格子保存时自动跳过、主页数据每次进入都刷新；v1.9 全部提示词可自定义（8 处，含置气消息与档位话术库）、修复置气消息从未发出的问题、面板拆分为二级页面（参数/提示词/免打扰/日期）、面板配色跟随宿主主题。",
+    "en": "On Air: an Operit AI plugin that pretends to be a real person. The longer you stay silent, the higher the chance it comes online and reaches out. v1.2 quiet periods; v1.3 schedule sample stats; v1.4 independent day/night quiet; v1.5 built-in calendar & holidays; v1.6 quiet logic reversed; v1.7 student mode & date quiet; v1.9.1 collapsible prompt groups + real A1/A2 difference; v1.9.2 fixed sub-pages failing to load config (all four sub-pages were broken; now tolerant parsing plus explicit error text), prompt boxes pre-filled with the current effective text and a per-item 'when it is used / placeholders' note, untouched boxes are skipped on save, home data refreshes on every entry; v1.9 all prompts customizable (8 slots incl. sulk message & tier scripts), fixed sulk message never being sent, new Prompts settings page, panel colors follow host theme."
   },
   "category": "COMPANION",
   "subpackages": [
