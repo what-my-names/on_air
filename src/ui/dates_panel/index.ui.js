@@ -1,4 +1,45 @@
 function Screen(ctx) {
+
+    // ===== 工具调用辅助（v1.9.2）：兼容 UI 侧 callTool 返回（字符串/对象/裸数据）=====
+    function unwrapRaw(o) {
+        if (!o || typeof o !== "object") return o;
+        var keys = [];
+        for (var k in o) { keys.push(k); }
+        if (keys.length === 1) {
+            var only = keys[0];
+            if (only === "result" || only === "content" || only === "text") {
+                var v = o[only];
+                if (typeof v === "string") { try { return JSON.parse(v); } catch (e3) { return v; } }
+                return v;
+            }
+        }
+        return o;
+    }
+    function parseResult(raw) {
+        raw = unwrapRaw(raw);
+        if (typeof raw === "string") {
+            try { return JSON.parse(raw); } catch (e) { return { success: false, message: raw }; }
+        }
+        if (raw && typeof raw === "object") {
+            if (raw.success !== undefined) return raw;
+            if (raw.data !== undefined) return { success: true, data: raw.data, message: raw.message };
+            return { success: true, data: raw };
+        }
+        return { success: false, message: "空返回" };
+    }
+    async function callTool(toolName, params) {
+        try {
+            var raw = await ctx.callTool(toolName, params || {});
+            var res = parseResult(raw);
+            if (res && res.success === false) {
+                try { res.rawPreview = (typeof raw === "string") ? String(raw).slice(0, 150) : JSON.stringify(raw).slice(0, 150); } catch (e4) { res.rawPreview = ""; }
+            }
+            return res;
+        } catch (e) {
+            return { success: false, message: String((e && e.message) || e) };
+        }
+    }
+
     /* 随机上线 — 日期静默页（v1.9.0 二级页面）：日历点选 / 上学日 / 学生模式 / 节假日 */
     var scheme = (ctx.MaterialTheme && ctx.MaterialTheme.colorScheme) ? ctx.MaterialTheme.colorScheme : {};
     var onSurface = scheme.onSurface || "#222222";
@@ -24,7 +65,7 @@ function Screen(ctx) {
 
     async function load() {
         try {
-            var r = await ctx.callTool("on_air:get_formula", {});
+            var r = await callTool("on_air:get_formula", {});
             var d = (r && r.success && r.data) ? r.data : null;
             if (d) {
                 setQuietDates(d.quiet_dates && typeof d.quiet_dates === "object" ? d.quiet_dates : {});
@@ -45,7 +86,7 @@ function Screen(ctx) {
         setQuietDates(next);
         setBusy(true);
         try {
-            var r = await ctx.callTool("on_air:update_formula", { quiet_dates: JSON.stringify(next) });
+            var r = await callTool("on_air:update_formula", { quiet_dates: JSON.stringify(next) });
             setMsg(r && r.success ? (key + (r.data && r.data.quiet_dates && r.data.quiet_dates[key] ? " 已设为全天静默" : " 已取消静默")) : ("保存失败：" + ((r && r.message) || "")));
         } catch (e) { setMsg("出错：" + String((e && e.message) || e)); }
         setBusy(false);
@@ -54,7 +95,7 @@ function Screen(ctx) {
     async function saveFlag(extra, okText) {
         setBusy(true);
         try {
-            var r = await ctx.callTool("on_air:update_formula", extra);
+            var r = await callTool("on_air:update_formula", extra);
             setMsg(r && r.success ? okText : ("保存失败：" + ((r && r.message) || "")));
         } catch (e) { setMsg("出错：" + String((e && e.message) || e)); }
         setBusy(false);
@@ -63,7 +104,7 @@ function Screen(ctx) {
     async function doFetchHolidays() {
         setBusy(true);
         try {
-            var r = await ctx.callTool("on_air:fetch_holidays", {});
+            var r = await callTool("on_air:fetch_holidays", {});
             setMsg(r && r.success ? "节假日表已更新" : ("更新失败：" + ((r && r.message) || "")));
             if (r && r.success) await load();
         } catch (e) { setMsg("出错：" + String((e && e.message) || e)); }
@@ -132,7 +173,7 @@ function Screen(ctx) {
     }
 
     return ctx.UI.LazyColumn({
-        onLoad: async function () { if (!loaded) await load(); },
+        onLoad: async function () { await load(); },
         fillMaxSize: true, padding: 16, spacing: 12
     }, children);
 }
