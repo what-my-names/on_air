@@ -50,6 +50,16 @@ function Screen(ctx) {
         setBusy(false);
     }
 
+    // v1.9.0：开关类改完立即保存（避免“关了又自动打开”的误解）
+    async function saveImmediate(extra, okText) {
+        setBusy(true);
+        try {
+            var r = await ctx.callTool("on_air:update_formula", extra);
+            setMsg(r && r.success ? okText : ("保存失败：" + ((r && r.message) || "")));
+        } catch (e) { setMsg("保存出错：" + String((e && e.message) || e)); }
+        setBusy(false);
+    }
+
     async function doLink() {
         setBusy(true);
         try {
@@ -72,8 +82,8 @@ function Screen(ctx) {
 
     var b1 = [];
     b1.push(ctx.UI.Row({ spacing: 8, fillMaxWidth: true }, [
-        ctx.UI.Button({ contentColor: surfaceVariant, color: surfaceVariant, textColor: surfaceVariant, containerColor: on ? primary : surfaceVariant, shape: { cornerRadius: 12, type: "rounded" }, text: (on ? "✔ " : "") + "开启", weight: 1, onClick: function () { setOn(true); } }),
-        ctx.UI.Button({ contentColor: onSurface, color: onSurface, textColor: onSurface, containerColor: !on ? primary : surfaceVariant, shape: { cornerRadius: 12, type: "rounded" }, text: (!on ? "✔ " : "") + "关闭", weight: 1, onClick: function () { setOn(false); } })
+        ctx.UI.Button({ contentColor: surfaceVariant, color: surfaceVariant, textColor: surfaceVariant, containerColor: on ? primary : surfaceVariant, shape: { cornerRadius: 12, type: "rounded" }, text: (on ? "✔ " : "") + "开启", weight: 1, onClick: function () { setOn(true); saveImmediate({ quiet_enabled: true }, "静默总开关：已开启并保存"); } }),
+        ctx.UI.Button({ contentColor: onSurface, color: onSurface, textColor: onSurface, containerColor: !on ? primary : surfaceVariant, shape: { cornerRadius: 12, type: "rounded" }, text: (!on ? "✔ " : "") + "关闭", weight: 1, onClick: function () { setOn(false); saveImmediate({ quiet_enabled: false }, "静默总开关：已关闭并保存"); } })
     ]));
     children.push(ctx.UI.Card({ containerColor: surfaceVariant, backgroundColor: surfaceVariant, shape: { cornerRadius: 16, type: "rounded" }, padding: 0, elevation: 0, fillMaxWidth: true }, [
         ctx.UI.Column({ backgroundColor: surfaceVariant, fillMaxWidth: true, padding: 14, spacing: 6 }, b1)
@@ -81,7 +91,7 @@ function Screen(ctx) {
 
     var b2 = [];
     b2.push(ctx.UI.Text({ text: "白天段（如白天补觉 09:00~18:00）", style: "bodySmall", color: onSurfaceVariant }));
-    b2.push(ctx.UI.Button({ contentColor: onSurface, color: onSurface, textColor: onSurface, containerColor: surfaceVariant, shape: { cornerRadius: 12, type: "rounded" }, text: dOn ? "白天静默：开（点击切换）" : "白天静默：关（点击切换）", fillMaxWidth: true, onClick: function () { setDOn(!dOn); } }));
+    b2.push(ctx.UI.Button({ contentColor: onSurface, color: onSurface, textColor: onSurface, containerColor: surfaceVariant, shape: { cornerRadius: 12, type: "rounded" }, text: dOn ? "白天静默：开（点击切换）" : "白天静默：关（点击切换）", fillMaxWidth: true, onClick: function () { var v = !dOn; setDOn(v); saveImmediate({ quiet_day_enabled: v, quiet_enabled: true }, v ? "白天静默：已开启并保存" : "白天静默：已关闭并保存"); } }));
     b2.push(ctx.UI.Row({ spacing: 8, fillMaxWidth: true }, [
         ctx.UI.Column({ weight: 1 }, [
             ctx.UI.Text({ text: "开始 HH:MM", style: "bodySmall", color: onSurfaceVariant }),
@@ -98,7 +108,7 @@ function Screen(ctx) {
 
     var b3 = [];
     b3.push(ctx.UI.Text({ text: "夜间段（如睡觉 22:00~09:00，支持跨天）", style: "bodySmall", color: onSurfaceVariant }));
-    b3.push(ctx.UI.Button({ contentColor: onSurface, color: onSurface, textColor: onSurface, containerColor: surfaceVariant, shape: { cornerRadius: 12, type: "rounded" }, text: nOn ? "夜间静默：开（点击切换）" : "夜间静默：关（点击切换）", fillMaxWidth: true, onClick: function () { setNOn(!nOn); } }));
+    b3.push(ctx.UI.Button({ contentColor: onSurface, color: onSurface, textColor: onSurface, containerColor: surfaceVariant, shape: { cornerRadius: 12, type: "rounded" }, text: nOn ? "夜间静默：开（点击切换）" : "夜间静默：关（点击切换）", fillMaxWidth: true, onClick: function () { var v = !nOn; setNOn(v); saveImmediate({ quiet_night_enabled: v, quiet_enabled: true }, v ? "夜间静默：已开启并保存" : "夜间静默：已关闭并保存"); } }));
     b3.push(ctx.UI.Row({ spacing: 8, fillMaxWidth: true }, [
         ctx.UI.Column({ weight: 1 }, [
             ctx.UI.Text({ text: "开始 HH:MM", style: "bodySmall", color: onSurfaceVariant }),
