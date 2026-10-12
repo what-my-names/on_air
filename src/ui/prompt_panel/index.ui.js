@@ -237,7 +237,7 @@ function Screen(ctx) {
     if (errMsg) {
         children.push(ctx.UI.Card({ containerColor: surfaceVariant, backgroundColor: surfaceVariant, shape: { cornerRadius: 12, type: "rounded" }, padding: 0, elevation: 0, fillMaxWidth: true }, [
             ctx.UI.Row({ backgroundColor: surfaceVariant, fillMaxWidth: true, padding: 12 }, [
-                ctx.UI.Text({ text: "⚠ " + errMsg, style: "bodySmall", color: errColor, weight: 1 })
+                ctx.UI.Text({ text: errMsg, style: "bodySmall", color: errColor, weight: 1 })
             ])
         ]));
     }
@@ -256,14 +256,14 @@ function Screen(ctx) {
             (function (it) {
                 var openIt = isOpen(it.k);
                 var yes = isCustom(it.k);
-                var headText = (openIt ? "▾ " : "▸ ") + it.label + "    " + (yes ? "〔已改〕" : "〔默认〕");
+                var headText = (openIt ? "收起 " : "展开 ") + it.label + "    " + (yes ? "〔已改〕" : "〔默认〕");
                 box.push(ctx.UI.Button({ contentColor: onSurface, color: onSurface, textColor: onSurface, containerColor: surfaceVariant, shape: { cornerRadius: 10, type: "rounded" }, text: headText, fillMaxWidth: true, onClick: function () { toggle(it.k); } }));
                 if (it.k === "awake_mode") {
                     if (openIt) {
                         box.push(ctx.UI.Text({ text: it.hint, style: "bodySmall", color: onSurfaceVariant }));
                         box.push(ctx.UI.Row({ spacing: 8, fillMaxWidth: true }, [
-                            ctx.UI.Button({ contentColor: vMode === "default" ? surfaceVariant : onSurface, color: vMode === "default" ? surfaceVariant : onSurface, textColor: vMode === "default" ? surfaceVariant : onSurface, containerColor: vMode === "default" ? primary : surfaceVariant, shape: { cornerRadius: 10, type: "rounded" }, text: (vMode === "default" ? "✔ " : "") + "AI 自己发挥", weight: 1, onClick: function () { setMode("default"); } }),
-                            ctx.UI.Button({ contentColor: vMode === "custom" ? surfaceVariant : onSurface, color: vMode === "custom" ? surfaceVariant : onSurface, textColor: vMode === "custom" ? surfaceVariant : onSurface, containerColor: vMode === "custom" ? primary : surfaceVariant, shape: { cornerRadius: 10, type: "rounded" }, text: (vMode === "custom" ? "✔ " : "") + "用话术库", weight: 1, onClick: function () { setMode("custom"); } })
+                            ctx.UI.Button({ contentColor: vMode === "default" ? surfaceVariant : onSurface, color: vMode === "default" ? surfaceVariant : onSurface, textColor: vMode === "default" ? surfaceVariant : onSurface, containerColor: vMode === "default" ? primary : surfaceVariant, shape: { cornerRadius: 10, type: "rounded" }, text: (vMode === "default" ? "当前 · " : "") + "AI 自己发挥", weight: 1, onClick: function () { setMode("default"); } }),
+                            ctx.UI.Button({ contentColor: vMode === "custom" ? surfaceVariant : onSurface, color: vMode === "custom" ? surfaceVariant : onSurface, textColor: vMode === "custom" ? surfaceVariant : onSurface, containerColor: vMode === "custom" ? primary : surfaceVariant, shape: { cornerRadius: 10, type: "rounded" }, text: (vMode === "custom" ? "当前 · " : "") + "用话术库", weight: 1, onClick: function () { setMode("custom"); } })
                         ]));
                     } else {
                         box.push(ctx.UI.Text({ text: "   当前：" + (vMode === "custom" ? "用话术库" : "AI 自己发挥"), style: "bodySmall", color: onSurfaceVariant }));
@@ -274,8 +274,8 @@ function Screen(ctx) {
                     if (openIt) {
                         box.push(ctx.UI.Text({ text: it.hint, style: "bodySmall", color: onSurfaceVariant }));
                         box.push(ctx.UI.Row({ spacing: 8, fillMaxWidth: true }, [
-                            ctx.UI.Button({ contentColor: vSend === "A1" ? surfaceVariant : onSurface, color: vSend === "A1" ? surfaceVariant : onSurface, textColor: vSend === "A1" ? surfaceVariant : onSurface, containerColor: vSend === "A1" ? primary : surfaceVariant, shape: { cornerRadius: 10, type: "rounded" }, text: (vSend === "A1" ? "✔ " : "") + "A1 自己唤醒", weight: 1, onClick: function () { setSend("A1"); } }),
-                            ctx.UI.Button({ contentColor: vSend === "A2" ? surfaceVariant : onSurface, color: vSend === "A2" ? surfaceVariant : onSurface, textColor: vSend === "A2" ? surfaceVariant : onSurface, containerColor: vSend === "A2" ? primary : surfaceVariant, shape: { cornerRadius: 10, type: "rounded" }, text: (vSend === "A2" ? "✔ " : "") + "A2 温柔巡检", weight: 1, onClick: function () { setSend("A2"); } })
+                            ctx.UI.Button({ contentColor: vSend === "A1" ? surfaceVariant : onSurface, color: vSend === "A1" ? surfaceVariant : onSurface, textColor: vSend === "A1" ? surfaceVariant : onSurface, containerColor: vSend === "A1" ? primary : surfaceVariant, shape: { cornerRadius: 10, type: "rounded" }, text: (vSend === "A1" ? "当前 · " : "") + "A1 自己唤醒", weight: 1, onClick: function () { setSend("A1"); } }),
+                            ctx.UI.Button({ contentColor: vSend === "A2" ? surfaceVariant : onSurface, color: vSend === "A2" ? surfaceVariant : onSurface, textColor: vSend === "A2" ? surfaceVariant : onSurface, containerColor: vSend === "A2" ? primary : surfaceVariant, shape: { cornerRadius: 10, type: "rounded" }, text: (vSend === "A2" ? "当前 · " : "") + "A2 温柔巡检", weight: 1, onClick: function () { setSend("A2"); } })
                         ]));
                     } else {
                         box.push(ctx.UI.Text({ text: "   当前：" + (vSend === "A2" ? "A2 借温柔巡检通道" : "A1 自己唤醒"), style: "bodySmall", color: onSurfaceVariant }));
@@ -296,7 +296,7 @@ function Screen(ctx) {
     }
 
     children.push(ctx.UI.Button({ contentColor: surfaceVariant, color: surfaceVariant, textColor: surfaceVariant, containerColor: primary, shape: { cornerRadius: 12, type: "rounded" }, text: busy ? "保存中…" : "保存全部", fillMaxWidth: true, onClick: doSave }));
-    children.push(ctx.UI.Button({ contentColor: onSurface, color: onSurface, textColor: onSurface, containerColor: surfaceVariant, shape: { cornerRadius: 12, type: "rounded" }, text: "← 返回主页", fillMaxWidth: true, onClick: goHome }));
+    children.push(ctx.UI.Button({ contentColor: onSurface, color: onSurface, textColor: onSurface, containerColor: surfaceVariant, shape: { cornerRadius: 12, type: "rounded" }, text: "返回主页", fillMaxWidth: true, onClick: goHome }));
     if (msg) {
         children.push(ctx.UI.Card({ containerColor: surfaceVariant, backgroundColor: surfaceVariant, shape: { cornerRadius: 12, type: "rounded" }, padding: 0, elevation: 0, fillMaxWidth: true }, [
             ctx.UI.Row({ backgroundColor: surfaceVariant, fillMaxWidth: true, padding: 12 }, [
