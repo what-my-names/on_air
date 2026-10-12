@@ -127,9 +127,9 @@ function Screen(ctx) {
 
     var head = [];
     head.push(ctx.UI.Row({ spacing: 8, fillMaxWidth: true }, [
-        ctx.UI.Button({ contentColor: onSurface, color: onSurface, textColor: onSurface, containerColor: surfaceVariant, shape: { cornerRadius: 12, type: "rounded" }, text: "← 上月", weight: 1, onClick: function () { var nm = cm - 1; var ny = cy; if (nm < 0) { nm = 11; ny = ny - 1; } setCm(nm); setCy(ny); } }),
+        ctx.UI.Button({ contentColor: onSurface, color: onSurface, textColor: onSurface, containerColor: surfaceVariant, shape: { cornerRadius: 12, type: "rounded" }, text: "上月", weight: 1, onClick: function () { var nm = cm - 1; var ny = cy; if (nm < 0) { nm = 11; ny = ny - 1; } setCm(nm); setCy(ny); } }),
         ctx.UI.Text({ text: cy + " 年 " + (cm + 1) + " 月", style: "bodyMedium", color: onSurface, weight: 1 }),
-        ctx.UI.Button({ contentColor: onSurface, color: onSurface, textColor: onSurface, containerColor: surfaceVariant, shape: { cornerRadius: 12, type: "rounded" }, text: "下月 →", weight: 1, onClick: function () { var nm = cm + 1; var ny = cy; if (nm > 11) { nm = 0; ny = ny + 1; } setCm(nm); setCy(ny); } })
+        ctx.UI.Button({ contentColor: onSurface, color: onSurface, textColor: onSurface, containerColor: surfaceVariant, shape: { cornerRadius: 12, type: "rounded" }, text: "下月", weight: 1, onClick: function () { var nm = cm + 1; var ny = cy; if (nm > 11) { nm = 0; ny = ny + 1; } setCm(nm); setCy(ny); } })
     ]));
     head.push(ctx.UI.Row({ spacing: 4, fillMaxWidth: true }, ["日", "一", "二", "三", "四", "五", "六"].map(function (w) {
         return ctx.UI.Text({ text: w, style: "bodySmall", color: onSurfaceVariant, weight: 1 });
@@ -163,7 +163,7 @@ function Screen(ctx) {
         ctx.UI.Column({ backgroundColor: surfaceVariant, fillMaxWidth: true, padding: 14, spacing: 6 }, flags)
     ]));
 
-    children.push(ctx.UI.Button({ contentColor: onSurface, color: onSurface, textColor: onSurface, containerColor: surfaceVariant, shape: { cornerRadius: 12, type: "rounded" }, text: "← 返回主页", fillMaxWidth: true, onClick: goHome }));
+    children.push(ctx.UI.Button({ contentColor: onSurface, color: onSurface, textColor: onSurface, containerColor: surfaceVariant, shape: { cornerRadius: 12, type: "rounded" }, text: "返回主页", fillMaxWidth: true, onClick: goHome }));
     if (msg) {
         children.push(ctx.UI.Card({ containerColor: surfaceVariant, backgroundColor: surfaceVariant, shape: { cornerRadius: 16, type: "rounded" }, padding: 0, elevation: 0, fillMaxWidth: true }, [
             ctx.UI.Row({ backgroundColor: surfaceVariant, fillMaxWidth: true, padding: 14, verticalAlignment: "center" }, [
