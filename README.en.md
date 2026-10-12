@@ -2,7 +2,7 @@
 
 [中文](README.md)
 
-> **Current Release Status**: v1.9.2-beta (Pre-release). Functional but still being polished; feedback welcome.
+> **Current Release Status**: v1.9.3-beta (Pre-release). Functional but still being polished; feedback welcome.
 
 > **Authorship Notice**: This project is a "novice × AI creation" — co-developed by a novice developer together with an AI assistant. The code and docs are still growing; corrections, issues and PRs are welcome.
 
@@ -20,6 +20,7 @@
 
 ## Features
 
+- **Console (sub-page)**: exposes the APIs you could not reach anywhere else — roll once (maybe_awake) / roll without sending (roll_dice) / check silence / enter running / set X; full raw readings (get_xy + get_formula); newly exposed configs such as the **silence threshold**; a list of all 17 tools + the full API docs; one-tap jump to the Prompts page
 - **All prompts & wording customizable (11 items, collapsible groups)**: three groups (Trigger guidance x4 / Special cases x3 / Wording & delivery x4). Collapsed shows title + default-or-modified tag + summary; tap the title to expand. Each box is pre-filled with the text that will actually be sent (untouched = the built-in default) and annotated with "when it is used · placeholders"; empty falls back to the built-in default, one tap restores defaults
 - **Saving never mislabels "modified"**: boxes you did not touch are skipped on save
 - **A1/A2 delivery channels really differ**: `A1` = on_air wakes the AI itself (default); `A2` = borrow the Gentle-Guardian auto-reply channel (requires Gentle-Guardian running; falls back to A1 automatically) — documented in both the panel and the tool signature
@@ -44,7 +45,7 @@
 - **Date quiet master switch**: one tap disables all date-level quiet (tapped quiet days and school-day auto quiet)
 - **Built-in 2026 Chinese public holidays**: fetches holidays online after 12:00 daily to auto-recognize special days
 - **Privacy-safe sample stats**: only message timestamps and sender identity are read to detect silence — message content is never read or stored
-- **Sidebar panel (two-level)**: home shows live x/y and the action row; Params / Prompts & wording / Quiet / Date quiet are separate sub-pages
+- **Sidebar panel (two-level)**: home shows live x/y and the action row + 5 entry cards (Params / Prompts & wording / Quiet / Date quiet / Console)
 
 ## Directory Layout
 
@@ -58,6 +59,7 @@ src/
   ui/prompt_panel/index.ui.js      # sub-page: prompts & wording
   ui/quiet_panel/index.ui.js       # sub-page: quiet
   ui/dates_panel/index.ui.js       # sub-page: date quiet
+  ui/console_panel/index.ui.js     # sub-page: Console (call APIs / raw readings / missing configs / tool list)
   resources/on_air_workflow_market.json  # workflow template
 formula.example.json               # config example (copy to formula.json)
 ```
