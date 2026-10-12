@@ -165,8 +165,8 @@ function Screen(ctx) {
 
     var b1 = [];
     b1.push(ctx.UI.Row({ spacing: 8, fillMaxWidth: true }, [
-        ctx.UI.Button({ contentColor: surfaceVariant, color: surfaceVariant, textColor: surfaceVariant, containerColor: on ? primary : surfaceVariant, shape: { cornerRadius: 12, type: "rounded" }, text: (on ? "✔ " : "") + "开启", weight: 1, onClick: function () { setOn(true); saveImmediate({ quiet_enabled: true }, "静默总开关：已开启并保存"); } }),
-        ctx.UI.Button({ contentColor: onSurface, color: onSurface, textColor: onSurface, containerColor: !on ? primary : surfaceVariant, shape: { cornerRadius: 12, type: "rounded" }, text: (!on ? "✔ " : "") + "关闭", weight: 1, onClick: function () { setOn(false); saveImmediate({ quiet_enabled: false }, "静默总开关：已关闭并保存"); } })
+        ctx.UI.Button({ contentColor: surfaceVariant, color: surfaceVariant, textColor: surfaceVariant, containerColor: on ? primary : surfaceVariant, shape: { cornerRadius: 12, type: "rounded" }, text: (on ? "当前 · " : "") + "开启", weight: 1, onClick: function () { setOn(true); saveImmediate({ quiet_enabled: true }, "静默总开关：已开启并保存"); } }),
+        ctx.UI.Button({ contentColor: onSurface, color: onSurface, textColor: onSurface, containerColor: !on ? primary : surfaceVariant, shape: { cornerRadius: 12, type: "rounded" }, text: (!on ? "当前 · " : "") + "关闭", weight: 1, onClick: function () { setOn(false); saveImmediate({ quiet_enabled: false }, "静默总开关：已关闭并保存"); } })
     ]));
     children.push(ctx.UI.Card({ containerColor: surfaceVariant, backgroundColor: surfaceVariant, shape: { cornerRadius: 16, type: "rounded" }, padding: 0, elevation: 0, fillMaxWidth: true }, [
         ctx.UI.Column({ backgroundColor: surfaceVariant, fillMaxWidth: true, padding: 14, spacing: 6 }, b1)
@@ -236,7 +236,7 @@ function Screen(ctx) {
     children.push(ctx.UI.Card({ containerColor: surfaceVariant, backgroundColor: surfaceVariant, shape: { cornerRadius: 16, type: "rounded" }, padding: 0, elevation: 0, fillMaxWidth: true }, [
         ctx.UI.Column({ backgroundColor: surfaceVariant, fillMaxWidth: true, padding: 14, spacing: 6 }, b5)
     ]));
-    children.push(ctx.UI.Button({ contentColor: onSurface, color: onSurface, textColor: onSurface, containerColor: surfaceVariant, shape: { cornerRadius: 12, type: "rounded" }, text: "← 返回主页", fillMaxWidth: true, onClick: goHome }));
+    children.push(ctx.UI.Button({ contentColor: onSurface, color: onSurface, textColor: onSurface, containerColor: surfaceVariant, shape: { cornerRadius: 12, type: "rounded" }, text: "返回主页", fillMaxWidth: true, onClick: goHome }));
     if (msg) {
         children.push(ctx.UI.Card({ containerColor: surfaceVariant, backgroundColor: surfaceVariant, shape: { cornerRadius: 16, type: "rounded" }, padding: 0, elevation: 0, fillMaxWidth: true }, [
             ctx.UI.Row({ backgroundColor: surfaceVariant, fillMaxWidth: true, padding: 14, verticalAlignment: "center" }, [
