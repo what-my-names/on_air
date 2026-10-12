@@ -583,7 +583,8 @@ function Screen(ctx) {
     ["✎ 提示词设置", "toolpkg:com.operit.on_air:ui:on_air_prompts", "自定义递给 AI 的每一句话（8 处：触发引导 / 包装前缀 / 温柔巡检 / 置气 / 静默通知 / 档位话术库）"],
     ["⚙ 参数设置", "toolpkg:com.operit.on_air:ui:on_air_params", "X / 公式 a·b·c / 唤醒冷却 / 角色卡名字 / 停止上限"],
     ["🌙 免打扰", "toolpkg:com.operit.on_air:ui:on_air_quiet", "静默时段（白天段 + 夜间段）与目标对话"],
-    ["📅 日期静默", "toolpkg:com.operit.on_air:ui:on_air_dates", "日历点选全天静默 / 上学日 / 学生模式 / 节假日表"]
+    ["📅 日期静默", "toolpkg:com.operit.on_air:ui:on_air_dates", "日历点选全天静默 / 上学日 / 学生模式 / 节假日表"],
+    ["🎛 控制台", "toolpkg:com.operit.on_air:ui:on_air_console", "直调 API：掷骰 / 查沉默 / 沉默阈值 / 全量读数 / 工具清单"]
   ];
   for (var ni = 0; ni < NAV_ITEMS.length; ni++) {
     (function (item) {
