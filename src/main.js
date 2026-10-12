@@ -21,6 +21,8 @@ var quietUi = __importDefault(require("./ui/quiet_panel/index.ui.js"));
 var QuietScreen = quietUi.default || quietUi;
 var datesUi = __importDefault(require("./ui/dates_panel/index.ui.js"));
 var DatesScreen = datesUi.default || datesUi;
+var consoleUi = __importDefault(require("./ui/console_panel/index.ui.js"));
+var ConsoleScreen = consoleUi.default || consoleUi;
 
 function registerToolPkg() {
     ToolPkg.registerUiRoute({
@@ -67,6 +69,13 @@ function registerToolPkg() {
         screen: DatesScreen,
         params: {},
         title: { zh: "日期静默", en: "Dates" }
+    });
+    ToolPkg.registerUiRoute({
+        id: "on_air_console",
+        runtime: "compose_dsl",
+        screen: ConsoleScreen,
+        params: {},
+        title: { zh: "控制台", en: "Console" }
     });
 
     ToolPkg.registerNavigationEntry({
