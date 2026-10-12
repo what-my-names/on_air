@@ -58,6 +58,8 @@ function Screen(ctx) {
     var linkS = ctx.useState("r_link", ""); var linked = linkS[0], setLinked = linkS[1];
     var msgS = ctx.useState("r_msg", ""); var msg = msgS[0], setMsg = msgS[1];
     var busyS = ctx.useState("r_busy", false); var busy = busyS[0], setBusy = busyS[1];
+    var sugS = ctx.useState("r_sug", ""); var sugOut = sugS[0], setSugOut = sugS[1];
+    var sugS = ctx.useState("r_sug", ""); var sugOut = sugS[0], setSugOut = sugS[1];
     var loadedS = ctx.useState("r_loaded", false); var loaded = loadedS[0], setLoaded = loadedS[1];
 
     async function load() {
@@ -78,6 +80,46 @@ function Screen(ctx) {
         setLoaded(true);
     }
 
+    // v1.9.3：静默建议（补回免打扰页缺失的 suggest_quiet 入口）
+    async function doSuggestQuiet(apply) {
+        setBusy(true);
+        setMsg("");
+        try {
+            var params = {};
+            if (String(chatName || "").trim()) params.chat_name = String(chatName).trim();
+            if (apply) params.apply = true;
+            var r = await callTool("on_air:suggest_quiet", params);
+            if (r && r.success) {
+                var d = r.data || {};
+                var sg = d.suggestion || {};
+                setSugOut("白天段 " + (sg.day_start || "?") + "~" + (sg.day_end || "?") + "  夜间段 " + (sg.night_start || "?") + "~" + (sg.night_end || "?") + "  样本 " + (d.sample_count != null ? d.sample_count : "?") + " 条" + (apply ? "（已应用并开启静默）" : "") + "  理由：" + (sg.reason || ""));
+                if (apply) await load();
+            } else {
+                setMsg("生成失败：" + ((r && r.message) || ""));
+            }
+        } catch (e) { setMsg("生成出错：" + String((e && e.message) || e)); }
+        setBusy(false);
+    }
+    // v1.9.3：静默建议（补回免打扰页缺失的 suggest_quiet 入口）
+    async function doSuggestQuiet(apply) {
+        setBusy(true);
+        setMsg("");
+        try {
+            var params = {};
+            if (String(chatName || "").trim()) params.chat_name = String(chatName).trim();
+            if (apply) params.apply = true;
+            var r = await callTool("on_air:suggest_quiet", params);
+            if (r && r.success) {
+                var d = r.data || {};
+                var sg = d.suggestion || {};
+                setSugOut("白天段 " + (sg.day_start || "?") + "~" + (sg.day_end || "?") + "  夜间段 " + (sg.night_start || "?") + "~" + (sg.night_end || "?") + "  样本 " + (d.sample_count != null ? d.sample_count : "?") + " 条" + (apply ? "（已应用并开启静默）" : "") + "  理由：" + (sg.reason || ""));
+                if (apply) await load();
+            } else {
+                setMsg("生成失败：" + ((r && r.message) || ""));
+            }
+        } catch (e) { setMsg("生成出错：" + String((e && e.message) || e)); }
+        setBusy(false);
+    }
     async function doSave() {
         setBusy(true);
         try {
@@ -174,6 +216,26 @@ function Screen(ctx) {
         ctx.UI.Column({ backgroundColor: surfaceVariant, fillMaxWidth: true, padding: 14, spacing: 6 }, b4)
     ]));
 
+    var b5 = [];
+    b5.push(ctx.UI.Text({ text: "AI 静默建议（按你的发言习惯算，可选填对话名）", style: "bodySmall", color: onSurfaceVariant }));
+    b5.push(ctx.UI.Row({ spacing: 8, fillMaxWidth: true }, [
+        ctx.UI.Button({ contentColor: onSurface, color: onSurface, textColor: onSurface, containerColor: surfaceVariant, shape: { cornerRadius: 12, type: "rounded" }, text: busy ? "..." : "生成建议", weight: 1, onClick: function () { doSuggestQuiet(false); } }),
+        ctx.UI.Button({ contentColor: surfaceVariant, color: surfaceVariant, textColor: surfaceVariant, containerColor: primary, shape: { cornerRadius: 12, type: "rounded" }, text: busy ? "..." : "生成并应用", weight: 1, onClick: function () { doSuggestQuiet(true); } })
+    ]));
+    if (sugOut) b5.push(ctx.UI.Text({ text: sugOut, style: "bodySmall", color: onSurfaceVariant }));
+    children.push(ctx.UI.Card({ containerColor: surfaceVariant, backgroundColor: surfaceVariant, shape: { cornerRadius: 16, type: "rounded" }, padding: 0, elevation: 0, fillMaxWidth: true }, [
+        ctx.UI.Column({ backgroundColor: surfaceVariant, fillMaxWidth: true, padding: 14, spacing: 6 }, b5)
+    ]));
+    var b5 = [];
+    b5.push(ctx.UI.Text({ text: "AI 静默建议（按你的发言习惯算，可选填对话名）", style: "bodySmall", color: onSurfaceVariant }));
+    b5.push(ctx.UI.Row({ spacing: 8, fillMaxWidth: true }, [
+        ctx.UI.Button({ contentColor: onSurface, color: onSurface, textColor: onSurface, containerColor: surfaceVariant, shape: { cornerRadius: 12, type: "rounded" }, text: busy ? "..." : "生成建议", weight: 1, onClick: function () { doSuggestQuiet(false); } }),
+        ctx.UI.Button({ contentColor: surfaceVariant, color: surfaceVariant, textColor: surfaceVariant, containerColor: primary, shape: { cornerRadius: 12, type: "rounded" }, text: busy ? "..." : "生成并应用", weight: 1, onClick: function () { doSuggestQuiet(true); } })
+    ]));
+    if (sugOut) b5.push(ctx.UI.Text({ text: sugOut, style: "bodySmall", color: onSurfaceVariant }));
+    children.push(ctx.UI.Card({ containerColor: surfaceVariant, backgroundColor: surfaceVariant, shape: { cornerRadius: 16, type: "rounded" }, padding: 0, elevation: 0, fillMaxWidth: true }, [
+        ctx.UI.Column({ backgroundColor: surfaceVariant, fillMaxWidth: true, padding: 14, spacing: 6 }, b5)
+    ]));
     children.push(ctx.UI.Button({ contentColor: onSurface, color: onSurface, textColor: onSurface, containerColor: surfaceVariant, shape: { cornerRadius: 12, type: "rounded" }, text: "← 返回主页", fillMaxWidth: true, onClick: goHome }));
     if (msg) {
         children.push(ctx.UI.Card({ containerColor: surfaceVariant, backgroundColor: surfaceVariant, shape: { cornerRadius: 16, type: "rounded" }, padding: 0, elevation: 0, fillMaxWidth: true }, [
