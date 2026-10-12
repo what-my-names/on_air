@@ -2,7 +2,7 @@
 
 [中文](README.md)
 
-> **Current Release Status**: v1.9.3-beta (Pre-release). Functional but still being polished; feedback welcome.
+> **Current Release Status**: v1.9.4-beta (Pre-release). Functional but still being polished; feedback welcome.
 
 > **Authorship Notice**: This project is a "novice × AI creation" — co-developed by a novice developer together with an AI assistant. The code and docs are still growing; corrections, issues and PRs are welcome.
 
@@ -20,6 +20,7 @@
 
 ## Features
 
+- **No emoji, rebuilt hierarchy**: titles in primary color and bold, descriptions in secondary color, primary vs soft buttons, results in their own block; 'expand/collapse' words instead of arrows, 'current ·' instead of checkmarks
 - **Console (sub-page)**: exposes the APIs you could not reach anywhere else — roll once (maybe_awake) / roll without sending (roll_dice) / check silence / enter running / set X; full raw readings (get_xy + get_formula); newly exposed configs such as the **silence threshold**; a list of all 17 tools + the full API docs; one-tap jump to the Prompts page
 - **All prompts & wording customizable (11 items, collapsible groups)**: three groups (Trigger guidance x4 / Special cases x3 / Wording & delivery x4). Collapsed shows title + default-or-modified tag + summary; tap the title to expand. Each box is pre-filled with the text that will actually be sent (untouched = the built-in default) and annotated with "when it is used · placeholders"; empty falls back to the built-in default, one tap restores defaults
 - **Saving never mislabels "modified"**: boxes you did not touch are skipped on save
