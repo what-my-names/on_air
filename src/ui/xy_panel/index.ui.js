@@ -21,7 +21,8 @@ function Screen(ctx) {
     btn: scheme.primary || "#222222", accent: scheme.primary || "#222222",
     text: scheme.onSurface || "#222222", quietDay: scheme.primary || "#222222",
     normalDay: scheme.surfaceVariant || "#F0F0F0", today: scheme.onSurfaceVariant || "#555555",
-    specialDay: scheme.outline || "#C0C0C0", btnText: scheme.onPrimary || "#FFFFFF"
+    specialDay: scheme.outline || "#C0C0C0", btnText: scheme.onPrimary || "#FFFFFF",
+    dim: scheme.onSurfaceVariant || "#666666"
   };
   // ===== 状态 =====
   var loadingState = ctx.useState("loading", true);
@@ -580,20 +581,20 @@ function Screen(ctx) {
 
   // ===== v1.9.0：二级页面入口（卡1/卡2/卡3/卡4 已拆分为子页面）=====
   var NAV_ITEMS = [
-    ["✎ 提示词设置", "toolpkg:com.operit.on_air:ui:on_air_prompts", "自定义递给 AI 的每一句话（8 处：触发引导 / 包装前缀 / 温柔巡检 / 置气 / 静默通知 / 档位话术库）"],
-    ["⚙ 参数设置", "toolpkg:com.operit.on_air:ui:on_air_params", "X / 公式 a·b·c / 唤醒冷却 / 角色卡名字 / 停止上限"],
-    ["🌙 免打扰", "toolpkg:com.operit.on_air:ui:on_air_quiet", "静默时段（白天段 + 夜间段）与目标对话"],
-    ["📅 日期静默", "toolpkg:com.operit.on_air:ui:on_air_dates", "日历点选全天静默 / 上学日 / 学生模式 / 节假日表"],
-    ["🎛 控制台", "toolpkg:com.operit.on_air:ui:on_air_console", "直调 API：掷骰 / 查沉默 / 沉默阈值 / 全量读数 / 工具清单"]
+    ["提示词设置", "toolpkg:com.operit.on_air:ui:on_air_prompts", "自定义递给 AI 的每一句话：触发引导 / 包装前缀 / 温柔巡检 / 置气 / 静默通知 / 档位话术库"],
+    ["参数设置", "toolpkg:com.operit.on_air:ui:on_air_params", "X 值、公式 a・b・c、唤醒冷却、角色卡名字、连续上限"],
+    ["免打扰", "toolpkg:com.operit.on_air:ui:on_air_quiet", "静默时段（白天段 + 夜间段）、目标对话、AI 静默建议"],
+    ["日期静默", "toolpkg:com.operit.on_air:ui:on_air_dates", "日历点选全天静默、上学日自动静默、学生模式、节假日表"],
+    ["控制台", "toolpkg:com.operit.on_air:ui:on_air_console", "直调 API：掷骰一次 / 查沉默 / 沉默阈值 / 全量读数 / 工具清单"]
   ];
   for (var ni = 0; ni < NAV_ITEMS.length; ni++) {
     (function (item) {
       var nb = [];
-      nb.push(ctx.UI.Text({ text: item[0], style: "titleSmall", fontWeight: "semiBold", color: P.text }));
-      nb.push(ctx.UI.Text({ text: item[2], style: "bodySmall", color: P.text }));
-      nb.push(ctx.UI.Button({ contentColor: P.btnText, color: P.btnText, textColor: P.btnText, containerColor: P.btn, shape: { cornerRadius: 12, type: "rounded" }, text: "进入", fillMaxWidth: true, onClick: function () { if (ctx.navigate) ctx.navigate(item[1]); } }));
+      nb.push(ctx.UI.Text({ text: item[0], style: "titleSmall", fontWeight: "bold", color: P.accent }));
+      nb.push(ctx.UI.Text({ text: item[2], style: "bodySmall", color: P.dim }));
+      nb.push(ctx.UI.Button({ contentColor: P.btnText, color: P.btnText, textColor: P.btnText, containerColor: P.btn, shape: { cornerRadius: 12, type: "rounded" }, text: "打开", fillMaxWidth: true, onClick: function () { if (ctx.navigate) ctx.navigate(item[1]); } }));
       children.push(ctx.UI.Card({ containerColor: P.card, backgroundColor: P.card, shape: { cornerRadius: 16, type: "rounded" }, padding: 0, elevation: 0, fillMaxWidth: true }, [
-        ctx.UI.Column({ backgroundColor: P.card, fillMaxWidth: true, padding: 14, spacing: 6 }, nb)
+        ctx.UI.Column({ backgroundColor: P.card, fillMaxWidth: true, padding: 16, spacing: 10 }, nb)
       ]));
     })(NAV_ITEMS[ni]);
   }
