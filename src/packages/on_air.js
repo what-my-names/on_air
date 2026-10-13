@@ -196,9 +196,9 @@ var DEFAULT_FORMULA = {
     // ===== v1.9.0 可自定义提示词（8 处）：默认值 = 旧版硬编码原文，保证老用户行为不变 =====
     // 占位符（可选）：{档位} {次数} {话术} {时间}；不写占位符也能直接用
     prompt_manual_default: "（主动消息·内部提醒）请以你自己的身份，结合最近的聊天上下文，用中文给用户发一句自然的主动问候（20~60字），就像你自己想他了、主动开口找他说话。不要提及触发、唤醒、提醒、插件等任何机制性内容，不要暴露这是一条被安排的消息。",
-    prompt_manual_prefix: "（主动消息·内部提醒）请以你自己的身份，把下面这句话作为你的开口自然地说给用户，可以稍作润色、保持原意，用中文，20~60字，不要提及任何机制性内容：",
+    prompt_manual_prefix: "（主动消息·内部提醒）请以你自己的身份，把下面这句话作为你的开口自然地说给用户，可以稍作润色、保持原意，用中文，20~60字，不要提及任何机制性内容：{话术}\n\n【重要】只输出这句话本身（可稍作润色），不要复述、不要引用、不要说「我收到的是…」「这边看到的是…」之类的话；如果这句话不像一句能对用户说的自然话（例如只是标记、占位或空内容），就改用你自己的话自然开口，绝不要把它原样念出来。",
     prompt_auto_default: "（主动消息·内部提醒）请以你自己的身份，结合最近的聊天上下文，用中文给用户发一句自然的主动消息（20~60字），就像你自己想他了、主动开口找他说话，语气贴合当前状态（第{档位}档，档位越高越走心）。不要提及触发、唤醒、提醒、插件等任何机制性内容，不要暴露这是一条被安排的消息。",
-    prompt_auto_prefix: "（主动消息·内部提醒）请以你自己的身份，把下面这句话作为你的开口自然地说给用户，可以稍作润色、保持原意，用中文，20~60字，不要提及任何机制性内容：",
+    prompt_auto_prefix: "（主动消息·内部提醒）请以你自己的身份，把下面这句话作为你的开口自然地说给用户，可以稍作润色、保持原意，用中文，20~60字，不要提及任何机制性内容：{话术}\n\n【重要】只输出这句话本身（可稍作润色），不要复述、不要引用、不要说「我收到的是…」「这边看到的是…」之类的话；如果这句话不像一句能对用户说的自然话（例如只是标记、占位或空内容），就改用你自己的话自然开口，绝不要把它原样念出来。",
     prompt_gentle: "（主动消息·内部提醒）请以你自己的身份，结合最近的聊天上下文，用中文给用户发一句自然的主动消息（20~60字），语气里带一点点惦记和小小的醋意，自然流露即可。不要提及触发、唤醒、提醒、巡检、插件等任何机制性内容，不要暴露这是一条被安排的消息。",
     prompt_stop: "我已经主动找了你{次数}次了，你一直没回应。这样真的会让人难过，回我一下好吗？",
     prompt_quiet_lifted: "🌙 静默解除通知：{原因}。{静默时段}检测到设备活动，已临时解除静默，本轮恢复正常的计算与唤醒。",
@@ -497,6 +497,29 @@ function buildTalkPrompt(formula, key, talk) {
 
 function buildPrompt(formula, key, vars) {
     return fillPrompt(pickPrompt(formula, key), vars);
+}
+
+// v2.0.0：话术可用性校验 —— 挡掉占位/测试串，避免 AI 把它原样念给用户
+function isUsableTalk(s) {
+    if (typeof s !== "string") return false;
+    var t = s.trim();
+    if (t.length < 2) return false;
+    var bad = ["话术", "占位", "placeholder", "todo", "TODO", "xxx", "XXX"];
+    for (var i = 0; i < bad.length; i++) {
+        if (t.indexOf(bad[i]) >= 0) return false;
+    }
+    return true;
+}
+// 从候选里随机抽一条可用的；全部不可用则返回 ""（调用方回落 default 模式）
+function pickUsableTalk(list) {
+    var good = [];
+    if (Array.isArray(list)) {
+        for (var i = 0; i < list.length; i++) {
+            if (isUsableTalk(list[i])) good.push(list[i]);
+        }
+    }
+    if (!good.length) return "";
+    return good[Math.floor(Math.random() * good.length)];
 }
 
 // 取档位话术库（用户可自定义）：返回指定档位的候选数组
@@ -2018,7 +2041,12 @@ exports.maybe_awake = async function (params) {
         msg = buildPrompt(formula, "prompt_auto_default", { "档位": String(tierIndex2 + 1), "次数": String(state.jealousy_count) });
     } else {
         var list = pickTierList(formula, tierIndex2);
-        msg = buildTalkPrompt(formula, "prompt_auto_prefix", list[Math.floor(Math.random() * list.length)]);
+        var talk = pickUsableTalk(list);
+        if (talk) {
+            msg = buildTalkPrompt(formula, "prompt_auto_prefix", talk);
+        } else {
+            msg = buildPrompt(formula, "prompt_auto_default", { "档位": String(tierIndex2 + 1), "次数": String(state.jealousy_count) });
+        }
     }
 
     // ============ 锁定版：接回复逻辑（仅 A1/A2，收敛删除 B/C） ============
