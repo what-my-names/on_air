@@ -96,8 +96,8 @@ function Screen(ctx) {
             { k: "prompt_quiet_lifted", label: "7 静默解除通知", hint: "何时用：静默时段里检测到设备活动、临时解除静默时发出的通知。\n占位符：{原因} {静默时段}", val: function () { return vQ; }, set: setQ }
         ]},
         { title: "三、话术与发送（4 项）", items: [
-            { k: "jealousy_tiers", label: "8 档位话术库", hint: "何时用：话术模式＝用话术库时随机抽一句；档位越高（找人次数越多）用越靠后的档，共 4 档。\n格式：一行一档，档内多条用 | 分隔", val: function () { return vT; }, set: setT },
-            { k: "awake_messages", label: "9 话术库", hint: "何时用：话术模式＝用话术库时，从这里面随机抽一句当作开口。\n格式：每行一句", val: function () { return vTalk; }, set: setTalk },
+            { k: "jealousy_tiers", label: "8 档位话术库", hint: "何时用：话术模式＝用话术库时随机抽一句；档位越高（找人次数越多）用越靠后的档，共 4 档。\n格式：一行一档，档内多条用 | 分隔\n注意：只填真正想说的话；占位/测试性质的条目会被自动跳过。", val: function () { return vT; }, set: setT },
+            { k: "awake_messages", label: "9 话术库", hint: "何时用：话术模式＝用话术库时，从这里面随机抽一句当作开口。\n格式：每行一句\n注意：只填真正想说的话；空行或占位/测试条目会被自动跳过，全部不可用时自动回落成「AI 自己发挥」。", val: function () { return vTalk; }, set: setTalk },
             { k: "awake_mode", label: "10 话术模式", hint: "default ＝ 让 AI 结合上下文自己发挥（不依赖话术库）；custom ＝ 从「话术库」里随机抽一句当作开口。", val: null, set: null },
             { k: "send_mode", label: "11 发送方式", hint: "A1 ＝ on_air 自己唤醒 AI（默认，不依赖别的插件）；A2 ＝ 借温柔巡检的自动回复通道发出（需温柔巡检在运行；未装或没在跑会自动回落 A1）。", val: null, set: null }
         ]}
