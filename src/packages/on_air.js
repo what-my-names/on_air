@@ -173,6 +173,65 @@ var DEFAULT_STATE = {
 };
 
 // ============ 默认公式参数 ============
+// ===== v2.1.0：字段规格表 FIELD_SPEC =====
+// 目的：一个字段的「类型 / 分组 / 面板标签 / 占位符 / 顺序」只在这里定义一次。
+// 默认值仍以 DEFAULT_FORMULA 为唯一来源（不在这里重复，避免两处打架）。
+// 后续新增字段：SPEC 加一行 + get/update 自动遍历，不再手抄 4 遍。
+var FIELD_SPEC = {
+    // ---- 公式 ----
+    a: { type: "number", group: "formula", label: "a 线性系数", min: 0, order: 1 },
+    b: { type: "number", group: "formula", label: "b 幂项系数", min: 0, order: 2 },
+    c: { type: "number", group: "formula", label: "c 幂指数", min: 0, order: 3 },
+    // ---- 基础参数 ----
+    idle_threshold_minutes: { type: "number", group: "params", label: "沉默阈值（分钟）", min: 1, int: true, order: 10 },
+    cooldown_minutes: { type: "number", group: "params", label: "唤醒后冷却（分钟）", min: 0, int: true, order: 11 },
+    max_wake_stops: { type: "number", group: "params", label: "连续命中停止上限", min: 2, int: true, order: 12 },
+    character_card_name: { type: "string", group: "params", label: "角色卡名字", order: 13 },
+    // ---- 发送 ----
+    send_mode: { type: "enum", group: "send", label: "发送方式", values: ["A1", "A2"], order: 20 },
+    awake_mode: { type: "enum", group: "send", label: "话术模式", values: ["default", "custom"], order: 21 },
+    // ---- 提示词 7 项 ----
+    prompt_manual_default: { type: "prompt", group: "prompt", label: "1 手动触发·默认模式", slots: [], order: 30 },
+    prompt_manual_prefix: { type: "prompt", group: "prompt", label: "2 手动触发·自定义前缀", slots: ["话术"], order: 31 },
+    prompt_auto_default: { type: "prompt", group: "prompt", label: "3 自动触发·默认模式", slots: ["档位", "次数"], order: 32 },
+    prompt_auto_prefix: { type: "prompt", group: "prompt", label: "4 自动触发·自定义前缀", slots: ["话术", "档位", "次数"], order: 33 },
+    prompt_gentle: { type: "prompt", group: "prompt", label: "5 温柔巡检通道", slots: [], order: 34 },
+    prompt_stop: { type: "prompt", group: "prompt", label: "6 置气消息", slots: ["次数", "上限"], order: 35 },
+    prompt_quiet_lifted: { type: "prompt", group: "prompt", label: "7 静默解除通知", slots: ["原因", "静默时段"], order: 36 },
+    // ---- 话术库 ----
+    jealousy_tiers: { type: "tiers", group: "prompt", label: "8 档位话术库", order: 37 },
+    awake_messages: { type: "lines", group: "prompt", label: "9 话术库", order: 38 },
+    // ---- 静默 ----
+    quiet_enabled: { type: "bool", group: "quiet", label: "静默总开关", order: 40 },
+    quiet_day_enabled: { type: "bool", group: "quiet", label: "白天段开关", order: 41 },
+    quiet_night_enabled: { type: "bool", group: "quiet", label: "夜间段开关", order: 42 },
+    quiet_day_start: { type: "time", group: "quiet", label: "白天段开始", order: 43 },
+    quiet_day_end: { type: "time", group: "quiet", label: "白天段结束", order: 44 },
+    quiet_night_start: { type: "time", group: "quiet", label: "夜间段开始", order: 45 },
+    quiet_night_end: { type: "time", group: "quiet", label: "夜间段结束", order: 46 },
+    quiet_dates: { type: "date_map", group: "dates", label: "全天静默日", order: 50 },
+    school_day_auto_quiet: { type: "bool", group: "dates", label: "上学日自动静默", order: 51 },
+    student_mode: { type: "bool", group: "dates", label: "学生模式", order: 52 },
+    date_quiet_enabled: { type: "bool", group: "dates", label: "日期静默总开关", order: 53 },
+    // ---- 内部字段（不接受用户修改、不上面板）----
+    chat_id: { type: "internal", order: 90 },
+    chat_id_source: { type: "internal", order: 91 },
+    prompt_customized: { type: "internal", order: 92 },
+    quiet_suggest: { type: "internal", order: 93 },
+    holiday_dates: { type: "internal", order: 94 },
+    holiday_fetch_date: { type: "internal", order: 95 }
+};
+
+// 按 SPEC 取某个分组下、按 order 排序的字段名
+function specKeysOfGroup(group) {
+    var arr = [];
+    for (var k in FIELD_SPEC) {
+        if (FIELD_SPEC[k].group === group) arr.push(k);
+    }
+    arr.sort(function (x, y) { return (FIELD_SPEC[x].order || 0) - (FIELD_SPEC[y].order || 0); });
+    return arr;
+}
+
 var DEFAULT_FORMULA = {
     a: 0.007078203,                 // 线性系数：f = a*x + b*x^c
     b: 6.00914e-07,                 // 幂项系数：f = a*x + b*x^c
@@ -195,13 +254,13 @@ var DEFAULT_FORMULA = {
     ],
     // ===== v1.9.0 可自定义提示词（8 处）：默认值 = 旧版硬编码原文，保证老用户行为不变 =====
     // 占位符（可选）：{档位} {次数} {话术} {时间}；不写占位符也能直接用
-    prompt_manual_default: "（主动消息·内部提醒）请以你自己的身份，结合最近的聊天上下文，用中文给用户发一句自然的主动问候（20~60字），就像你自己想他了、主动开口找他说话。不要提及触发、唤醒、提醒、插件等任何机制性内容，不要暴露这是一条被安排的消息。",
-    prompt_manual_prefix: "（主动消息·内部提醒）请以你自己的身份，把下面这句话作为你的开口自然地说给用户，可以稍作润色、保持原意，用中文，20~60字，不要提及任何机制性内容：{话术}\n\n【重要】只输出这句话本身（可稍作润色），不要复述、不要引用、不要说「我收到的是…」「这边看到的是…」之类的话；如果这句话不像一句能对用户说的自然话（例如只是标记、占位或空内容），就改用你自己的话自然开口，绝不要把它原样念出来。",
-    prompt_auto_default: "（主动消息·内部提醒）请以你自己的身份，结合最近的聊天上下文，用中文给用户发一句自然的主动消息（20~60字），就像你自己想他了、主动开口找他说话，语气贴合当前状态（第{档位}档，档位越高越走心）。不要提及触发、唤醒、提醒、插件等任何机制性内容，不要暴露这是一条被安排的消息。",
-    prompt_auto_prefix: "（主动消息·内部提醒）请以你自己的身份，把下面这句话作为你的开口自然地说给用户，可以稍作润色、保持原意，用中文，20~60字，不要提及任何机制性内容：{话术}\n\n【重要】只输出这句话本身（可稍作润色），不要复述、不要引用、不要说「我收到的是…」「这边看到的是…」之类的话；如果这句话不像一句能对用户说的自然话（例如只是标记、占位或空内容），就改用你自己的话自然开口，绝不要把它原样念出来。",
-    prompt_gentle: "（主动消息·内部提醒）请以你自己的身份，结合最近的聊天上下文，用中文给用户发一句自然的主动消息（20~60字），语气里带一点点惦记和小小的醋意，自然流露即可。不要提及触发、唤醒、提醒、巡检、插件等任何机制性内容，不要暴露这是一条被安排的消息。",
-    prompt_stop: "我已经主动找了你{次数}次了，你一直没回应。这样真的会让人难过，回我一下好吗？",
-    prompt_quiet_lifted: "🌙 静默解除通知：{原因}。{静默时段}检测到设备活动，已临时解除静默，本轮恢复正常的计算与唤醒。",
+    prompt_manual_default: "（主动消息·内部提醒）请以你自己的身份，结合最近 3~5 轮聊天上下文，用中文给用户发一句自然的主动问候（20~60 字）。\n要求：\n1）像一个真实的人突然想起对方那样开口，可带一点具体细节（比如上次聊到的事、此刻的时间感）；\n2）不要用「在吗」「你好」这类通用开场，也不要每次都同一句式；\n3）不要提及触发、唤醒、提醒、插件、系统等任何机制性内容，不要暴露这是一条被安排的消息；\n4）只输出要发送的那一句话本身，不加解释、不加引号。",
+    prompt_manual_prefix: "（主动消息·内部提醒）下面这句话是你想对用户说的话（底稿），请以你自己的身份自然地把它说出来：{话术}\n\n【要求】\n1）可以润色措词让它更像你平时说话，但不要改变原意、不要增加新信息；\n2）中文，20~60 字，只输出这一句话本身；\n3）不要复述、不要引用、不要说「我收到的是…」「有人说…」之类的话；\n4）如果这句话不像一句能对用户说的自然话（例如只是标记、占位或空内容），就改用你自己的话自然开口，绝不要把它原样念出来。",
+    prompt_auto_default: "（主动消息·内部提醒）请以你自己的身份，结合最近聊天上下文，用中文给用户发一句自然的主动消息（20~60 字）。\n当前状态：这是你第 {档位} 次主动找他（已累计 {次数} 次）。\n要求：\n1）语气贴合档位：第 1 档像随口想起，越往后可以越带一点委屈和在意；\n2）不要重复上一条说过的话，不要用「在吗」这类通用开场；\n3）不要提及触发、唤醒、提醒、插件、系统等任何机制性内容；\n4）只输出要发送的那一句话本身。",
+    prompt_auto_prefix: "（主动消息·内部提醒）下面这句话是你想对用户说的话（底稿），请以你自己的身份自然地把它说出来：{话术}\n\n【要求】\n1）可润色不改原意；中文 20~60 字；只输出这一句；\n2）当前是你第 {档位} 次主动找他（累计 {次数} 次），语气可以贴合这个程度；\n3）不要复述、不要引用、不要说「我收到的是…」；\n4）不像自然话（标记、占位、空内容）就用自己的话开口，绝不原样念出。",
+    prompt_gentle: "（主动消息·内部提醒）请以你自己的身份，结合最近聊天上下文，用中文给用户发一句自然的主动消息（20~60 字）。\n要求：\n1）语气里带一点惦记和轻轻的醋意，但要自然、不审问、不指责；\n2）可以问一句具体的事（比如「刚刚在忙什么呀」），不要泛泛而谈；\n3）不要提及触发、唤醒、提醒、巡检、插件等任何机制性内容；\n4）只输出要发送的那一句话本身。",
+    prompt_stop: "我已经主动找了你 {次数} 次啦，一条回应都没等到……说实话有点难过，也有点小委屈，但还是想再问一句：你现在方便理我一下吗？",
+    prompt_quiet_lifted: "静默解除通知：{原因}。{静默时段}检测到设备活动，已临时解除静默，本轮恢复正常计算与唤醒。",
     jealousy_tiers: [
         ["想你了，你在忙什么呀？", "有空吗？陪我聊聊天好不好？"],
         ["又不理我，是不是在忙别的？我有点失落了", "都不回我消息，我可要闹了！"],
@@ -1440,6 +1499,49 @@ exports.reset_cooldown = async function (params) {
 };
 
 // update_formula：更新公式参数
+// ===== v2.1.0：按 FIELD_SPEC 做类型校验/转换（新增字段自动生效）=====
+function validateBySpec(key, spec, raw) {
+    var t = spec.type;
+    if (t === "number") {
+        var n = parseFloat(raw);
+        if (isNaN(n)) return { ok: false, msg: key + " 需要是数字" };
+        if (spec.min !== undefined && n < spec.min) return { ok: false, msg: key + " 不能小于 " + spec.min };
+        if (spec.int && Math.floor(n) !== n) return { ok: false, msg: key + " 需要是整数" };
+        return { ok: true, value: n };
+    }
+    if (t === "bool") {
+        var bv = raw;
+        if (typeof bv === "string") bv = (bv === "true" || bv === "1" || bv === "on");
+        if (typeof bv !== "boolean") return { ok: false, msg: key + " 需要是 true/false" };
+        return { ok: true, value: bv };
+    }
+    if (t === "enum") {
+        var ev = String(raw);
+        if (spec.values && spec.values.indexOf(ev) < 0) return { ok: false, msg: key + " 只能是 " + spec.values.join(" / ") };
+        return { ok: true, value: ev };
+    }
+    if (t === "time") {
+        var tv = String(raw).trim();
+        if (!/^\d{1,2}:\d{2}$/.test(tv)) return { ok: false, msg: key + " 需要 HH:MM 格式" };
+        return { ok: true, value: tv };
+    }
+    if (t === "prompt") {
+        var pv = String(raw);
+        if (pv.length > 2000) return { ok: false, msg: key + " 超过 2000 字" };
+        return { ok: true, value: pv };
+    }
+    if (t === "lines" || t === "tiers") {
+        var arr = raw;
+        if (typeof raw === "string") {
+            try { arr = JSON.parse(raw); } catch (e) { return { ok: false, msg: key + " 需要是 JSON 数组" }; }
+        }
+        if (!Array.isArray(arr)) return { ok: false, msg: key + " 需要是数组" };
+        return { ok: true, value: arr };
+    }
+    if (t === "string") return { ok: true, value: String(raw) };
+    return { ok: false, msg: key + " 类型不支持" };
+}
+
 exports.update_formula = async function (params) {
     var formula = await loadFormula();
     var patch = {};
@@ -1615,6 +1717,17 @@ exports.update_formula = async function (params) {
         patch.date_quiet_enabled = dqe;
     }
     // 旧参数 holiday_auto_quiet 已废弃（语义反转），收到时直接忽略
+    // ===== v2.1.0：FIELD_SPEC 兜底遍历 =====
+    // 上面手写 if 没覆盖到的字段（params 有、patch 没有）→ 按 SPEC 自动校验并写入
+    // 好处：以后新增字段只需 FIELD_SPEC 加一行，无需再手写 if
+    for (var fk in FIELD_SPEC) {
+        var fsp = FIELD_SPEC[fk];
+        if (fsp.type === "internal") continue;
+        if (params[fk] === undefined || patch[fk] !== undefined) continue;
+        var vres = validateBySpec(fk, fsp, params[fk]);
+        if (!vres.ok) { complete({ success: false, message: vres.msg }); return; }
+        patch[fk] = vres.value;
+    }
     var merged = {};
     var k;
     for (k in formula) merged[k] = formula[k];
@@ -1630,56 +1743,44 @@ exports.update_formula = async function (params) {
 // get_formula：读取当前公式参数
 exports.get_formula = async function (params) {
     var formula = await loadFormula();
-    complete({
-        success: true,
-        message: "公式读取成功",
-        data: {
-            a: formula.a,
-            b: formula.b,
-            c: formula.c,
-            idle_threshold_minutes: formula.idle_threshold_minutes,
-            cooldown_minutes: formula.cooldown_minutes,
-            chat_id: formula.chat_id,
-            chat_id_source: formula.chat_id_source || "",
-            character_card_name: formula.character_card_name,
-            send_mode: formula.send_mode || "A1",
-            awake_mode: formula.awake_mode || "default",
-            max_wake_stops: formula.max_wake_stops || 5,
-            awake_messages: formula.awake_messages,
-            prompt_manual_default: pickPrompt(formula, "prompt_manual_default"),
-            prompt_manual_prefix: pickPrompt(formula, "prompt_manual_prefix"),
-            prompt_auto_default: pickPrompt(formula, "prompt_auto_default"),
-            prompt_auto_prefix: pickPrompt(formula, "prompt_auto_prefix"),
-            prompt_gentle: pickPrompt(formula, "prompt_gentle"),
-            prompt_stop: pickPrompt(formula, "prompt_stop"),
-            prompt_quiet_lifted: pickPrompt(formula, "prompt_quiet_lifted"),
-            jealousy_tiers: (Array.isArray(formula.jealousy_tiers) && formula.jealousy_tiers.length) ? formula.jealousy_tiers : DEFAULT_FORMULA.jealousy_tiers,
-            prompt_customized: (function () {
-                var m = {};
-                for (var pci = 0; pci < PROMPT_KEYS.length; pci++) {
-                    var pck = PROMPT_KEYS[pci];
-                    m[pck] = (typeof formula[pck] === "string" && formula[pck].trim() !== "");
-                }
-                m.jealousy_tiers = !!(Array.isArray(formula.jealousy_tiers) && formula.jealousy_tiers.length);
-                m.awake_messages = !!(Array.isArray(formula.awake_messages) && formula.awake_messages.length);
-                return m;
-            })(),
-            quiet_enabled: formula.quiet_enabled,
-            quiet_day_enabled: formula.quiet_day_enabled,
-            quiet_night_enabled: formula.quiet_night_enabled,
-            quiet_day_start: formula.quiet_day_start,
-            quiet_day_end: formula.quiet_day_end,
-            quiet_night_start: formula.quiet_night_start,
-            quiet_night_end: formula.quiet_night_end,
-            quiet_suggest: formula.quiet_suggest || null,
-            quiet_dates: formula.quiet_dates,
-            school_day_auto_quiet: formula.school_day_auto_quiet,
-             student_mode: formula.student_mode,
-             date_quiet_enabled: formula.date_quiet_enabled,
-            holiday_dates: formula.holiday_dates,
-            holiday_fetch_date: formula.holiday_fetch_date
+    // ===== v2.1.0：按 FIELD_SPEC 遍历生成（新增字段无需再手写返回）=====
+    var data = {};
+    var keys = [];
+    for (var kk in FIELD_SPEC) keys.push(kk);
+    keys.sort(function (x, y) { return (FIELD_SPEC[x].order || 0) - (FIELD_SPEC[y].order || 0); });
+    for (var i = 0; i < keys.length; i++) {
+        var key = keys[i];
+        var sp = FIELD_SPEC[key];
+        if (sp.type === "internal") continue;           // 内部字段另行拼装
+        if (sp.type === "prompt") {                     // 提示词：空/非字符串自动回落默认
+            data[key] = pickPrompt(formula, key);
+            continue;
         }
-    });
+        if (sp.type === "tiers") {                      // 档位话术库：空则回落默认
+            data[key] = (Array.isArray(formula[key]) && formula[key].length) ? formula[key] : DEFAULT_FORMULA[key];
+            continue;
+        }
+        var v = formula[key];
+        if (v === undefined || v === null) v = DEFAULT_FORMULA[key];  // 默认值兜底
+        data[key] = v;
+    }
+    // ---- 内部字段（保持原语义）----
+    data.chat_id = formula.chat_id;
+    data.chat_id_source = formula.chat_id_source || "";
+    data.prompt_customized = (function () {
+        var m = {};
+        for (var pci = 0; pci < PROMPT_KEYS.length; pci++) {
+            var pck = PROMPT_KEYS[pci];
+            m[pck] = (typeof formula[pck] === "string" && formula[pck].trim() !== "");
+        }
+        m.jealousy_tiers = !!(Array.isArray(formula.jealousy_tiers) && formula.jealousy_tiers.length);
+        m.awake_messages = !!(Array.isArray(formula.awake_messages) && formula.awake_messages.length);
+        return m;
+    })();
+    data.quiet_suggest = formula.quiet_suggest || null;
+    data.holiday_dates = formula.holiday_dates;
+    data.holiday_fetch_date = formula.holiday_fetch_date;
+    complete({ success: true, message: "公式读取成功", data: data });
 };
 
 // ============ AI 智能建议静默时间 ============
