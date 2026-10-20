@@ -2,7 +2,7 @@
 
 [中文](README.md)
 
-> **Current Release Status**: **v2.0.0 STABLE** — feature complete and ready for daily use; feedback welcome.
+> **Current Release Status**: **v2.1.0 STABLE** — feature complete and ready for daily use; feedback welcome.
 
 > **Authorship Notice**: This project is a "novice × AI creation" — co-developed by a novice developer together with an AI assistant. The code and docs are still growing; corrections, issues and PRs are welcome.
 
@@ -20,6 +20,8 @@
 
 ## Features
 
+- **Field-driven refactor (v2.1.0)**: every config field lives in one FIELD_SPEC table; get_formula iterates it and update_formula auto-validates — structurally eliminating the "added update, forgot get" class of bugs
+- **Strengthened default prompts (v2.1.0)**: 7 prompts rewritten with explicit rules (more human, no repetition, no meta talk), old emoji removed
 - **Wording safety (v2.0.0 STABLE)**: placeholder/empty entries in the wording library are skipped automatically; when none are usable it falls back to the AI improvising; the default prefix prompt is hard-constrained so the AI only says the wording and **never echoes internal prompts**
 - **No emoji, rebuilt hierarchy**: titles in primary color and bold, descriptions in secondary color, primary vs soft buttons, results in their own block; 'expand/collapse' words instead of arrows, 'current ·' instead of checkmarks
 - **Console (sub-page)**: exposes the APIs you could not reach anywhere else — roll once (maybe_awake) / roll without sending (roll_dice) / check silence / enter running / set X; full raw readings (get_xy + get_formula); newly exposed configs such as the **silence threshold**; a list of all 17 tools + the full API docs; one-tap jump to the Prompts page
