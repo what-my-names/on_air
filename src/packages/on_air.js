@@ -599,9 +599,12 @@ async function loadFormula() {
     var out = {};
     var k;
     for (k in DEFAULT_FORMULA) out[k] = DEFAULT_FORMULA[k];
+    // v2.1.1：记录用户显式提供过的字段（重置后能正确变回“未改”）
+    var provided = {};
     for (k in f) {
-        if (f[k] !== undefined && f[k] !== null) out[k] = f[k];
+        if (f[k] !== undefined && f[k] !== null) { out[k] = f[k]; provided[k] = true; }
     }
+    out._provided = provided;
     // 保证数组
     if (!Array.isArray(out.awake_messages) || out.awake_messages.length === 0) {
         out.awake_messages = DEFAULT_FORMULA.awake_messages;
@@ -782,7 +785,13 @@ async function maybeFetchHoliday() {
 }
 
 async function saveFormula(formula) {
-    await writeJsonFile(FORMULA_PATH, formula);
+    // v2.1.1：不落盘以 _ 开头的内部字段
+    var clean = {};
+    for (var sk in formula) {
+        if (sk.charAt(0) === "_") continue;
+        clean[sk] = formula[sk];
+    }
+    await writeJsonFile(FORMULA_PATH, clean);
 }
 // ============ 唤醒AI发送：统一走平台对话模块的发送通道 ============
 // 签名：sendMessage(message, chatId, roleCardId, senderName, options)
@@ -1216,8 +1225,7 @@ exports.increment_x = async function (params) {
             });
             return;
         }
-        // 检测到设备活动：解除静默，主动告知，本轮正常累加
-        await notifyQuietLifted(formula, state, act1.reasons);
+        // v2.1.2：检测到设备活动仅内部解除静默，不再向对话发通知（见坑71）
     }
     // ---- 用户最近说过话？立即清零并回到空闲态（回复即退出运行态）----
     try {
@@ -1296,7 +1304,6 @@ exports.check_activity = async function (params) {
             });
             return;
         }
-        await notifyQuietLifted(formula, state, act2.reasons);
     }
     var threshold = params.threshold_minutes !== undefined
         ? parseFloat(params.threshold_minutes)
@@ -1386,7 +1393,6 @@ exports.roll_dice = async function (params) {
             });
             return;
         }
-        await notifyQuietLifted(formula, state, act3.reasons);
     }
     var f = formula.a * state.x + formula.b * Math.pow(state.x, formula.c);
     var y = 100 * f / (1 + f);
@@ -1627,11 +1633,14 @@ exports.update_formula = async function (params) {
         patch.jealousy_tiers = jt;
     }
     // 一键恢复默认提示词：reset_prompts=true
+    // v2.1.1：重置 = 清空字段（不是写回默认值）
+    // 这样 pickPrompt 会回落内置默认，且 prompt_customized 标记同步恢复为“未改”
     if (params.reset_prompts === true) {
         for (var rpk = 0; rpk < PROMPT_KEYS.length; rpk++) {
-            patch[PROMPT_KEYS[rpk]] = DEFAULT_FORMULA[PROMPT_KEYS[rpk]];
+            patch[PROMPT_KEYS[rpk]] = "";
         }
-        patch.jealousy_tiers = DEFAULT_FORMULA.jealousy_tiers;
+        patch.jealousy_tiers = [];
+        patch.awake_messages = [];
     }
     // ===== 静默状态参数（两段免打扰：白天段 + 夜间段）=====
     if (params.quiet_enabled !== undefined) {
@@ -1771,10 +1780,10 @@ exports.get_formula = async function (params) {
         var m = {};
         for (var pci = 0; pci < PROMPT_KEYS.length; pci++) {
             var pck = PROMPT_KEYS[pci];
-            m[pck] = (typeof formula[pck] === "string" && formula[pck].trim() !== "");
+            m[pck] = !!((formula._provided || {})[pck] && typeof formula[pck] === "string" && formula[pck].trim() !== "");
         }
-        m.jealousy_tiers = !!(Array.isArray(formula.jealousy_tiers) && formula.jealousy_tiers.length);
-        m.awake_messages = !!(Array.isArray(formula.awake_messages) && formula.awake_messages.length);
+        m.jealousy_tiers = !!((formula._provided || {}).jealousy_tiers && Array.isArray(formula.jealousy_tiers) && formula.jealousy_tiers.length);
+        m.awake_messages = !!((formula._provided || {}).awake_messages && Array.isArray(formula.awake_messages) && formula.awake_messages.length);
         return m;
     })();
     data.quiet_suggest = formula.quiet_suggest || null;
@@ -2022,7 +2031,6 @@ exports.maybe_awake = async function (params) {
             });
             return;
         }
-        await notifyQuietLifted(formula, state, act4.reasons);
     }
     // 关键守卫：仅运行态(running=true)才允许掷骰发消息。空闲态绝不打扰。
     if (!state.running) {
@@ -2213,7 +2221,6 @@ exports.enter_running = async function (params) {
             });
             return;
         }
-        await notifyQuietLifted(formula, state, act5.reasons);
     }
     if (!state.running) {
         state.running = true;
