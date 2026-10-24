@@ -2,7 +2,7 @@
 
 [中文](README.md)
 
-> **Current Release Status**: **v2.1.0 STABLE** — feature complete and ready for daily use; feedback welcome.
+> **Current Release Status**: **v2.1.2 STABLE** — feature complete and ready for daily use; feedback welcome.
 
 > **Authorship Notice**: This project is a "novice × AI creation" — co-developed by a novice developer together with an AI assistant. The code and docs are still growing; corrections, issues and PRs are welcome.
 
@@ -20,6 +20,8 @@
 
 ## Features
 
+- **Removed the quiet-lifted notice (v2.1.2)**: when device activity is detected during a quiet window, the plugin now only clears the quiet state internally — no message into the chat and no extra AI turn
+- **Reset prompts now correctly returns the "default" tag (v2.1.1)**
 - **Field-driven refactor (v2.1.0)**: every config field lives in one FIELD_SPEC table; get_formula iterates it and update_formula auto-validates — structurally eliminating the "added update, forgot get" class of bugs
 - **Strengthened default prompts (v2.1.0)**: 7 prompts rewritten with explicit rules (more human, no repetition, no meta talk), old emoji removed
 - **Wording safety (v2.0.0 STABLE)**: placeholder/empty entries in the wording library are skipped automatically; when none are usable it falls back to the AI improvising; the default prefix prompt is hard-constrained so the AI only says the wording and **never echoes internal prompts**
