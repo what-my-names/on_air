@@ -741,7 +741,7 @@ function createHttpClient(timeoutMs) {
 // ==================== v2.2.0：GitHub Release 更新检测 ====================
 var CURRENT_VERSION = "2.2.2";  // 每次发布同步修改
 var UPDATE_REPO = "what-my-names/on_air";
-var UPDATE_API = "https://api.github.com/repos/" + UPDATE_REPO + "/releases/latest";
+var UPDATE_API = 'https://api.github.com/repos/' + UPDATE_REPO + '/releases?per_page=5';
 var UPDATE_TTL_MS = 6 * 60 * 60 * 1000; // 6 小时缓存
 
 // 语义化版本比较：a>b 返回 1，a<b 返回 -1，相等 0（忽略前缀 v）
@@ -825,7 +825,13 @@ async function fetchLatestRelease(state, opts) {
             .build();
         var resp = await req.execute();
         if (!resp.isSuccessful()) return { cached: false, error: "HTTP " + resp.code() };
-        var data = resp.json() || {};
+        var list = resp.json() || [];
+        if (!Array.isArray(list)) return { cached: false, error: '返回格式异常' };
+        var data = null;
+        for (var li = 0; li < list.length; li++) {
+            if (list[li] && !list[li].draft) { data = list[li]; break; }
+        }
+        if (!data) return { cached: false, error: '没有可用的 Release' };
         var assetUrl = '', assetName = '', assetSize = 0, assetId = 0;
         var assets = Array.isArray(data.assets) ? data.assets : [];
         for (var i = 0; i < assets.length; i++) {
@@ -845,6 +851,7 @@ async function fetchLatestRelease(state, opts) {
             url: String(data.html_url || ""),
             published_at: String(data.published_at || ""),
             asset_url: assetUrl, asset_size: assetSize, asset_id: assetId,
+            prerelease: !!data.prerelease,
             asset_name: assetName
         };
         if (state) { state.update_cache = { checked_at: now, latest: rel }; await saveState(state); }
@@ -2407,7 +2414,7 @@ exports.check_update = async function (params) {
             hasUpdate: has, skipped: skipped, current: CURRENT_VERSION,
             latest: rel.tag, name: rel.name, notes: rel.body, notes_full: (rel.body_full || rel.body), url: rel.url,
             published_at: rel.published_at,
-            asset_url: rel.asset_url, asset_name: rel.asset_name, asset_size: rel.asset_size || 0, cached: !!r.cached
+            asset_url: rel.asset_url, asset_name: rel.asset_name, asset_size: rel.asset_size || 0, prerelease: !!rel.prerelease, cached: !!r.cached
         }
     });
 };

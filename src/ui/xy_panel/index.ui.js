@@ -575,7 +575,7 @@ function Screen(ctx) {
     try {
       var r = await callTool("on_air:check_update", { force: true });
       if (r && r.success && r.data) {
-        if (r.data.hasUpdate && !r.data.skipped) { setUpd(JSON.stringify(r.data)); await showMsg("发现新版本 " + r.data.latest); }
+        if (r.data.hasUpdate && !r.data.skipped) { setUpd(JSON.stringify(r.data)); await showMsg('发现新版本 ' + r.data.latest + (r.data.prerelease ? '（Beta）' : '')); }
         else { setUpd(""); await showMsg("已是最新版本 v" + r.data.current); }
       } else {
         await showMsg("检查失败：" + ((r && r.message) || ""));
@@ -747,7 +747,7 @@ function Screen(ctx) {
     var banner = [
       ctx.UI.Row({ fillMaxWidth: true, verticalAlignment: "center", spacing: 8 }, [
         ctx.UI.Icon({ name: "SystemUpdate", size: 20, tint: C.primary }),
-        ctx.UI.Text({ text: "发现新版本 " + String(updData.latest || ""), fontSize: 15, fontWeight: "bold", color: C.primary, maxLines: 1 }),
+        ctx.UI.Text({ text: '发现新版本 ' + String(updData.latest || '') + (updData.prerelease ? '（Beta）' : ''), fontSize: 15, fontWeight: 'bold', color: C.primary, maxLines: 1 }),
         ctx.UI.Text({ text: "当前 v" + String(updData.current || ""), fontSize: 11, color: C.dim, maxLines: 1 })
       ]),
       ctx.UI.Text({ text: notesShort, fontSize: 12, color: C.text })
