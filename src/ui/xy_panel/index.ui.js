@@ -538,9 +538,9 @@ function Screen(ctx) {
   }
 
   // ===== v2.2.0：更新检查 =====
-  async function checkUpdateUI() {
+  async function checkUpdateUI(force) {
     try {
-      var r = await callTool("on_air:check_update", {});
+      var r = await callTool("on_air:check_update", force ? { force: true } : {});
       if (r && r.success && r.data && r.data.hasUpdate && !r.data.skipped) {
         setUpd(JSON.stringify(r.data));
       } else {
@@ -548,11 +548,23 @@ function Screen(ctx) {
       }
     } catch (e) { /* 检查失败不影响主页 */ }
   }
+  async function doForceCheck() {
+    try {
+      var r = await callTool("on_air:check_update", { force: true });
+      if (r && r.success && r.data) {
+        if (r.data.hasUpdate && !r.data.skipped) { setUpd(JSON.stringify(r.data)); await showMsg("发现新版本 " + r.data.latest); }
+        else { setUpd(""); await showMsg("已是最新版本 v" + r.data.current); }
+      } else {
+        await showMsg("检查失败：" + ((r && r.message) || ""));
+      }
+    } catch (e) { await showMsg("检查出错：" + String((e && e.message) || e)); }
+  }
   async function doDownloadUpdate() {
+    if (updMsg && updMsg.indexOf("下载中") === 0) return;
     setUpdMsg("下载中…");
     try {
-      var r = await callTool("on_air:download_update", {});
-      if (r && r.success && r.data) setUpdMsg("已下载：" + r.data.path + "（去 包管理 导入）");
+      var r = await callTool("on_air:download_update", { force: true });
+      if (r && r.success && r.data) setUpdMsg("已下载 " + Math.round((r.data.size || 0) / 1024) + " KB → " + r.data.path + "（去 包管理 导入）");
       else setUpdMsg("下载失败：" + ((r && r.message) || ""));
     } catch (e) { setUpdMsg("下载出错：" + String((e && e.message) || e)); }
   }
@@ -599,7 +611,7 @@ function Screen(ctx) {
     ["控制台", "toolpkg:com.operit.on_air:ui:on_air_console", "直调 API：掷骰 / 查沉默 / 全量读数 / 工具清单", "Terminal"]
   ];
 
-  // ===== 渲染（v2.2.0+3 视觉层次）=====
+  // ===== 渲染（v2.2.1 视觉层次）=====
   function wa(c, a) {
     if (typeof c === "string" && /^#[0-9a-fA-F]{6}$/.test(c)) return "#" + a + c.slice(1);
     return c;
@@ -648,7 +660,7 @@ function Screen(ctx) {
   children.push(ctx.UI.Row({ fillMaxWidth: true, horizontalArrangement: "spaceBetween", verticalAlignment: "center" }, [
     ctx.UI.Column({ spacing: 3 }, [
       ctx.UI.Text({ text: "随机上线", fontSize: 26, fontWeight: "bold", color: C.text }),
-      ctx.UI.Text({ text: "装成真人的主动消息 · v2.2.0+3", fontSize: 12, color: C.dim })
+      ctx.UI.Text({ text: "装成真人的主动消息 · v2.2.1", fontSize: 12, color: C.dim })
     ]),
     ctx.UI.Surface({ containerColor: C.primary, alpha: 0.14, shape: { cornerRadius: 100, type: "rounded" } }, [
       ctx.UI.Row({ padding: { horizontal: 10, vertical: 6 }, spacing: 6, verticalAlignment: "center" }, [
@@ -666,7 +678,7 @@ function Screen(ctx) {
         ctx.UI.Text({ text: "发现新版本 " + String(updData.latest || ""), fontSize: 15, fontWeight: "bold", color: C.primary, maxLines: 1 }),
         ctx.UI.Text({ text: "当前 v" + String(updData.current || ""), fontSize: 11, color: C.dim, maxLines: 1 })
       ]),
-      ctx.UI.Text({ text: String(updData.notes || "").replace(/\r/g, "").split("\n").filter(function (x) { return String(x).trim() !== ""; }).slice(0, 3).join("\n"), fontSize: 12, color: C.text }),
+      ctx.UI.Text({ text: (String(updData.notes || "").replace(/\r/g, "").trim() || "（该版本未写更新说明）").split("\n").filter(function (x) { return String(x).trim() !== ""; }).slice(0, 6).join("\n"), fontSize: 12, color: C.text }),
       ctx.UI.Row({ spacing: 8, fillMaxWidth: true }, [
         ctx.UI.Button({ containerColor: C.primary, contentColor: C.onPrimary, shape: { cornerRadius: 12, type: "rounded" }, text: "下载更新包", onClick: doDownloadUpdate, fillMaxWidth: true, weight: 1 }),
         ctx.UI.Button({ containerColor: C.card, contentColor: C.text, shape: { cornerRadius: 12, type: "rounded" }, text: "稍后", onClick: function () { setUpdHide(true); }, weight: 1 }),
@@ -742,7 +754,8 @@ function Screen(ctx) {
       ])
     ]));
   }
-  children.push(ctx.UI.Text({ text: "v2.2.0+3 · 打开面板时自动检查更新", fontSize: 11, color: C.dim }));
+  children.push(ctx.UI.Button({ containerColor: C.card, contentColor: C.text, shape: { cornerRadius: 12, type: "rounded" }, text: "检查更新", fillMaxWidth: true, onClick: doForceCheck }));
+  children.push(ctx.UI.Text({ text: "v2.2.1 · 打开面板时自动检查更新", fontSize: 11, color: C.dim }));
 
   return ctx.UI.LazyColumn({ containerColor: P.bg, backgroundColor: P.bg,
     onLoad: async function () {

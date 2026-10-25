@@ -725,7 +725,7 @@ function createHttpClient(timeoutMs) {
 }
 
 // ==================== v2.2.0：GitHub Release 更新检测 ====================
-var CURRENT_VERSION = "2.2.0+3";  // 每次发布同步修改
+var CURRENT_VERSION = "2.2.1";  // 每次发布同步修改
 var UPDATE_REPO = "what-my-names/on_air";
 var UPDATE_API = "https://api.github.com/repos/" + UPDATE_REPO + "/releases/latest";
 var UPDATE_TTL_MS = 6 * 60 * 60 * 1000; // 6 小时缓存
@@ -751,21 +751,30 @@ function mdToPlain(md) {
     s = s.replace(/```[\s\S]*?```/g, " ");
     s = s.replace(/!\[[^\]]*\]\([^)]*\)/g, "");
     s = s.replace(/\[([^\]]*)\]\([^)]*\)/g, "$1");
-    s = s.split("\n").map(function (line) {
-        return line.replace(/^\s{0,3}(#{1,6}\s*|>\s?|[-*+]\s+|\d+\.\s+)/, "")
-            .replace(/\*\*([^*]+)\*\*/g, "$1")
-            .replace(/`([^`]*)`/g, "$1")
-            .replace(/^\s*[-=]{3,}\s*$/, "")
-            .trim();
-    }).filter(function (x) { return x !== ""; }).join("\n");
-    return s.slice(0, 1200);
+    var lines = s.split("\n");
+    var out = [];
+    for (var i = 0; i < lines.length; i++) {
+        var line = String(lines[i]).replace(/^\s+|\s+$/g, "");
+        if (!line) continue;
+        if (/^#{1,6}\s/.test(line)) continue;
+        if (/^>/.test(line)) continue;
+        if (/^[-=*_]{3,}$/.test(line)) continue;
+        line = line.replace(/^[-*+]\s+/, "").replace(/^\d+\.\s+/, "");
+        line = line.replace(/\*\*([^*]+)\*\*/g, "$1").replace(/`([^`]*)`/g, "$1");
+        out.push(line);
+        if (out.length >= 6) break;
+    }
+    return out.join("\n").slice(0, 900);
 }
 // 拉取最新 Release（带 6h 缓存，缓存存在 state.update_cache）
-async function fetchLatestRelease(state) {
+async function fetchLatestRelease(state, opts) {
     try {
         var now = Date.now();
         var cache = state && state.update_cache;
-        if (cache && cache.checked_at && (now - cache.checked_at) < UPDATE_TTL_MS && cache.latest) {
+        var cacheFresh = !!(cache && cache.checked_at && (now - cache.checked_at) < UPDATE_TTL_MS && cache.latest);
+        // 发版后：缓存里的版本比当前版本还旧 → 视为失效，重新拉
+        if (cacheFresh && cmpVersion(cache.latest.tag, CURRENT_VERSION) < 0) cacheFresh = false;
+        if (cacheFresh && !(opts && opts.force)) {
             return { cached: true, release: cache.latest };
         }
         var client = createHttpClient(15000);
@@ -777,12 +786,13 @@ async function fetchLatestRelease(state) {
         var resp = await req.execute();
         if (!resp.isSuccessful()) return { cached: false, error: "HTTP " + resp.code() };
         var data = resp.json() || {};
-        var assetUrl = "", assetName = "";
+        var assetUrl = "", assetName = "", assetSize = 0;
         var assets = Array.isArray(data.assets) ? data.assets : [];
         for (var i = 0; i < assets.length; i++) {
             if (assets[i] && /\.toolpkg$/i.test(String(assets[i].name || ""))) {
                 assetUrl = assets[i].browser_download_url || "";
                 assetName = assets[i].name || "";
+                assetSize = assets[i].size || 0;
                 break;
             }
         }
@@ -792,7 +802,7 @@ async function fetchLatestRelease(state) {
             body: mdToPlain(String(data.body || "")),
             url: String(data.html_url || ""),
             published_at: String(data.published_at || ""),
-            asset_url: assetUrl,
+            asset_url: assetUrl, asset_size: assetSize,
             asset_name: assetName
         };
         if (state) { state.update_cache = { checked_at: now, latest: rel }; await saveState(state); }
@@ -2342,7 +2352,7 @@ exports.enter_running = async function (params) {
 exports.check_update = async function (params) {
     var formula = await loadFormula();
     var state = await loadState();
-    var r = await fetchLatestRelease(state);
+    var r = await fetchLatestRelease(state, { force: !!(params && params.force) });
     if (r.error) { complete({ success: false, message: "检查更新失败：" + r.error }); return; }
     var rel = r.release || {};
     var has = cmpVersion(rel.tag, CURRENT_VERSION) > 0;
@@ -2361,29 +2371,57 @@ exports.check_update = async function (params) {
 
 exports.download_update = async function (params) {
     var state = await loadState();
-    var r = await fetchLatestRelease(state);
+    var needForce = !!(params && params.force);
+    var r = await fetchLatestRelease(state, { force: needForce });
     if (r.error) { complete({ success: false, message: "检查更新失败：" + r.error }); return; }
     var rel = r.release || {};
     if (!rel.asset_url) { complete({ success: false, message: "该版本没有可下载的 .toolpkg 资产" }); return; }
-    try {
-        var client = createHttpClient(120000);
-        var req = client.newRequest().url(rel.asset_url).method("GET").headers({ "User-Agent": "Operit/on_air" }).build();
-        var resp = await req.execute();
-        if (!resp.isSuccessful()) { complete({ success: false, message: "下载失败：HTTP " + resp.code() }); return; }
-        var bytes = null;
-        try { bytes = resp.bytes(); } catch (e1) { bytes = null; }
-        if (!bytes) { complete({ success: false, message: "下载失败：拿不到二进制内容" }); return; }
-        var dir = "/storage/emulated/0/Download/Operit/";
-        var fileName = rel.asset_name || ("com.operit.on_air-" + rel.tag + ".toolpkg");
-        var path = dir + fileName;
-        try { await Tools.Files.mkdir(dir); } catch (e2) { /* 已存在无妨 */ }
-        await Tools.Files.write(path, bytes);
-        complete({ success: true, message: "更新包已下载", data: { path: path, size: bytes.length, version: rel.tag } });
-    } catch (e) {
-        complete({ success: false, message: "下载出错：" + String((e && e.message) || e) });
-    }
-};
+    var dir = "/storage/emulated/0/Download/Operit/";
+    var fileName = rel.asset_name || ("com.operit.on_air-" + rel.tag + ".toolpkg");
+    var path = dir + fileName;
+    var part = path + ".part";
+    try { await Tools.Files.mkdir(dir); } catch (e0) { /* 已存在无妨 */ }
 
+    var lastErr = "";
+    var maxTry = 3;
+    for (var attempt = 1; attempt <= maxTry; attempt++) {
+        try {
+            var client = createHttpClient(120000);
+            var req = client.newRequest().url(rel.asset_url).method("GET").headers({ "User-Agent": "Operit/on_air" }).build();
+            var resp = await req.execute();
+            if (!resp.isSuccessful()) {
+                var code = resp.code();
+                if (code === 404) {
+                    complete({ success: false, message: "下载失败：404（该版本的资产没上传到 Release）" });
+                    return;
+                }
+                lastErr = (code === 403) ? "403（GitHub 限流，稍后再试）" : ("HTTP " + code);
+                throw new Error(lastErr);
+            }
+            var bytes = null;
+            try { bytes = resp.bytes(); } catch (e1) { bytes = null; }
+            if (!bytes || !bytes.length) throw new Error("拿不到二进制内容（空响应）");
+            if (rel.asset_size && bytes.length !== rel.asset_size) {
+                throw new Error("文件不完整（收到 " + bytes.length + " / 应为 " + rel.asset_size + " 字节）");
+            }
+            // 先写 .part，校验大小后再改名，避免留下半个包
+            try { await Tools.Files.deleteFile(part); } catch (e2) { /* 无旧残留 */ }
+            await Tools.Files.write(part, bytes);
+            try { await Tools.Files.deleteFile(path); } catch (e3) { /* 没有旧文件 */ }
+            await Tools.Files.move(part, path);
+            complete({ success: true, message: "更新包已下载", data: { path: path, size: bytes.length, version: rel.tag, attempts: attempt } });
+            return;
+        } catch (e) {
+            lastErr = String((e && e.message) || e);
+            if (/ENOSPC|No space|space left|磁盘/i.test(lastErr)) lastErr = "磁盘空间不足，清理后重试（明细：" + lastErr + "）";
+            try { await Tools.Files.deleteFile(part); } catch (e4) { /* 清理残包 */ }
+            if (attempt < maxTry) {
+                try { await new Promise(function (res) { setTimeout(res, attempt * 2000); }); } catch (e5) { /* 无 setTimeout 就不等 */ }
+            }
+        }
+    }
+    complete({ success: false, message: "下载失败（已重试 " + maxTry + " 次）：" + lastErr });
+};
 exports.skip_update = async function (params) {
     var formula = await loadFormula();
     var v = String((params && params.version) || "");
