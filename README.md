@@ -2,7 +2,7 @@
 
 [English](README.en.md)
 
-> **当前发布状态**：测试版 v1.8.2-beta（Pre-release），功能可用但仍在打磨，欢迎反馈。
+> **当前发布状态**：测试版 v2.2.1+2（Pre-release），功能可用但仍在打磨，欢迎反馈。
 
 > **创作声明**：本项目为"新手 AI 创作"——由新手开发者与 AI 助手协作开发，代码与文档尚在成长中，欢迎指正、提 Issue 或 PR。
 
@@ -70,7 +70,6 @@ formula.example.json               # 配置示例（复制为 formula.json 使�
 | max_wake_stops | 连续命中主动消息停止上限 |
 | character_card_name | 唤醒时按名字定位的角色卡；留空跟随当前对话 |
 | awake_messages | 自定义话术库（每行一句） |
-| ai_gateway | 可选：直调大模型接口自产话术 |
 | quiet_enabled | 静默总开关（时段静默） |
 | quiet_day_enabled / quiet_night_enabled | 白天段 / 夜间段独立开关 |
 | quiet_day_start / quiet_day_end | 白天段起止 HH:MM（默认 09:00~18:00） |
@@ -104,6 +103,13 @@ formula.example.json               # 配置示例（复制为 formula.json 使�
 | maybe_awake | 运行态掷骰，命中才发消息 | `on_air:maybe_awake` |
 | enter_running | 进入运行态并启动累加 | `on_air:enter_running` |
 | api_docs | 返回全部工具的 API 文档 | `on_air:api_docs` |
+| check_update | 检查远端是否有新版本（支持 Beta） | `on_air:check_update {force:true}` |
+| download_update | 下载最新 .toolpkg 到 Download/Operit | `on_air:download_update {force:true}` |
+| get_download_status | 读取下载进度/结果 | `on_air:get_download_status` |
+| skip_update | 跳过某个版本 | `on_air:skip_update {version:"2.2.1+2"}` |
+| open_url | 用浏览器打开链接 | `on_air:open_url {url:"https://…"}` |
+| get_chats | 列出本机对话（供多选目标对话） | `on_air:get_chats` |
+| get_character_cards | 列出本机角色卡（仅工具侧，面板已不再使用） | `on_air:get_character_cards` |
 
 所有工具统一返回 `{success, message, data}`；参数传对象，除标注必填外均可省略。
 

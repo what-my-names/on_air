@@ -1,5 +1,6 @@
 function Screen(ctx) {
-    // ===== 工具调用辅助（与其它页一致）=====
+    // 给主题色加透明度：#RRGGBB -> #AARRGGBB（不依赖 backgroundAlpha）
+        // ===== 工具调用辅助（与其它页一致）=====
     function unwrapRaw(o) {
         if (!o || typeof o !== "object") return o;
         var keys = [];
@@ -48,7 +49,7 @@ function Screen(ctx) {
     var surface = scheme.surface || "#FFFFFF";
     var surfaceVariant = scheme.surfaceVariant || "#F2F2F2";
     var cardBg = scheme.surfaceContainerHigh || surfaceVariant;
-    var innerBg = scheme.surfaceContainerLow || surface;
+    var innerBg = scheme.surfaceContainerLow || scheme.surface || "#FFFFFF";   // 直接兜底，不依赖局部变量
     var primary = scheme.primary || "#222222";
     var onPrimary = scheme.onPrimary || "#FFFFFF";
     var primaryContainer = scheme.primaryContainer || primary;
@@ -149,7 +150,7 @@ function Screen(ctx) {
         var box = [];
         box.push(ctx.UI.Text({ text: title, style: "titleSmall", fontWeight: "bold", color: primary }));
         for (var i = 0; i < bodyArr.length; i++) { box.push(bodyArr[i]); }
-        return ctx.UI.Card({ containerColor: cardBg, backgroundColor: cardBg, shape: { cornerRadius: 16, type: "rounded" }, padding: 0, elevation: 0, fillMaxWidth: true }, [
+        return ctx.UI.Card({ containerColor: cardBg, border: { width: 1, color: scheme.outline || surfaceVariant }, backgroundColor: cardBg, shape: { cornerRadius: 16, type: "rounded" }, padding: 0, elevation: 0, fillMaxWidth: true }, [
             ctx.UI.Column({ backgroundColor: cardBg, fillMaxWidth: true, padding: 16, spacing: 16 }, box)
         ]);
     }
@@ -165,12 +166,12 @@ function Screen(ctx) {
         return ctx.UI.Button({ contentColor: onPrimary, color: onPrimary, textColor: onPrimary, containerColor: primary, shape: { cornerRadius: 10, type: "rounded" }, text: label, fillMaxWidth: true, onClick: onTap });
     }
     function softBtn(label, onTap) {
-        return ctx.UI.Button({ contentColor: onSurface, color: onSurface, textColor: onSurface, containerColor: surface, shape: { cornerRadius: 10, type: "rounded" }, text: label, fillMaxWidth: true, onClick: onTap });
+        return ctx.UI.Button({ contentColor: onSurface, color: onSurface, textColor: onSurface, containerColor: surfaceVariant, shape: { cornerRadius: 10, type: "rounded" }, text: label, fillMaxWidth: true, onClick: onTap });
     }
     function softBtnRow(items) {
         var btns = [];
         for (var i = 0; i < items.length; i++) {
-            btns.push(ctx.UI.Button({ contentColor: onSurface, color: onSurface, textColor: onSurface, containerColor: surface, shape: { cornerRadius: 10, type: "rounded" }, text: items[i][0], weight: 1, onClick: items[i][1] }));
+            btns.push(ctx.UI.Button({ contentColor: onSurface, color: onSurface, textColor: onSurface, containerColor: surfaceVariant, shape: { cornerRadius: 10, type: "rounded" }, text: items[i][0], weight: 1, onClick: items[i][1] }));
         }
         return ctx.UI.Row({ spacing: 8, fillMaxWidth: true }, btns);
     }
@@ -190,7 +191,7 @@ function Screen(ctx) {
         ]);
     }
     var children = [];
-    children.push(ctx.UI.Text({ text: "控制台", style: "headlineSmall", fontWeight: "bold", color: onSurface }));
+    children.push(ctx.UI.Text({ text: "控制台", fontSize: 24, fontWeight: "bold", color: primary }));
     children.push(note("这里是别处点不到的 API。常用操作在主页，常规配置在参数 / 免打扰 / 日期页。"));
     if (errMsg) {
         children.push(ctx.UI.Card({ containerColor: errContainer, backgroundColor: errContainer, shape: { cornerRadius: 12, type: "rounded" }, padding: 0, elevation: 0, fillMaxWidth: true }, [
@@ -235,7 +236,7 @@ function Screen(ctx) {
     children.push(card("四、API 清单与文档", g4));
     children.push(softBtn("返回主页", goHome));
     if (msg) {
-        children.push(ctx.UI.Card({ containerColor: cardBg, backgroundColor: cardBg, shape: { cornerRadius: 12, type: "rounded" }, padding: 0, elevation: 0, fillMaxWidth: true }, [
+        children.push(ctx.UI.Card({ containerColor: cardBg, border: { width: 1, color: scheme.outline || surfaceVariant }, backgroundColor: cardBg, shape: { cornerRadius: 12, type: "rounded" }, padding: 0, elevation: 0, fillMaxWidth: true }, [
             ctx.UI.Row({ backgroundColor: cardBg, fillMaxWidth: true, padding: 12 }, [
                 ctx.UI.Text({ text: msg, style: "bodyMedium", color: onSurface, weight: 1 })
             ])

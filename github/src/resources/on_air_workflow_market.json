@@ -25,16 +25,16 @@
       "triggerType": "schedule",
       "triggerConfig": {
         "schedule_type": "interval",
-        "interval_ms": "60000",
-        "repeat": "true",
-        "enabled": "true"
+        "interval_ms": 60000,
+        "repeat": true,
+        "enabled": true
       }
     },
     {
       "__type": "com.ai.assistance.operit.data.model.ExecuteNode",
       "id": "n1_inc",
       "name": "x累加1",
-      "description": "运行态每分钟把 x 累加1，并自动标记运行态、解除冷却",
+      "description": "运行态每分钟把 x 累加 1（冷却不再由这里解除）",
       "position": {
         "x": -450.0,
         "y": 60.0
@@ -64,9 +64,9 @@
       "triggerType": "schedule",
       "triggerConfig": {
         "schedule_type": "interval",
-        "interval_ms": "900000",
-        "repeat": "true",
-        "enabled": "true"
+        "interval_ms": 900000,
+        "repeat": true,
+        "enabled": true
       }
     },
     {
@@ -79,12 +79,7 @@
         "y": 320.0
       },
       "actionType": "on_air:check_activity",
-      "actionConfig": {
-        "threshold_minutes": {
-          "__type": "com.ai.assistance.operit.data.model.ParameterValue.StaticValue",
-          "value": "10"
-        }
-      }
+      "actionConfig": {}
     },
     {
       "__type": "com.ai.assistance.operit.data.model.ExtractNode",
@@ -130,6 +125,17 @@
         "y": 320.0
       },
       "actionType": "on_air:enter_running"
+    },
+    {
+      "__type": "com.ai.assistance.operit.data.model.ExecuteNode",
+      "id": "n1_mrun",
+      "name": "手动触发·进入运行态",
+      "description": "手动触发时先把 running 置为 true，否则后面的掷骰会因空闲态空转",
+      "position": {
+        "x": -675.0,
+        "y": 360.0
+      },
+      "actionType": "on_air:enter_running"
     }
   ],
   "connections": [
@@ -142,7 +148,7 @@
     {
       "id": "c1manual",
       "sourceNodeId": "n1_manual",
-      "targetNodeId": "n1_inc",
+      "targetNodeId": "n1_mrun",
       "condition": "on_success"
     },
     {
@@ -174,6 +180,12 @@
       "sourceNodeId": "n3_cond",
       "targetNodeId": "n3_run",
       "condition": "true"
+    },
+    {
+      "id": "c1m2",
+      "sourceNodeId": "n1_mrun",
+      "targetNodeId": "n1_awake",
+      "condition": "on_success"
     }
   ]
 }

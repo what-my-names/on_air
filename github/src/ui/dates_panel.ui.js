@@ -1,6 +1,6 @@
 function Screen(ctx) {
-
-    // ===== 工具调用辅助（v1.9.2）：兼容 UI 侧 callTool 返回（字符串/对象/裸数据）=====
+    // 给主题色加透明度：#RRGGBB -> #AARRGGBB（不依赖 backgroundAlpha）
+        // ===== 工具调用辅助（v1.9.2）：兼容 UI 侧 callTool 返回（字符串/对象/裸数据）=====
     function unwrapRaw(o) {
         if (!o || typeof o !== "object") return o;
         var keys = [];
@@ -58,6 +58,7 @@ function Screen(ctx) {
     var schS = ctx.useState("s_sch", false); var schoolAuto = schS[0], setSchoolAuto = schS[1];
     var stuS = ctx.useState("s_stu", true); var studentMode = stuS[0], setStudentMode = stuS[1];
     var msgS = ctx.useState("s_msg", ""); var msg = msgS[0], setMsg = msgS[1];
+    var errS2 = ctx.useState("s_err", ""); var errMsg = errS2[0], setErrMsg = errS2[1];
     var loadedS = ctx.useState("s_loaded", false); var loaded = loadedS[0], setLoaded = loadedS[1];
 
     function pad2(n) { return (n < 10 ? "0" : "") + n; }
@@ -75,7 +76,7 @@ function Screen(ctx) {
                 setSchoolAuto(!!d.school_day_auto_quiet);
                 setStudentMode(d.student_mode !== false);
             }
-        } catch (e) {}
+        } catch (e) { setErrMsg("读取失败：" + String((e && e.message) || e)); }
         setLoaded(true);
     }
 
@@ -83,12 +84,18 @@ function Screen(ctx) {
         var next = {};
         for (var k in quietDates) { if (quietDates[k] === "full") next[k] = "full"; }
         if (next[key]) { delete next[key]; } else { next[key] = "full"; }
+        var prevDates = quietDates || {};   // NU6：失败时要回滚
         setQuietDates(next);
         setBusy(true);
         try {
             var r = await callTool("on_air:update_formula", { quiet_dates: JSON.stringify(next) });
-            setMsg(r && r.success ? (key + (r.data && r.data.quiet_dates && r.data.quiet_dates[key] ? " 已设为全天静默" : " 已取消静默")) : ("保存失败：" + ((r && r.message) || "")));
-        } catch (e) { setMsg("出错：" + String((e && e.message) || e)); }
+            if (r && r.success) {
+                setMsg(key + (r.data && r.data.quiet_dates && r.data.quiet_dates[key] ? " 已设为全天静默" : " 已取消静默"));
+            } else {
+                setQuietDates(prevDates);
+                setMsg("保存失败：" + ((r && r.message) || ""));
+            }
+        } catch (e) { setQuietDates(prevDates); setMsg("出错：" + String((e && e.message) || e)); }
         setBusy(false);
     }
 
@@ -122,7 +129,10 @@ function Screen(ctx) {
     while (cells.length % 7 !== 0) cells.push(null);
 
     var children = [];
-    children.push(ctx.UI.Text({ text: "日期静默", style: "titleMedium", fontWeight: "semiBold", color: onSurface }));
+    if (errMsg) {
+        children.push(ctx.UI.Text({ text: errMsg, style: "bodySmall", color: (scheme.error || "#B00020") }));
+    }
+    children.push(ctx.UI.Text({ text: "日期静默", fontSize: 24, fontWeight: "bold", color: primary }));
     children.push(ctx.UI.Text({ text: "点选日期 = 全天硬静默（不因设备活动解除）；蓝色=已静默", style: "bodySmall", color: onSurfaceVariant }));
 
     var head = [];
@@ -149,7 +159,7 @@ function Screen(ctx) {
         }
         head.push(ctx.UI.Row({ spacing: 4, fillMaxWidth: true }, rowKids));
     }
-    children.push(ctx.UI.Card({ containerColor: surfaceVariant, backgroundColor: surfaceVariant, shape: { cornerRadius: 16, type: "rounded" }, padding: 0, elevation: 0, fillMaxWidth: true }, [
+    children.push(ctx.UI.Card({ containerColor: surfaceVariant, border: { width: 1, color: scheme.outline || surfaceVariant }, backgroundColor: surfaceVariant, shape: { cornerRadius: 16, type: "rounded" }, padding: 0, elevation: 0, fillMaxWidth: true }, [
         ctx.UI.Column({ backgroundColor: surfaceVariant, fillMaxWidth: true, padding: 14, spacing: 6 }, head)
     ]));
 
@@ -158,14 +168,14 @@ function Screen(ctx) {
     flags.push(ctx.UI.Button({ contentColor: onSurface, color: onSurface, textColor: onSurface, containerColor: schoolAuto ? primary : surfaceVariant, shape: { cornerRadius: 12, type: "rounded" }, text: schoolAuto ? "上学日自动静默：开" : "上学日自动静默：关", fillMaxWidth: true, onClick: function () { var v = !schoolAuto; setSchoolAuto(v); saveFlag({ school_day_auto_quiet: v }, v ? "上学日静默已开启" : "上学日静默已关闭"); } }));
     flags.push(ctx.UI.Button({ contentColor: onSurface, color: onSurface, textColor: onSurface, containerColor: studentMode ? primary : surfaceVariant, shape: { cornerRadius: 12, type: "rounded" }, text: studentMode ? "学生模式：开（寒暑假算特殊日）" : "学生模式：关（成年人）", fillMaxWidth: true, onClick: function () { var v = !studentMode; setStudentMode(v); saveFlag({ student_mode: v }, v ? "学生模式已开启" : "学生模式已关闭"); } }));
     flags.push(ctx.UI.Text({ text: holFetch ? ("节假日表更新于 " + holFetch + "，共 " + holidays.length + " 天") : "节假日表尚未联网更新（暂用内置表）", style: "bodySmall", color: onSurfaceVariant }));
-    flags.push(ctx.UI.Button({ contentColor: onSurface, color: onSurface, textColor: onSurface, containerColor: surfaceVariant, shape: { cornerRadius: 12, type: "rounded" }, text: busy ? "处理中…" : "立即更新节假日表", fillMaxWidth: true, onClick: doFetchHolidays }));
-    children.push(ctx.UI.Card({ containerColor: surfaceVariant, backgroundColor: surfaceVariant, shape: { cornerRadius: 16, type: "rounded" }, padding: 0, elevation: 0, fillMaxWidth: true }, [
+    flags.push(ctx.UI.Button({ contentColor: onSurface, color: onSurface, textColor: onSurface, containerColor: surfaceVariant, shape: { cornerRadius: 12, type: "rounded" }, text: "立即更新节假日表", fillMaxWidth: true, onClick: doFetchHolidays }));
+    children.push(ctx.UI.Card({ containerColor: surfaceVariant, border: { width: 1, color: scheme.outline || surfaceVariant }, backgroundColor: surfaceVariant, shape: { cornerRadius: 16, type: "rounded" }, padding: 0, elevation: 0, fillMaxWidth: true }, [
         ctx.UI.Column({ backgroundColor: surfaceVariant, fillMaxWidth: true, padding: 14, spacing: 6 }, flags)
     ]));
 
     children.push(ctx.UI.Button({ contentColor: onSurface, color: onSurface, textColor: onSurface, containerColor: surfaceVariant, shape: { cornerRadius: 12, type: "rounded" }, text: "返回主页", fillMaxWidth: true, onClick: goHome }));
     if (msg) {
-        children.push(ctx.UI.Card({ containerColor: surfaceVariant, backgroundColor: surfaceVariant, shape: { cornerRadius: 16, type: "rounded" }, padding: 0, elevation: 0, fillMaxWidth: true }, [
+        children.push(ctx.UI.Card({ containerColor: surfaceVariant, border: { width: 1, color: scheme.outline || surfaceVariant }, backgroundColor: surfaceVariant, shape: { cornerRadius: 16, type: "rounded" }, padding: 0, elevation: 0, fillMaxWidth: true }, [
             ctx.UI.Row({ backgroundColor: surfaceVariant, fillMaxWidth: true, padding: 14, verticalAlignment: "center" }, [
                 ctx.UI.Text({ text: msg, style: "bodyMedium", color: onSurface, weight: 1 })
             ])
