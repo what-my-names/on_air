@@ -33,6 +33,7 @@ function Screen(ctx) {
   var msg = msgState[0];
   var setMsg = msgState[1];
   var updS = ctx.useState("upd", ""); var updRaw = updS[0], setUpd = updS[1];
+  var updOpenS = ctx.useState("x_upd_open", false); var updOpen = updOpenS[0], setUpdOpen = updOpenS[1];
   var updHideS = ctx.useState("upd_hide", false); var updHide = updHideS[0], setUpdHide = updHideS[1];
   var updMsgS = ctx.useState("upd_msg", ""); var updMsg = updMsgS[0], setUpdMsg = updMsgS[1];
   var updData = {};
@@ -672,25 +673,35 @@ function Screen(ctx) {
 
   // ---- 更新横幅 ----
   if (updData && updData.hasUpdate && !updHide) {
+    var notesShort = (String(updData.notes || "").replace(/\r/g, "").trim() || "（该版本未写更新说明）");
+    notesShort = notesShort.split("\n").filter(function (x) { return String(x).trim() !== ""; }).slice(0, 6).join("\n");
+    var notesFull = String(updData.notes_full || "").replace(/\r/g, "").trim();
+    var canExpand = !!(notesFull && notesFull.length > notesShort.length);
     var banner = [
       ctx.UI.Row({ fillMaxWidth: true, verticalAlignment: "center", spacing: 8 }, [
         ctx.UI.Icon({ name: "SystemUpdate", size: 20, tint: C.primary }),
         ctx.UI.Text({ text: "发现新版本 " + String(updData.latest || ""), fontSize: 15, fontWeight: "bold", color: C.primary, maxLines: 1 }),
         ctx.UI.Text({ text: "当前 v" + String(updData.current || ""), fontSize: 11, color: C.dim, maxLines: 1 })
       ]),
-      ctx.UI.Text({ text: (String(updData.notes || "").replace(/\r/g, "").trim() || "（该版本未写更新说明）").split("\n").filter(function (x) { return String(x).trim() !== ""; }).slice(0, 6).join("\n"), fontSize: 12, color: C.text }),
-      ctx.UI.Row({ spacing: 8, fillMaxWidth: true }, [
-        ctx.UI.Button({ containerColor: C.primary, contentColor: C.onPrimary, shape: { cornerRadius: 12, type: "rounded" }, text: "下载更新包", onClick: doDownloadUpdate, fillMaxWidth: true, weight: 1 }),
-        ctx.UI.Button({ containerColor: C.card, contentColor: C.text, shape: { cornerRadius: 12, type: "rounded" }, text: "稍后", onClick: function () { setUpdHide(true); }, weight: 1 }),
-        ctx.UI.Button({ containerColor: C.card, contentColor: C.text, shape: { cornerRadius: 12, type: "rounded" }, text: "跳过此版本", onClick: doSkipUpdate, weight: 1 })
-      ])
+      ctx.UI.Text({ text: notesShort, fontSize: 12, color: C.text })
     ];
+    if (canExpand) {
+      banner.push(ctx.UI.Row({ fillMaxWidth: true, horizontalArrangement: "spaceBetween", verticalAlignment: "center", padding: { vertical: 2 }, onClick: function () { setUpdOpen(!updOpen); } }, [
+        ctx.UI.Text({ text: updOpen ? "收起完整说明" : "展开完整说明（含技术实现）", fontSize: 11, color: C.primary }),
+        ctx.UI.Icon({ name: updOpen ? "ExpandLess" : "ExpandMore", size: 18, tint: C.primary })
+      ]));
+      if (updOpen) banner.push(ctx.UI.Text({ text: notesFull, fontSize: 12, color: C.dim }));
+    }
+    banner.push(ctx.UI.Row({ spacing: 8, fillMaxWidth: true }, [
+      ctx.UI.Button({ containerColor: C.primary, contentColor: C.onPrimary, shape: { cornerRadius: 12, type: "rounded" }, text: "下载更新包", onClick: doDownloadUpdate, fillMaxWidth: true, weight: 1 }),
+      ctx.UI.Button({ containerColor: C.card, contentColor: C.text, shape: { cornerRadius: 12, type: "rounded" }, text: "稍后", onClick: function () { setUpdHide(true); }, weight: 1 }),
+      ctx.UI.Button({ containerColor: C.card, contentColor: C.text, shape: { cornerRadius: 12, type: "rounded" }, text: "跳过此版本", onClick: doSkipUpdate, weight: 1 })
+    ]));
     if (updMsg) banner.push(ctx.UI.Text({ text: updMsg, fontSize: 12, color: C.dim }));
     children.push(ctx.UI.Card({ containerColor: C.soft, shape: { cornerRadius: 16, type: "rounded" }, border: { width: 1, color: C.primary, alpha: 0.4 }, elevation: 0, fillMaxWidth: true }, [
       ctx.UI.Column({ padding: 14, spacing: 10, fillMaxWidth: true }, banner)
     ]));
   }
-
   // ---- 主状态卡 ----
   var yTxt = (stY != null) ? String(stY) : "--";
   var xTxt = (stX != null) ? String(stX) : "--";

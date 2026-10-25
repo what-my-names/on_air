@@ -773,6 +773,25 @@ function mdToPlain(md) {
     }
     return out.join("\n").slice(0, 900);
 }
+function mdToPlainAll(md) {
+    var s = String(md || "").replace(/\r/g, "");
+    s = s.replace(/```[\s\S]*?```/g, " ");
+    s = s.replace(/!\[[^\]]*\]\([^)]*\)/g, "");
+    s = s.replace(/\[([^\]]*)\]\([^)]*\)/g, "$1");
+    var lines = s.split("\n");
+    var out = [];
+    for (var i = 0; i < lines.length; i++) {
+        var line = String(lines[i]).replace(/^\s+|\s+$/g, "");
+        if (!line) { if (out.length && out[out.length - 1] !== "") out.push(""); continue; }
+        if (/^[-=*_]{3,}$/.test(line)) continue;
+        line = line.replace(/^#{1,6}\s*/, "").replace(/^>\s?/, "");
+        line = line.replace(/^[·•]\s*/, "").replace(/^[-*+]\s+/, "").replace(/^\d+\.\s+/, "");
+        line = line.replace(/\*\*([^*]+)\*\*/g, "$1").replace(/`([^`]*)`/g, "$1");
+        out.push(line);
+    }
+    return out.join("\n").replace(/\n{3,}/g, "\n\n").slice(0, 2000);
+}
+
 // 拉取最新 Release（带 6h 缓存，缓存存在 state.update_cache）
 async function fetchLatestRelease(state, opts) {
     try {
@@ -807,6 +826,7 @@ async function fetchLatestRelease(state, opts) {
             tag: String(data.tag_name || ""),
             name: String(data.name || ""),
             body: mdToPlain(String(data.body || "")),
+            body_full: mdToPlainAll(String(data.body || "")),
             url: String(data.html_url || ""),
             published_at: String(data.published_at || ""),
             asset_url: assetUrl, asset_size: assetSize,
@@ -2369,7 +2389,7 @@ exports.check_update = async function (params) {
         message: has ? ("发现新版本 " + rel.tag) : ("已是最新版本 v" + CURRENT_VERSION),
         data: {
             hasUpdate: has, skipped: skipped, current: CURRENT_VERSION,
-            latest: rel.tag, name: rel.name, notes: rel.body, url: rel.url,
+            latest: rel.tag, name: rel.name, notes: rel.body, notes_full: (rel.body_full || rel.body), url: rel.url,
             published_at: rel.published_at,
             asset_url: rel.asset_url, asset_name: rel.asset_name, cached: !!r.cached
         }
