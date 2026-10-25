@@ -748,18 +748,25 @@ function cmpVersion(a, b) {
 // 把 Release 的 Markdown 正文转成纯文本（面板不支持 Markdown 渲染）
 function mdToPlain(md) {
     var s = String(md || "").replace(/\r/g, "");
+    // 只取【更新内容】段落（到下一个【标题】为止）；没有标记则全文明细
+    var i = s.indexOf("【更新内容】");
+    if (i >= 0) {
+        s = s.slice(i + "【更新内容】".length);
+        var j = s.indexOf("【");
+        if (j >= 0) s = s.slice(0, j);
+    }
     s = s.replace(/```[\s\S]*?```/g, " ");
     s = s.replace(/!\[[^\]]*\]\([^)]*\)/g, "");
     s = s.replace(/\[([^\]]*)\]\([^)]*\)/g, "$1");
     var lines = s.split("\n");
     var out = [];
-    for (var i = 0; i < lines.length; i++) {
-        var line = String(lines[i]).replace(/^\s+|\s+$/g, "");
+    for (var k = 0; k < lines.length; k++) {
+        var line = String(lines[k]).replace(/^\s+|\s+$/g, "");
         if (!line) continue;
         if (/^#{1,6}\s/.test(line)) continue;
         if (/^>/.test(line)) continue;
         if (/^[-=*_]{3,}$/.test(line)) continue;
-        line = line.replace(/^[-*+]\s+/, "").replace(/^\d+\.\s+/, "");
+        line = line.replace(/^[·•]\s*/, "").replace(/^[-*+]\s+/, "").replace(/^\d+\.\s+/, "");
         line = line.replace(/\*\*([^*]+)\*\*/g, "$1").replace(/`([^`]*)`/g, "$1");
         out.push(line);
         if (out.length >= 6) break;
