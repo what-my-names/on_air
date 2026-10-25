@@ -129,6 +129,11 @@ METADATA
             "parameters": []
         },
         {
+            "name": "get_download_status",
+            "description": { "zh": "查询下载进度与结果（已下载/总大小/百分比/失败原因），UI 重开后仍可读", "en": "Query download progress and result" },
+            "parameters": []
+        },
+        {
             "name": "skip_update",
             "description": { "zh": "跳过指定版本：记录后同一版本不再提示更新", "en": "Skip a specific version so it won't be prompted again" },
             "parameters": [
@@ -140,6 +145,14 @@ METADATA
             "description": { "zh": "立即联网拉取今年+明年法定节假日（普通HTTP请求，零token消耗），更新内置节假日表并记录拉取日期。平时每天12点后会自动拉一次，此工具供手动更新/调试", "en": "Manually fetch official holidays (this year + next) via plain HTTP, update built-in holiday list" },
             "parameters": []
         },
+        {
+            "name": "open_url",
+            "description": { "zh": "用系统浏览器打开 http(s) 链接", "en": "Open an http(s) URL in browser" },
+            "parameters": [ { "name": "url", "type": "string", "description": "http(s) 链接", "required": true } ]
+        },
+        
+        
+        
         {
             "name": "api_docs",
             "description": { "zh": "返回全部工具的 API 文档（名称、参数、返回格式、调用示例），供其他插件/工作流接入", "en": "Return full API docs of all tools for other plugins" },
@@ -721,11 +734,12 @@ function createHttpClient(timeoutMs) {
     var t = (typeof timeoutMs === "number" && timeoutMs > 0) ? timeoutMs : 3e4;
     return OkHttp.newBuilder()
         .connectTimeout(t).readTimeout(t).writeTimeout(t)
+        .followRedirects(true)
         .build();
 }
 
 // ==================== v2.2.0：GitHub Release 更新检测 ====================
-var CURRENT_VERSION = "2.2.1";  // 每次发布同步修改
+var CURRENT_VERSION = "2.2.2";  // 每次发布同步修改
 var UPDATE_REPO = "what-my-names/on_air";
 var UPDATE_API = "https://api.github.com/repos/" + UPDATE_REPO + "/releases/latest";
 var UPDATE_TTL_MS = 6 * 60 * 60 * 1000; // 6 小时缓存
@@ -812,13 +826,14 @@ async function fetchLatestRelease(state, opts) {
         var resp = await req.execute();
         if (!resp.isSuccessful()) return { cached: false, error: "HTTP " + resp.code() };
         var data = resp.json() || {};
-        var assetUrl = "", assetName = "", assetSize = 0;
+        var assetUrl = '', assetName = '', assetSize = 0, assetId = 0;
         var assets = Array.isArray(data.assets) ? data.assets : [];
         for (var i = 0; i < assets.length; i++) {
             if (assets[i] && /\.toolpkg$/i.test(String(assets[i].name || ""))) {
                 assetUrl = assets[i].browser_download_url || "";
                 assetName = assets[i].name || "";
                 assetSize = assets[i].size || 0;
+                assetId = assets[i].id || 0;
                 break;
             }
         }
@@ -829,7 +844,7 @@ async function fetchLatestRelease(state, opts) {
             body_full: mdToPlainAll(String(data.body || "")),
             url: String(data.html_url || ""),
             published_at: String(data.published_at || ""),
-            asset_url: assetUrl, asset_size: assetSize,
+            asset_url: assetUrl, asset_size: assetSize, asset_id: assetId,
             asset_name: assetName
         };
         if (state) { state.update_cache = { checked_at: now, latest: rel }; await saveState(state); }
@@ -1279,6 +1294,7 @@ exports.get_xy = async function (params) {
         message: "当前 x=" + state.x + ", y=" + y + "%",
         data: {
             x: state.x,
+            current_version: CURRENT_VERSION,
             y: y,
             f: Math.round(f * 10) / 10,
             running: state.running,
@@ -2391,63 +2407,185 @@ exports.check_update = async function (params) {
             hasUpdate: has, skipped: skipped, current: CURRENT_VERSION,
             latest: rel.tag, name: rel.name, notes: rel.body, notes_full: (rel.body_full || rel.body), url: rel.url,
             published_at: rel.published_at,
-            asset_url: rel.asset_url, asset_name: rel.asset_name, cached: !!r.cached
+            asset_url: rel.asset_url, asset_name: rel.asset_name, asset_size: rel.asset_size || 0, cached: !!r.cached
+        }
+    });
+};
+
+// ==================== v2.2.2: download state persistence ====================
+function fmtSize(n) {
+    n = Number(n) || 0;
+    if (n >= 1048576) return (Math.round(n / 104857.6) / 10) + ' MB';
+    if (n >= 1024) return Math.round(n / 1024) + ' KB';
+    return n + ' B';
+}
+var __dlBusy = false;
+async function writeDlState(patch) {
+    // 串行化：连点下载时两次写盘会互相覆盖，导致后面的字段丢失
+    while (__dlBusy) { try { await new Promise(function (r) { setTimeout(r, 20); }); } catch (eW) { break; } }
+    __dlBusy = true;
+    try {
+        var state = await loadState();
+        var d = state.download || {};
+        for (var k in patch) { if (Object.prototype.hasOwnProperty.call(patch, k)) d[k] = patch[k]; }
+        d.updated_at = Date.now();
+        state.download = d;
+        await saveState(state);
+        return d;
+    } catch (e) { return null; }
+    finally { __dlBusy = false; }
+}
+async function readDlState() {
+    try { var state = await loadState(); return state.download || null; } catch (e) { return null; }
+}
+exports.get_download_status = async function (params) {
+    var d = await readDlState();
+    if (!d || !d.status || d.status === 'idle') {
+        complete({ success: true, message: '当前没有下载任务', data: { status: 'idle', percent: 0 } });
+        return;
+    }
+    // 先看文件：如果包已完整存在（大小对得上），直接判定完成，不要因为进程重启判成失败
+    var earlyExists = false, earlySize = 0;
+    if (d.path) {
+        try { var ef0 = await Tools.Files.exists(d.path); earlyExists = !!(ef0 && ef0.exists); earlySize = Number(ef0 && ef0.size) || 0; } catch (e0) { }
+    }
+    var dTotal0 = Number(d.total) || 0;
+    if (d.status === 'running' && earlyExists && dTotal0 > 0 && earlySize === dTotal0) {
+        await writeDlState({ status: 'done', received: earlySize, message: '已下载 ' + fmtSize(earlySize) + ' / 共 ' + fmtSize(dTotal0) + ' → ' + d.path });
+        d = await readDlState();
+    }
+    if (d.status === 'running' && d.updated_at && (Date.now() - d.updated_at > 300000)) {
+        await writeDlState({ status: 'failed', message: '上次下载中断了（App 或网络被中断），请重新点下载' });
+        d = await readDlState();
+    }
+    var exists = false, fsize = 0;
+    if (d.path) {
+        try { var fe = await Tools.Files.exists(d.path); exists = !!(fe && fe.exists); fsize = Number(fe && fe.size) || 0; } catch (e) { exists = false; }
+    }
+    if (d.status === 'done' && !exists) {
+        await writeDlState({ status: 'missing', message: '下载的更新包已不在原路径（可能被清理或移走了）' });
+        d = await readDlState();
+    }
+    var total = Number(d.total) || 0;
+    var got = Number(d.received) || 0;
+    var percent = total > 0 ? Math.min(100, Math.floor(got * 100 / total)) : 0;
+    complete({
+        success: true, message: d.message || '',
+        data: {
+            status: d.status, received: got, total: total, percent: percent,
+            received_text: fmtSize(got), total_text: total > 0 ? fmtSize(total) : '大小未知',
+            path: d.path || '', version: d.version || '', attempts: d.attempts || 0,
+            exists: exists, file_size: fsize, updated_at: d.updated_at || 0
         }
     });
 };
 
 exports.download_update = async function (params) {
-    var state = await loadState();
     var needForce = !!(params && params.force);
+    // 连点保护：上一次还在跑就直接回 busy，不重置进度
+    var st0 = await readDlState();
+    if (st0 && st0.status === 'running' && st0.updated_at && (Date.now() - st0.updated_at) < 45000) {
+        complete({ success: false, message: '正在下载中，请等它完成（' + (st0.message || '进行中') + '）', data: { busy: true, status: 'running' } });
+        return;
+    }
+    var state = await loadState();
+    await writeDlState({ status: 'running', received: 0, total: 0, path: '', version: '', attempts: 0, message: '正在获取最新版本信息…', started_at: Date.now() });
     var r = await fetchLatestRelease(state, { force: needForce });
-    if (r.error) { complete({ success: false, message: "检查更新失败：" + r.error }); return; }
+    if (r.error) {
+        await writeDlState({ status: 'failed', message: '检查更新失败：' + r.error + '（还没开始下载，没产生任何文件）' });
+        complete({ success: false, message: '检查更新失败：' + r.error });
+        return;
+    }
     var rel = r.release || {};
-    if (!rel.asset_url) { complete({ success: false, message: "该版本没有可下载的 .toolpkg 资产" }); return; }
-    var dir = "/storage/emulated/0/Download/Operit/";
-    var fileName = rel.asset_name || ("com.operit.on_air-" + rel.tag + ".toolpkg");
+    if (!rel.asset_url) {
+        await writeDlState({ status: 'failed', message: '该版本没有可下载的 .toolpkg 资产（没产生任何文件）' });
+        complete({ success: false, message: '该版本没有可下载的 .toolpkg 资产' });
+        return;
+    }
+    var dir = '/storage/emulated/0/Download/Operit/';
+    var fileName = rel.asset_name || ('com.operit.on_air-' + rel.tag + '.toolpkg');
     var path = dir + fileName;
-    var part = path + ".part";
-    try { await Tools.Files.mkdir(dir); } catch (e0) { /* 已存在无妨 */ }
-
-    var lastErr = "";
-    var maxTry = 3;
+    var part = path + '.part';
+    var total = Number(rel.asset_size) || 0;
+    try { await Tools.Files.mkdir(dir); } catch (e0) { }
+    // 已经有完整包 → 直接算完成，不重复下载（连点、重开都逃不掉）
+    try {
+        var fe0 = await Tools.Files.exists(path);
+        var sz0 = Number(fe0 && fe0.size) || 0;
+        if (fe0 && fe0.exists && total > 0 && sz0 === total) {
+            await writeDlState({ status: 'done', received: sz0, total: total, path: path, version: rel.tag, attempts: 0, message: '已下载 ' + fmtSize(sz0) + ' / 共 ' + fmtSize(total) + ' → ' + path });
+            complete({ success: true, message: '更新包已存在（' + fmtSize(sz0) + '），不用重复下载', data: { path: path, size: sz0, total: total, version: rel.tag, cached_file: true } });
+            return;
+        }
+    } catch (eEx) { }
+    await writeDlState({ status: 'running', received: 0, total: total, path: path, version: rel.tag, attempts: 0, message: '正在连接…（共 ' + (total > 0 ? fmtSize(total) : '大小未知') + '）' });
+    var lastErr = '';
+    var maxTry = 2;
     for (var attempt = 1; attempt <= maxTry; attempt++) {
+        var lastSaveTs = 0;
+        var lastSaveBytes = 0;
         try {
-            var client = createHttpClient(120000);
-            var req = client.newRequest().url(rel.asset_url).method("GET").headers({ "User-Agent": "Operit/on_air" }).build();
+            await writeDlState({ attempts: attempt, received: 0, message: '第 ' + attempt + '/' + maxTry + ' 次尝试：正在连接…' + (total > 0 ? '（共 ' + fmtSize(total) + '）' : '') });
+            var client = createHttpClient(45000);
+            // 下载线路：走 api.github.com 的资产接口（github.com 在当前网络不可达）
+            var dlUrl = rel.asset_id ? ('https://api.github.com/repos/' + UPDATE_REPO + '/releases/assets/' + rel.asset_id) : rel.asset_url;
+            var req = client.newRequest().url(dlUrl).method('GET').headers({ 'User-Agent': 'Operit/on_air', 'Accept': 'application/octet-stream' }).build();
+            // 只发一次请求：不再用 probe 预下载（那会把包下两遍，而且它的字节数是 base64 累计，会报出 132KB 这种假数字）
+            await writeDlState({ received: 0, message: '正在下载…' + (total > 0 ? '（共 ' + fmtSize(total) + '）' : '') });
             var resp = await req.execute();
             if (!resp.isSuccessful()) {
                 var code = resp.code();
                 if (code === 404) {
-                    complete({ success: false, message: "下载失败：404（该版本的资产没上传到 Release）" });
+                    await writeDlState({ status: 'failed', message: '下载失败：404（该版本的资产没上传到 Release），未产生任何文件' });
+                    complete({ success: false, message: '下载失败：404（该版本的资产没上传到 Release）' });
                     return;
                 }
-                lastErr = (code === 403) ? "403（GitHub 限流，稍后再试）" : ("HTTP " + code);
+                lastErr = (code === 403) ? '403（GitHub 限流，稍后再试）' : ('HTTP ' + code);
                 throw new Error(lastErr);
             }
-            var bytes = null;
-            try { bytes = resp.bytes(); } catch (e1) { bytes = null; }
-            if (!bytes || !bytes.length) throw new Error("拿不到二进制内容（空响应）");
-            if (rel.asset_size && bytes.length !== rel.asset_size) {
-                throw new Error("文件不完整（收到 " + bytes.length + " / 应为 " + rel.asset_size + " 字节）");
+            var b64 = null;
+            try { b64 = resp.bodyAsBase64(); } catch (e1) { b64 = null; }
+            if (!b64) throw new Error('拿不到二进制内容（空响应）');
+            // 注意：流式执行时 resp.size 不是字节数（实测偏大），改用 base64 反推真实字节数
+            var b64len = b64.length;
+            var padN = 0;
+            if (b64.charAt(b64len - 1) === '=') padN++;
+            if (b64.charAt(b64len - 2) === '=') padN++;
+            var realSize = Math.floor(b64len * 3 / 4) - padN;
+            await writeDlState({ received: realSize, message: '校验文件大小…' });
+            if (total > 0 && realSize !== total) {
+                throw new Error('文件不完整（收到 ' + fmtSize(realSize) + ' / 应为 ' + fmtSize(total) + '）');
             }
-            // 先写 .part，校验大小后再改名，避免留下半个包
-            try { await Tools.Files.deleteFile(part); } catch (e2) { /* 无旧残留 */ }
-            await Tools.Files.write(part, bytes);
-            try { await Tools.Files.deleteFile(path); } catch (e3) { /* 没有旧文件 */ }
+            try { await Tools.Files.deleteFile(part); } catch (e2) { }
+            await Tools.Files.writeBinary(part, b64);
+            try { await Tools.Files.deleteFile(path); } catch (e3) { }
             await Tools.Files.move(part, path);
-            complete({ success: true, message: "更新包已下载", data: { path: path, size: bytes.length, version: rel.tag, attempts: attempt } });
+            var finTotal = total > 0 ? total : realSize;
+            await writeDlState({ status: 'done', received: realSize, total: finTotal, path: path, version: rel.tag, attempts: attempt, message: '已下载 ' + fmtSize(realSize) + ' / 共 ' + fmtSize(finTotal) + ' → ' + path });
+            complete({ success: true, message: '更新包已下载（' + fmtSize(realSize) + '）', data: { path: path, size: realSize, total: finTotal, version: rel.tag, attempts: attempt } });
             return;
         } catch (e) {
             lastErr = String((e && e.message) || e);
-            if (/ENOSPC|No space|space left|磁盘/i.test(lastErr)) lastErr = "磁盘空间不足，清理后重试（明细：" + lastErr + "）";
-            try { await Tools.Files.deleteFile(part); } catch (e4) { /* 清理残包 */ }
+            if (/ENOSPC|No space|space left|磁盘/i.test(lastErr)) lastErr = '磁盘空间不足，清理后重试（明细：' + lastErr + '）';
+            else if (/failed to connect|Connection|ECONNRESET|timeout|timed out/i.test(lastErr)) lastErr = '连不上 GitHub（网络/代理问题，换网络或开代理再试）'
+            try { await Tools.Files.deleteFile(part); } catch (e4) { }
             if (attempt < maxTry) {
-                try { await new Promise(function (res) { setTimeout(res, attempt * 2000); }); } catch (e5) { /* 无 setTimeout 就不等 */ }
+                await writeDlState({ status: 'running', message: '第 ' + attempt + ' 次失败：' + lastErr + '，正在自动重试…' });
+                try { await new Promise(function (res) { setTimeout(res, attempt * 2000); }); } catch (e5) { }
             }
         }
     }
-    complete({ success: false, message: "下载失败（已重试 " + maxTry + " 次）：" + lastErr });
+    var failMsg = '下载失败（已重试 ' + maxTry + ' 次）：' + lastErr;
+    await writeDlState({ status: 'failed', received: 0, message: failMsg + '｜未完成的临时文件已清理，没留下半个包' });
+    complete({ success: false, message: failMsg + '（未完成的临时文件已清理，没留下半个包）' });
+};
+exports.open_url = async function (params) {
+    var url = String((params && params.url) || "");
+    if (!/^https?:/i.test(url)) { complete({ success: false, message: "只支持 http(s) 链接" }); return; }
+    try {
+        var r = await Tools.System.intent({ action: "android.intent.action.VIEW", uri: url, type: "activity" });
+        complete({ success: true, message: "已在浏览器打开", data: { result: r } });
+    } catch (e) { complete({ success: false, message: "打开失败：" + String((e && e.message) || e) }); }
 };
 exports.skip_update = async function (params) {
     var formula = await loadFormula();

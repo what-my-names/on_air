@@ -34,8 +34,14 @@ function Screen(ctx) {
   var setMsg = msgState[1];
   var updS = ctx.useState("upd", ""); var updRaw = updS[0], setUpd = updS[1];
   var updOpenS = ctx.useState("x_upd_open", false); var updOpen = updOpenS[0], setUpdOpen = updOpenS[1];
+  var updPathS = ctx.useState("x_upd_path", ""); var updPath = updPathS[0], setUpdPath = updPathS[1];
   var updHideS = ctx.useState("upd_hide", false); var updHide = updHideS[0], setUpdHide = updHideS[1];
   var updMsgS = ctx.useState("upd_msg", ""); var updMsg = updMsgS[0], setUpdMsg = updMsgS[1];
+  var dlS = ctx.useState("x_dl", ""); var dlRaw = dlS[0], setDl = dlS[1];
+  var dlBusyS = ctx.useState("x_dl_busy", false); var dlBusy = dlBusyS[0], setDlBusy = dlBusyS[1];
+  var pollingS = ctx.useState("x_dl_polling", false); var polling = pollingS[0], setPolling = pollingS[1];
+  var dl = {};
+  try { dl = JSON.parse(dlRaw || "{}"); } catch (eDl) { dl = {}; }
   var updData = {};
   try { updData = JSON.parse(updRaw || "{}"); } catch (e0) { updData = {}; }
 
@@ -224,6 +230,14 @@ function Screen(ctx) {
     var alreadyInited = initedState[0];
     setInited(true);
     var fresh = await refresh();   // v1.9.2：数据每次进入都刷新
+    // 下载状态：每次进面板都读一次（不依赖 alreadyInited，避免重开面板后还是空白）
+    try {
+      var d0 = await callTool('on_air:get_download_status');
+      if (d0 && d0.success && d0.data && d0.data.status && d0.data.status !== 'idle') {
+        applyDl(d0.data);
+        if (d0.data.status === 'running') startPollOnce();
+      }
+    } catch (eD0) { }
     if (alreadyInited) return;     // 输入框只在首次回填，避免覆盖正在编辑的内容
     var s = fresh.st;
     var f = fresh.fm;
@@ -549,6 +563,14 @@ function Screen(ctx) {
       }
     } catch (e) { /* 检查失败不影响主页 */ }
   }
+  async function doOpenSite() {
+    try {
+      var u = String((updData && updData.url) || "");
+      if (!u) { await showMsg("没有可打开的链接"); return; }
+      var r = await callTool("on_air:open_url", { url: u });
+      if (!(r && r.success)) await showMsg("打开失败：" + ((r && r.message) || ""));
+    } catch (e) { await showMsg("打开出错：" + String((e && e.message) || e)); }
+  }
   async function doForceCheck() {
     try {
       var r = await callTool("on_air:check_update", { force: true });
@@ -560,14 +582,59 @@ function Screen(ctx) {
       }
     } catch (e) { await showMsg("检查出错：" + String((e && e.message) || e)); }
   }
+  function sleepMs(ms) {
+    return new Promise(function (res) { try { setTimeout(res, ms); } catch (e) { res(); } });
+  }
+  function kbTxt(n) {
+    n = Number(n) || 0;
+    if (n >= 1048576) return (Math.round(n / 104857.6) / 10) + ' MB';
+    if (n >= 1024) return Math.round(n / 1024) + ' KB';
+    return n + ' B';
+  }
+  function applyDl(d) {
+    if (!d) return;
+    var prevMsg = '';
+    try { prevMsg = String((dl && dl.message) || ''); } catch (ePM) { }
+    setDl(JSON.stringify(d));
+    if (d.status === 'done' && d.path) setUpdPath(String(d.path));
+    // 只在内容真变化时才改提示，避免 onLoad 反复触发导致提示乱跳
+    if (d.message && String(d.message) !== prevMsg) setUpdMsg(String(d.message));
+  }
+  async function pollDownload() {
+    for (var i = 0; i < 400; i++) {
+      var r = null;
+      try { r = await callTool('on_air:get_download_status'); } catch (e0) { r = null; }
+      if (r && r.success && r.data) {
+        applyDl(r.data);
+        var s0 = String(r.data.status || '');
+        if (s0 === 'done' || s0 === 'failed' || s0 === 'missing' || s0 === 'idle') return;
+      }
+      await sleepMs(600);
+    }
+  }
+  function startPollOnce() {
+    if (polling) return;
+    setPolling(true);
+    pollDownload().then(function () { setPolling(false); }).catch(function () { setPolling(false); });
+  }
   async function doDownloadUpdate() {
-    if (updMsg && updMsg.indexOf("下载中") === 0) return;
-    setUpdMsg("下载中…");
+    // 连点保护：一次点击只发起一次下载，避免两次请求互相覆盖状态
+    if (dlBusy) return;
+    setDlBusy(true);
     try {
-      var r = await callTool("on_air:download_update", { force: true });
-      if (r && r.success && r.data) setUpdMsg("已下载 " + Math.round((r.data.size || 0) / 1024) + " KB → " + r.data.path + "（去 包管理 导入）");
-      else setUpdMsg("下载失败：" + ((r && r.message) || ""));
-    } catch (e) { setUpdMsg("下载出错：" + String((e && e.message) || e)); }
+      if (dl && dl.status === 'running') { startPollOnce(); return; }
+      var total0 = Number((updData && updData.asset_size) || 0);
+      setDl(JSON.stringify({ status: 'running', received: 0, total: total0, percent: 0, message: '正在获取最新版本信息…' }));
+      setUpdMsg('正在获取最新版本信息…');
+      callTool('on_air:download_update', { force: true }).then(function (r) {
+        if (r && r.data && r.success) applyDl({ status: 'done', received: r.data.size || 0, total: r.data.total || r.data.size || 0, percent: 100, path: r.data.path, message: r.message });
+        else if (r && !r.success) {
+          var isBusy = !!(r.data && r.data.busy);
+          setUpdMsg(isBusy ? '下载仍在进行中，等它完成就好' : ('下载失败：' + ((r && r.message) || '')));
+        }
+      });
+      startPollOnce();
+    } finally { setDlBusy(false); }
   }
   async function doSkipUpdate() {
     try {
@@ -661,7 +728,7 @@ function Screen(ctx) {
   children.push(ctx.UI.Row({ fillMaxWidth: true, horizontalArrangement: "spaceBetween", verticalAlignment: "center" }, [
     ctx.UI.Column({ spacing: 3 }, [
       ctx.UI.Text({ text: "随机上线", fontSize: 26, fontWeight: "bold", color: C.text }),
-      ctx.UI.Text({ text: "装成真人的主动消息 · v2.2.1", fontSize: 12, color: C.dim })
+      ctx.UI.Text({ text: "装成真人的主动消息 · v" + ((st && st.current_version) ? String(st.current_version) : '—'), fontSize: 12, color: C.dim })
     ]),
     ctx.UI.Surface({ containerColor: C.primary, alpha: 0.14, shape: { cornerRadius: 100, type: "rounded" } }, [
       ctx.UI.Row({ padding: { horizontal: 10, vertical: 6 }, spacing: 6, verticalAlignment: "center" }, [
@@ -692,12 +759,27 @@ function Screen(ctx) {
       ]));
       if (updOpen) banner.push(ctx.UI.Text({ text: notesFull, fontSize: 12, color: C.dim }));
     }
+    var dlSt = String((dl && dl.status) || '');
+    if (dlSt === 'running') {
+      var dTotalR = Number((dl && dl.total) || 0);
+      banner.push(ctx.UI.Text({ text: '正在下载…' + (dTotalR > 0 ? '（共 ' + kbTxt(dTotalR) + '）' : '') + ' 请稍候', fontSize: 12, color: C.primary }));
+    } else if (dlSt === 'done') {
+      var dGotD = Number((dl && dl.received) || 0);
+      var dTotalD = Number((dl && dl.total) || 0);
+      banner.push(ctx.UI.Text({ text: '已下载 ' + kbTxt(dGotD) + (dTotalD > 0 ? ' / 共 ' + kbTxt(dTotalD) : ''), fontSize: 11, color: C.primary }));
+    } else if (dlSt === 'failed' || dlSt === 'missing') {
+      banner.push(ctx.UI.Text({ text: String((dl && dl.message) || '下载失败'), fontSize: 11, color: '#D32F2F' }));
+    }
     banner.push(ctx.UI.Row({ spacing: 8, fillMaxWidth: true }, [
-      ctx.UI.Button({ containerColor: C.primary, contentColor: C.onPrimary, shape: { cornerRadius: 12, type: "rounded" }, text: "下载更新包", onClick: doDownloadUpdate, fillMaxWidth: true, weight: 1 }),
+      ctx.UI.Button({ containerColor: C.primary, contentColor: C.onPrimary, shape: { cornerRadius: 12, type: "rounded" }, text: (dlSt === 'running' ? '正在下载…' : (dlSt === 'done' ? '重新下载' : '下载更新包')), onClick: doDownloadUpdate, fillMaxWidth: true, weight: 1 }),
       ctx.UI.Button({ containerColor: C.card, contentColor: C.text, shape: { cornerRadius: 12, type: "rounded" }, text: "稍后", onClick: function () { setUpdHide(true); }, weight: 1 }),
       ctx.UI.Button({ containerColor: C.card, contentColor: C.text, shape: { cornerRadius: 12, type: "rounded" }, text: "跳过此版本", onClick: doSkipUpdate, weight: 1 })
     ]));
-    if (updMsg) banner.push(ctx.UI.Text({ text: updMsg, fontSize: 12, color: C.dim }));
+    banner.push(ctx.UI.Row({ spacing: 8, fillMaxWidth: true }, [
+      ctx.UI.Button({ containerColor: C.card, contentColor: C.text, shape: { cornerRadius: 12, type: "rounded" }, text: "打开官网下载", onClick: doOpenSite, fillMaxWidth: true })
+    ]));
+    if (updPath) banner.push(ctx.UI.Text({ text: '已下载到 ' + updPath + '（用「包管理 → 导入」安装）', fontSize: 11, color: C.dim }));
+    if (updMsg && dlSt !== 'done') banner.push(ctx.UI.Text({ text: updMsg, fontSize: 12, color: C.dim }));
     children.push(ctx.UI.Card({ containerColor: C.soft, shape: { cornerRadius: 16, type: "rounded" }, border: { width: 1, color: C.primary, alpha: 0.4 }, elevation: 0, fillMaxWidth: true }, [
       ctx.UI.Column({ padding: 14, spacing: 10, fillMaxWidth: true }, banner)
     ]));
@@ -766,7 +848,7 @@ function Screen(ctx) {
     ]));
   }
   children.push(ctx.UI.Button({ containerColor: C.card, contentColor: C.text, shape: { cornerRadius: 12, type: "rounded" }, text: "检查更新", fillMaxWidth: true, onClick: doForceCheck }));
-  children.push(ctx.UI.Text({ text: "v2.2.1 · 打开面板时自动检查更新", fontSize: 11, color: C.dim }));
+  children.push(ctx.UI.Text({ text: 'v' + ((st && st.current_version) ? String(st.current_version) : '—') + ' · 打开面板时自动检查更新', fontSize: 11, color: C.dim }));
 
   return ctx.UI.LazyColumn({ containerColor: P.bg, backgroundColor: P.bg,
     onLoad: async function () {

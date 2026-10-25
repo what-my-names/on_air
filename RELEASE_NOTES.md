@@ -1,20 +1,25 @@
-# 随机上线 v2.2.1
+# 随机上线 v2.2.2（Beta）
 
 【更新内容】
-· 检查更新更快：发布新版本后，第一次打开面板就能看到，不用等半天
-· 更新内容更好读：只显示真正的更新内容，不再带一堆符号，最多 6 行
-· 新增「检查更新」按钮：想立刻刷新时点它，不用等自动检查
-· 下载更稳当：网络断开会自动重试；下载不完整会提示并清理，不会留下半个包
-· 修了几处会让面板打不开、按钮一排卡在加载中的问题
-· 免打扰页删除重复的建议块，不再出现两遍
+
+· 更新包下载修好了：之前下载总是失败，是因为直连 github.com 走不通；现在改成走 GitHub 接口下载，实测一次就成
+· 不再重复下载：包已经在手机里时，再点下载会直接告诉你“已存在”，不会又跑一遍
+· 下载失败会给原因：连不上、限流、磁盘不足，都用人话说清楚
+· 面板上的版本号改为真实版本（以前写死了一行，容易让人误以为已经升级）
+· 下载中关掉面板再打开，能看到“正在下载”，不会变回“下载更新包”
+· 去掉了自己安装的功能，下载完去「包管理 → 导入」安装
 
 【技术实现】
-- 缓存中的 tag 低于 CURRENT_VERSION 时自动失效重拉；check_update 支持 force 参数
-- 面板新增 doForceCheck（强制刷新），更新摘要显示行数 3 → 6
-- mdToPlain 改为只截取【更新内容】段（到下一个【为止），再跳过 # / > / 分隔线与列表符号
-- cmpVersion 支持 +build 段（当第 4 段比较）
-- download_update：3 次重试（2s/4s，404 不重试、403 提示限流）；按 asset.size 校验字节数；先写 .part 再 move 改名；ENOSPC 转友好提示；面板下载前 force 刷新并防重复点击
-- 修复：summary(it.val()) 对 val:null 项调用导致提示词页白屏；ctx.UI.Spacer 未实现（改 Box）；按钮共用 busy 导致整页变「…」；免打扰页重复块与重复 doSuggestQuiet 定义
+
+- 下载线路：`https://api.github.com/repos/{repo}/releases/assets/{id}` + `Accept: application/octet-stream`（实测 github.com 超时、api.github.com 200/5.5s、objects.githubusercontent.com 通）
+- 删除 probe 预下载（原做法把同一个包下两遍，且它的字节数是 base64 累计，会报 132KB 假数字）
+- 下载改为单次请求；超时 45s，重试 2 次；连接类错误转中文提示
+- 失败时 `received` 归零，避免“已下载 100%”与“下载失败”同屏
+- 文件已存在且字节数与 asset_size 一致 → 直接返回 cached
+- UI 轮询单例化（startPollOnce），恢复块不再被 alreadyInited 拦住
+- `get_xy` 返回 `current_version`，面板不再写死版本号
+- 删除 install_package / open_package / import_package
 
 【升级方式】
-在包管理里导入新的 .toolpkg，然后彻底关掉 Operit 再打开（只退出界面不够）
+
+在面板点「下载更新包」，下载完成后到「包管理 → 导入」选择刚下载的 .toolpkg，然后彻底关掉 Operit 再打开。
