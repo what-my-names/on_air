@@ -119,6 +119,23 @@ METADATA
             ]
         },
         {
+            "name": "check_update",
+            "description": { "zh": "检查 GitHub 仓库是否有新版本（带 6 小时缓存）；返回当前版本、最新版本、更新说明、下载地址", "en": "Check GitHub releases for a newer version (6h cache)" },
+            "parameters": []
+        },
+        {
+            "name": "download_update",
+            "description": { "zh": "下载最新版本的 .toolpkg 更新包到 /sdcard/Download/Operit/（下载后需在包管理里手动导入）", "en": "Download the latest .toolpkg into /sdcard/Download/Operit/" },
+            "parameters": []
+        },
+        {
+            "name": "skip_update",
+            "description": { "zh": "跳过指定版本：记录后同一版本不再提示更新", "en": "Skip a specific version so it won't be prompted again" },
+            "parameters": [
+                { "name": "version", "type": "string", "description": "要跳过的版本 tag（如 v2.2.1）", "required": true }
+            ]
+        },
+        {
             "name": "fetch_holidays",
             "description": { "zh": "立即联网拉取今年+明年法定节假日（普通HTTP请求，零token消耗），更新内置节假日表并记录拉取日期。平时每天12点后会自动拉一次，此工具供手动更新/调试", "en": "Manually fetch official holidays (this year + next) via plain HTTP, update built-in holiday list" },
             "parameters": []
@@ -219,7 +236,8 @@ var FIELD_SPEC = {
     prompt_customized: { type: "internal", order: 92 },
     quiet_suggest: { type: "internal", order: 93 },
     holiday_dates: { type: "internal", order: 94 },
-    holiday_fetch_date: { type: "internal", order: 95 }
+    holiday_fetch_date: { type: "internal", order: 95 },
+    skipped_version: { type: "internal", order: 96 }
 };
 
 // 按 SPEC 取某个分组下、按 order 排序的字段名
@@ -244,6 +262,7 @@ var DEFAULT_FORMULA = {
     // A1 = maybe_awake 内部用 sendToAi(Tools.Chat.sendMessage, 带 hide_user_message:true + persist_turn:true)直接唤醒AI发言。
     max_wake_stops: 5,              // 连续命中主动消息停止上限：第N次命中计数爆表停止主动消息(默认5；装有温柔巡检时面板可改为4给温柔巡检让位)
     chat_id: "",                    // 目标对话ID（首次使用需配置；可在面板或 formula.json 中填写）
+    skipped_version: "",             // v2.2.0：用户选择“跳过此版本”时记录的 tag
     character_card_name: "",        // 角色卡名：唤醒时按名字定位角色卡（留空=跟随当前对话绑定的角色卡）
     awake_messages: [               // 主动话术：AI自由发挥的起点提示
         "想你了，你现在在忙吗？",
@@ -703,6 +722,68 @@ function createHttpClient(timeoutMs) {
     return OkHttp.newBuilder()
         .connectTimeout(t).readTimeout(t).writeTimeout(t)
         .build();
+}
+
+// ==================== v2.2.0：GitHub Release 更新检测 ====================
+var CURRENT_VERSION = "2.2.0";  // 每次发布同步修改
+var UPDATE_REPO = "what-my-names/on_air";
+var UPDATE_API = "https://api.github.com/repos/" + UPDATE_REPO + "/releases/latest";
+var UPDATE_TTL_MS = 6 * 60 * 60 * 1000; // 6 小时缓存
+
+// 语义化版本比较：a>b 返回 1，a<b 返回 -1，相等 0（忽略前缀 v）
+function cmpVersion(a, b) {
+    var pa = String(a || "").replace(/^v/i, "").split(".");
+    var pb = String(b || "").replace(/^v/i, "").split(".");
+    var n = Math.max(pa.length, pb.length);
+    for (var i = 0; i < n; i++) {
+        var na = parseInt(pa[i] || "0", 10); if (isNaN(na)) na = 0;
+        var nb = parseInt(pb[i] || "0", 10); if (isNaN(nb)) nb = 0;
+        if (na > nb) return 1;
+        if (na < nb) return -1;
+    }
+    return 0;
+}
+
+// 拉取最新 Release（带 6h 缓存，缓存存在 state.update_cache）
+async function fetchLatestRelease(state) {
+    try {
+        var now = Date.now();
+        var cache = state && state.update_cache;
+        if (cache && cache.checked_at && (now - cache.checked_at) < UPDATE_TTL_MS && cache.latest) {
+            return { cached: true, release: cache.latest };
+        }
+        var client = createHttpClient(15000);
+        var req = client.newRequest()
+            .url(UPDATE_API)
+            .method("GET")
+            .headers({ "User-Agent": "Operit/on_air", "Accept": "application/vnd.github+json" })
+            .build();
+        var resp = await req.execute();
+        if (!resp.isSuccessful()) return { cached: false, error: "HTTP " + resp.code() };
+        var data = resp.json() || {};
+        var assetUrl = "", assetName = "";
+        var assets = Array.isArray(data.assets) ? data.assets : [];
+        for (var i = 0; i < assets.length; i++) {
+            if (assets[i] && /\.toolpkg$/i.test(String(assets[i].name || ""))) {
+                assetUrl = assets[i].browser_download_url || "";
+                assetName = assets[i].name || "";
+                break;
+            }
+        }
+        var rel = {
+            tag: String(data.tag_name || ""),
+            name: String(data.name || ""),
+            body: String(data.body || "").slice(0, 4000),
+            url: String(data.html_url || ""),
+            published_at: String(data.published_at || ""),
+            asset_url: assetUrl,
+            asset_name: assetName
+        };
+        if (state) { state.update_cache = { checked_at: now, latest: rel }; await saveState(state); }
+        return { cached: false, release: rel };
+    } catch (e) {
+        return { cached: false, error: String((e && e.message) || e) };
+    }
 }
 
 // ============ 节假日联网拉取（v1.5.8）============
@@ -2241,6 +2322,61 @@ exports.enter_running = async function (params) {
 // fetch_holidays：手动立即联网拉取节假日（今年+明年）。成功会覆盖 formula.holiday_dates 并记录拉取日期。
 // 平时不需要手动点：每天12点后 increment_x/check_activity 会自动拉一次。此工具供面板"立即更新"按钮和调试用。
 // 零 token 消耗：普通 HTTPS GET 请求，不经过任何 AI。
+// ==================== v2.2.0：更新检测工具 ====================
+exports.check_update = async function (params) {
+    var formula = await loadFormula();
+    var state = await loadState();
+    var r = await fetchLatestRelease(state);
+    if (r.error) { complete({ success: false, message: "检查更新失败：" + r.error }); return; }
+    var rel = r.release || {};
+    var has = cmpVersion(rel.tag, CURRENT_VERSION) > 0;
+    var skipped = String(formula.skipped_version || "") === String(rel.tag || "");
+    complete({
+        success: true,
+        message: has ? ("发现新版本 " + rel.tag) : ("已是最新版本 v" + CURRENT_VERSION),
+        data: {
+            hasUpdate: has, skipped: skipped, current: CURRENT_VERSION,
+            latest: rel.tag, name: rel.name, notes: rel.body, url: rel.url,
+            published_at: rel.published_at,
+            asset_url: rel.asset_url, asset_name: rel.asset_name, cached: !!r.cached
+        }
+    });
+};
+
+exports.download_update = async function (params) {
+    var state = await loadState();
+    var r = await fetchLatestRelease(state);
+    if (r.error) { complete({ success: false, message: "检查更新失败：" + r.error }); return; }
+    var rel = r.release || {};
+    if (!rel.asset_url) { complete({ success: false, message: "该版本没有可下载的 .toolpkg 资产" }); return; }
+    try {
+        var client = createHttpClient(120000);
+        var req = client.newRequest().url(rel.asset_url).method("GET").headers({ "User-Agent": "Operit/on_air" }).build();
+        var resp = await req.execute();
+        if (!resp.isSuccessful()) { complete({ success: false, message: "下载失败：HTTP " + resp.code() }); return; }
+        var bytes = null;
+        try { bytes = resp.bytes(); } catch (e1) { bytes = null; }
+        if (!bytes) { complete({ success: false, message: "下载失败：拿不到二进制内容" }); return; }
+        var dir = "/storage/emulated/0/Download/Operit/";
+        var fileName = rel.asset_name || ("com.operit.on_air-" + rel.tag + ".toolpkg");
+        var path = dir + fileName;
+        try { await Tools.Files.mkdir(dir); } catch (e2) { /* 已存在无妨 */ }
+        await Tools.Files.write(path, bytes);
+        complete({ success: true, message: "更新包已下载", data: { path: path, size: bytes.length, version: rel.tag } });
+    } catch (e) {
+        complete({ success: false, message: "下载出错：" + String((e && e.message) || e) });
+    }
+};
+
+exports.skip_update = async function (params) {
+    var formula = await loadFormula();
+    var v = String((params && params.version) || "");
+    if (!v) { complete({ success: false, message: "需要 version 参数" }); return; }
+    formula.skipped_version = v;
+    await saveFormula(formula);
+    complete({ success: true, message: "已跳过版本 " + v });
+};
+
 exports.fetch_holidays = async function (params) {
     if (holidayFetching) {
         complete({ success: false, message: "正在拉取中，请稍候再试" });

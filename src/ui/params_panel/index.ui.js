@@ -59,6 +59,7 @@ function Screen(ctx) {
     var stopS = ctx.useState("q_stop", ""); var stopv = stopS[0], setStopv = stopS[1];
     var msgS = ctx.useState("q_msg", ""); var msg = msgS[0], setMsg = msgS[1];
     var busyS = ctx.useState("q_busy", false); var busy = busyS[0], setBusy = busyS[1];
+    var errS2 = ctx.useState("q_err", ""); var errMsg = errS2[0], setErrMsg = errS2[1];
     var loadedS = ctx.useState("q_loaded", false); var loaded = loadedS[0], setLoaded = loadedS[1];
 
     async function load() {
@@ -71,7 +72,7 @@ function Screen(ctx) {
                 setCardv(String(d.character_card_name || ""));
                 setStopv(String(d.max_wake_stops != null ? d.max_wake_stops : 5));
             }
-        } catch (e) {}
+        } catch (e) { setErrMsg("读取失败：" + String((e && e.message) || e)); }
         setLoaded(true);
     }
 
@@ -95,6 +96,9 @@ function Screen(ctx) {
 
     var yp = yPreview();
     var children = [];
+    if (errMsg) {
+        children.push(ctx.UI.Text({ text: errMsg, style: "bodySmall", color: (scheme.error || "#B00020") }));
+    }
     children.push(ctx.UI.Text({ text: "参数", style: "titleMedium", fontWeight: "semiBold", color: onSurface }));
 
     var box = [];

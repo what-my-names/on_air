@@ -2,7 +2,7 @@
 
 [中文](README.md)
 
-> **Current Release Status**: **v2.1.2 STABLE** — feature complete and ready for daily use; feedback welcome.
+> **Current Release Status**: **v2.2.0 STABLE** — feature complete and ready for daily use; feedback welcome.
 
 > **Authorship Notice**: This project is a "novice × AI creation" — co-developed by a novice developer together with an AI assistant. The code and docs are still growing; corrections, issues and PRs are welcome.
 
@@ -20,6 +20,7 @@
 
 ## Features
 
+- **Automatic update check (v2.2.0)**: the panel checks the GitHub Release on open; when a newer version exists a banner appears at the top (current / latest / publish date / summary) with buttons to download the `.toolpkg` into `Download/Operit/`, snooze, or skip that version. Cached for 6 hours; it never auto-installs and never posts anything into the chat.
 - **Removed the quiet-lifted notice (v2.1.2)**: when device activity is detected during a quiet window, the plugin now only clears the quiet state internally — no message into the chat and no extra AI turn
 - **Reset prompts now correctly returns the "default" tag (v2.1.1)**
 - **Field-driven refactor (v2.1.0)**: every config field lives in one FIELD_SPEC table; get_formula iterates it and update_formula auto-validates — structurally eliminating the "added update, forgot get" class of bugs

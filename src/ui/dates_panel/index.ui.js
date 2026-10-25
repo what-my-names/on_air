@@ -58,6 +58,7 @@ function Screen(ctx) {
     var schS = ctx.useState("s_sch", false); var schoolAuto = schS[0], setSchoolAuto = schS[1];
     var stuS = ctx.useState("s_stu", true); var studentMode = stuS[0], setStudentMode = stuS[1];
     var msgS = ctx.useState("s_msg", ""); var msg = msgS[0], setMsg = msgS[1];
+    var errS2 = ctx.useState("s_err", ""); var errMsg = errS2[0], setErrMsg = errS2[1];
     var loadedS = ctx.useState("s_loaded", false); var loaded = loadedS[0], setLoaded = loadedS[1];
 
     function pad2(n) { return (n < 10 ? "0" : "") + n; }
@@ -75,7 +76,7 @@ function Screen(ctx) {
                 setSchoolAuto(!!d.school_day_auto_quiet);
                 setStudentMode(d.student_mode !== false);
             }
-        } catch (e) {}
+        } catch (e) { setErrMsg("读取失败：" + String((e && e.message) || e)); }
         setLoaded(true);
     }
 
@@ -122,6 +123,9 @@ function Screen(ctx) {
     while (cells.length % 7 !== 0) cells.push(null);
 
     var children = [];
+    if (errMsg) {
+        children.push(ctx.UI.Text({ text: errMsg, style: "bodySmall", color: (scheme.error || "#B00020") }));
+    }
     children.push(ctx.UI.Text({ text: "日期静默", style: "titleMedium", fontWeight: "semiBold", color: onSurface }));
     children.push(ctx.UI.Text({ text: "点选日期 = 全天硬静默（不因设备活动解除）；蓝色=已静默", style: "bodySmall", color: onSurfaceVariant }));
 

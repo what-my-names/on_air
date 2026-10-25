@@ -59,7 +59,7 @@ function Screen(ctx) {
     var msgS = ctx.useState("r_msg", ""); var msg = msgS[0], setMsg = msgS[1];
     var busyS = ctx.useState("r_busy", false); var busy = busyS[0], setBusy = busyS[1];
     var sugS = ctx.useState("r_sug", ""); var sugOut = sugS[0], setSugOut = sugS[1];
-    var sugS = ctx.useState("r_sug", ""); var sugOut = sugS[0], setSugOut = sugS[1];
+    var errS2 = ctx.useState("r_err", ""); var errMsg = errS2[0], setErrMsg = errS2[1];
     var loadedS = ctx.useState("r_loaded", false); var loaded = loadedS[0], setLoaded = loadedS[1];
 
     async function load() {
@@ -76,7 +76,7 @@ function Screen(ctx) {
                 if (d.quiet_night_end) setNEnd(String(d.quiet_night_end));
                 if (d.character_card_name) setChatName(String(d.character_card_name));
             }
-        } catch (e) {}
+        } catch (e) { setErrMsg("读取失败：" + String((e && e.message) || e)); }
         setLoaded(true);
     }
 
@@ -160,6 +160,9 @@ function Screen(ctx) {
     function goHome() { if (ctx.navigate) ctx.navigate("toolpkg:com.operit.on_air:ui:on_air_sidebar"); }
 
     var children = [];
+    if (errMsg) {
+        children.push(ctx.UI.Text({ text: errMsg, style: "bodySmall", color: (scheme.error || "#B00020") }));
+    }
     children.push(ctx.UI.Text({ text: "免打扰（静默）", style: "titleMedium", fontWeight: "semiBold", color: onSurface }));
     children.push(ctx.UI.Text({ text: "静默时段内停止 X 累加与主动唤醒；检测到设备活动会自动解除并告知。", style: "bodySmall", color: onSurfaceVariant }));
 
