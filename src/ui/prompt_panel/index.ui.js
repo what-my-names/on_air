@@ -1,4 +1,9 @@
 function Screen(ctx) {
+    // 给主题色加透明度：#RRGGBB -> #AARRGGBB（不依赖 backgroundAlpha）
+    function wa(c, a) {
+        if (typeof c === "string" && /^#[0-9a-fA-F]{6}$/.test(c)) return "#" + a + c.slice(1);
+        return c;
+    }
 
     // ===== 工具调用辅助（v1.9.2）：兼容 UI 侧 callTool 返回（字符串/对象/裸数据）=====
     function unwrapRaw(o) {
@@ -230,7 +235,9 @@ function Screen(ctx) {
 
     // ===== 渲染（v2.3.0 视觉层次）=====
     var C = {
+        page: scheme.background || surfaceVariant,
         card: surfaceVariant,
+        block: surfaceVariant,
         line: scheme.outlineVariant || scheme.outline || onSurfaceVariant,
         primary: primary,
         text: onSurface,
@@ -239,32 +246,38 @@ function Screen(ctx) {
         soft: scheme.secondaryContainer || surfaceVariant
     };
     function hdiv() { return ctx.UI.HorizontalDivider({ thickness: 1, color: C.line }); }
-    function groupHeader(title, count) {
-        return ctx.UI.Row({ fillMaxWidth: true, verticalAlignment: "center", spacing: 8, padding: { horizontal: 14, vertical: 12 } }, [
-            ctx.UI.Box({ width: 3, height: 16, background: C.primary, shape: { cornerRadius: 2, type: "rounded" } }),
-            ctx.UI.Text({ text: title, fontSize: 15, fontWeight: "bold", color: C.text }),
-            ctx.UI.Text({ text: "共 " + count + " 处", fontSize: 11, color: C.dim })
+    function groupHeader(title, count, tint) {
+        var tc = tint || C.primary;
+        return ctx.UI.Row({ fillMaxWidth: true, horizontalArrangement: "spaceBetween", verticalAlignment: "center",
+            background: surfaceVariant, padding: { horizontal: 14, vertical: 12 } }, [
+            ctx.UI.Row({ spacing: 8, verticalAlignment: "center" }, [
+                ctx.UI.Box({ width: 3, height: 18, background: tc, shape: { cornerRadius: 2, type: "rounded" } }),
+                ctx.UI.Text({ text: title, fontSize: 15, fontWeight: "bold", color: tc })
+            ]),
+            ctx.UI.Text({ text: "共 " + count + " 处", fontSize: 11, fontWeight: "bold", color: tc })
         ]);
     }
     function itemHeader(it, itemOpen, itemCustom) {
         return ctx.UI.Row({
             fillMaxWidth: true, horizontalArrangement: "spaceBetween", verticalAlignment: "center",
             padding: { horizontal: 14, vertical: 12 },
+            background: surfaceVariant,
             onClick: function () { toggle(it.k); }
         }, [
-            ctx.UI.Row({ spacing: 10, verticalAlignment: "center" }, [
-                ctx.UI.Icon({ name: "Article", size: 18, tint: itemCustom ? C.primary : C.dim }),
-                ctx.UI.Column({ spacing: 3 }, [
-                    ctx.UI.Text({ text: it.label, fontSize: 14, fontWeight: "bold", color: C.text, maxLines: 1 }),
+            ctx.UI.Row({ spacing: 12, verticalAlignment: "center" }, [
+                ctx.UI.Icon({ name: "Article", size: 18, tint: itemCustom ? C.primary : (it.__tint || C.dim) }),
+                ctx.UI.Column({ spacing: 4 }, [
+                    ctx.UI.Text({ text: it.label, fontSize: 15, fontWeight: "bold", color: C.text, maxLines: 1 }),
                     ctx.UI.Text({ text: itemCustom ? "已改过 · 点开编辑" : "内置默认 · 点开编辑", fontSize: 11, color: itemCustom ? C.primary : C.dim, maxLines: 1 })
                 ])
             ]),
-            ctx.UI.Icon({ name: itemOpen ? "ExpandMore" : "ChevronRight", size: 18, tint: C.dim })
+            ctx.UI.Icon({ name: itemOpen ? "ExpandMore" : "ChevronRight", size: 18, tint: itemOpen ? (it.__tint || C.primary) : C.dim })
         ]);
     }
     function hintBlock(txt) {
-        return ctx.UI.Surface({ containerColor: C.card, alpha: 0.6, shape: { cornerRadius: 10, type: "rounded" } }, [
-            ctx.UI.Text({ text: txt, fontSize: 12, color: C.dim, padding: 10 })
+        return ctx.UI.Column({ fillMaxWidth: true, spacing: 0, padding: 10,
+            background: surfaceVariant, backgroundShape: { cornerRadius: 10, type: "rounded" } }, [
+            ctx.UI.Text({ text: txt, fontSize: 12, color: C.dim })
         ]);
     }
     function choiceRow(aOn, aText, aFn, bOn, bText, bFn) {
@@ -296,23 +309,24 @@ function Screen(ctx) {
     children.push(ctx.UI.Row({ spacing: 8, fillMaxWidth: true }, [
         ctx.UI.Button({ containerColor: C.card, contentColor: C.text, shape: { cornerRadius: 12, type: "rounded" }, text: "全部展开", weight: 1, onClick: function () { setAll(true); } }),
         ctx.UI.Button({ containerColor: C.card, contentColor: C.text, shape: { cornerRadius: 12, type: "rounded" }, text: "全部收起", weight: 1, onClick: function () { setAll(false); } }),
-        ctx.UI.Button({ containerColor: C.card, contentColor: C.text, shape: { cornerRadius: 12, type: "rounded" }, text: busy ? "…" : "恢复默认", weight: 1, onClick: doReset })
+        ctx.UI.Button({ containerColor: (scheme.primaryContainer || C.card), contentColor: (scheme.onPrimaryContainer || C.primary), shape: { cornerRadius: 12, type: "rounded" }, text: "恢复默认", weight: 1, onClick: doReset })
     ]));
 
     // ---- 分组 ----
     for (var gi2 = 0; gi2 < GROUPS.length; gi2++) {
         var grp = GROUPS[gi2];
         var box = [];
-        box.push(groupHeader(grp.title, grp.items.length));
+        var gtint = (gi2 === 0) ? C.primary : ((gi2 === 1) ? (scheme.tertiary || C.primary) : (scheme.secondary || C.primary));
+        box.push(groupHeader(grp.title, grp.items.length, gtint));
         for (var ii2 = 0; ii2 < grp.items.length; ii2++) {
             (function (it) {
                 var itemOpen = isOpen(it.k);
                 var itemCustom = isCustom(it.k);
                 box.push(hdiv());
-                box.push(itemHeader(it, itemOpen, itemCustom));
+                it.__tint = gtint; box.push(itemHeader(it, itemOpen, itemCustom));
                 if (!itemOpen) {
-                    box.push(ctx.UI.Text({ text: summary(it.val(), 34), fontSize: 12, color: C.dim, maxLines: 1, overflow: "ellipsis", padding: { horizontal: 14, vertical: 0 } }));
-                    box.push(ctx.UI.Spacer({ height: 12 }));
+                    box.push(ctx.UI.Text({ text: (it.val ? summary(it.val(), 34) : (it.k === "awake_mode" ? "点开选择话术模式" : "点开选择发送方式")), fontSize: 12, color: C.dim, maxLines: 1, overflow: "ellipsis", padding: { horizontal: 14, vertical: 0 } }));
+                    box.push(ctx.UI.Box({ height: 12 }));
                     return;
                 }
                 box.push(ctx.UI.Column({ padding: { horizontal: 14, vertical: 4 }, spacing: 8, fillMaxWidth: true }, [
@@ -323,7 +337,7 @@ function Screen(ctx) {
                             ? choiceRow(vSend === "A1", "A1 自己唤醒", function () { setSend("A1"); }, vSend === "A2", "A2 温柔巡检", function () { setSend("A2"); })
                             : ctx.UI.TextField({ value: it.val(), onValueChange: it.set, singleLine: false, placeholder: ctx.UI.Text({ text: "（留空 = 使用内置默认）", color: C.dim }), style: { color: C.text } })
                 ]));
-                box.push(ctx.UI.Spacer({ height: 10 }));
+                box.push(ctx.UI.Box({ height: 10 }));
             })(grp.items[ii2]);
         }
         children.push(ctx.UI.Card({ containerColor: C.card, shape: { cornerRadius: 18, type: "rounded" }, border: { width: 1, color: C.line, alpha: 0.35 }, elevation: 1, fillMaxWidth: true }, [
@@ -332,7 +346,7 @@ function Screen(ctx) {
     }
 
     // ---- 保存 / 返回 ----
-    children.push(ctx.UI.Button({ containerColor: C.primary, contentColor: C.soft, shape: { cornerRadius: 14, type: "rounded" }, text: busy ? "保存中…" : "保存全部修改", fillMaxWidth: true, onClick: doSave }));
+    children.push(ctx.UI.Button({ containerColor: C.primary, contentColor: C.soft, shape: { cornerRadius: 14, type: "rounded" }, text: "保存全部修改", fillMaxWidth: true, onClick: doSave }));
     children.push(ctx.UI.Button({ containerColor: C.card, contentColor: C.text, shape: { cornerRadius: 12, type: "rounded" }, text: "返回主页", fillMaxWidth: true, onClick: goHome }));
 
     if (msg) {

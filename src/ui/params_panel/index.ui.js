@@ -1,4 +1,9 @@
 function Screen(ctx) {
+    // 给主题色加透明度：#RRGGBB -> #AARRGGBB（不依赖 backgroundAlpha）
+    function wa(c, a) {
+        if (typeof c === "string" && /^#[0-9a-fA-F]{6}$/.test(c)) return "#" + a + c.slice(1);
+        return c;
+    }
 
     // ===== 工具调用辅助（v1.9.2）：兼容 UI 侧 callTool 返回（字符串/对象/裸数据）=====
     function unwrapRaw(o) {
@@ -99,13 +104,13 @@ function Screen(ctx) {
     if (errMsg) {
         children.push(ctx.UI.Text({ text: errMsg, style: "bodySmall", color: (scheme.error || "#B00020") }));
     }
-    children.push(ctx.UI.Text({ text: "参数", style: "titleMedium", fontWeight: "semiBold", color: onSurface }));
+    children.push(ctx.UI.Text({ text: "参数", fontSize: 24, fontWeight: "bold", color: primary }));
 
     var box = [];
     box.push(ctx.UI.Text({ text: "X（离开时长 / 分钟）", style: "bodySmall", color: onSurfaceVariant }));
     box.push(ctx.UI.TextField({ value: xv, onValueChange: setXv, singleLine: true, placeholder: ctx.UI.Text({ text: "如 21", color: onSurfaceVariant }), style: { color: onSurface } }));
     box.push(ctx.UI.Text({ text: "写入后 y ≈ " + (yp != null ? yp + "%" : "—"), style: "bodySmall", color: onSurfaceVariant }));
-    box.push(ctx.UI.Button({ contentColor: surfaceVariant, color: surfaceVariant, textColor: surfaceVariant, containerColor: primary, shape: { cornerRadius: 12, type: "rounded" }, text: busy ? "写入中…" : "写入 X", fillMaxWidth: true, onClick: async function () {
+    box.push(ctx.UI.Button({ contentColor: surfaceVariant, color: surfaceVariant, textColor: surfaceVariant, containerColor: primary, shape: { cornerRadius: 12, type: "rounded" }, text: "写入 X", fillMaxWidth: true, onClick: async function () {
         setBusy(true);
         try {
             var r = await callTool("on_air:set_x", { x: parseFloat(xv) });
@@ -113,7 +118,7 @@ function Screen(ctx) {
         } catch (e) { setMsg("写入出错：" + String((e && e.message) || e)); }
         setBusy(false);
     } }));
-    children.push(ctx.UI.Card({ containerColor: surfaceVariant, backgroundColor: surfaceVariant, shape: { cornerRadius: 16, type: "rounded" }, padding: 0, elevation: 0, fillMaxWidth: true }, [
+    children.push(ctx.UI.Card({ containerColor: surfaceVariant, border: { width: 1, color: scheme.outline || surfaceVariant }, backgroundColor: surfaceVariant, shape: { cornerRadius: 16, type: "rounded" }, padding: 0, elevation: 0, fillMaxWidth: true }, [
         ctx.UI.Column({ backgroundColor: surfaceVariant, fillMaxWidth: true, padding: 14, spacing: 6 }, box)
     ]));
 
@@ -122,8 +127,8 @@ function Screen(ctx) {
     box2.push(ctx.UI.TextField({ value: av, onValueChange: setAv, singleLine: true, placeholder: ctx.UI.Text({ text: "a 如 0.007078203", color: onSurfaceVariant }), style: { color: onSurface } }));
     box2.push(ctx.UI.TextField({ value: bv, onValueChange: setBv, singleLine: true, placeholder: ctx.UI.Text({ text: "b 如 6.00914e-07", color: onSurfaceVariant }), style: { color: onSurface } }));
     box2.push(ctx.UI.TextField({ value: cv, onValueChange: setCv, singleLine: true, placeholder: ctx.UI.Text({ text: "c 如 3.15168", color: onSurfaceVariant }), style: { color: onSurface } }));
-    box2.push(ctx.UI.Button({ contentColor: surfaceVariant, color: surfaceVariant, textColor: surfaceVariant, containerColor: primary, shape: { cornerRadius: 12, type: "rounded" }, text: busy ? "保存中…" : "保存公式参数", fillMaxWidth: true, onClick: function () { save({ a: av, b: bv, c: cv }, "公式参数已保存"); } }));
-    children.push(ctx.UI.Card({ containerColor: surfaceVariant, backgroundColor: surfaceVariant, shape: { cornerRadius: 16, type: "rounded" }, padding: 0, elevation: 0, fillMaxWidth: true }, [
+    box2.push(ctx.UI.Button({ contentColor: surfaceVariant, color: surfaceVariant, textColor: surfaceVariant, containerColor: primary, shape: { cornerRadius: 12, type: "rounded" }, text: "保存公式参数", fillMaxWidth: true, onClick: function () { save({ a: av, b: bv, c: cv }, "公式参数已保存"); } }));
+    children.push(ctx.UI.Card({ containerColor: surfaceVariant, border: { width: 1, color: scheme.outline || surfaceVariant }, backgroundColor: surfaceVariant, shape: { cornerRadius: 16, type: "rounded" }, padding: 0, elevation: 0, fillMaxWidth: true }, [
         ctx.UI.Column({ backgroundColor: surfaceVariant, fillMaxWidth: true, padding: 14, spacing: 6 }, box2)
     ]));
 
@@ -137,13 +142,13 @@ function Screen(ctx) {
     box3.push(ctx.UI.Text({ text: "连续命中停止上限 max_wake_stops（默认 5）", style: "bodySmall", color: onSurfaceVariant }));
     box3.push(ctx.UI.TextField({ value: stopv, onValueChange: setStopv, singleLine: true, placeholder: ctx.UI.Text({ text: "5", color: onSurfaceVariant }), style: { color: onSurface } }));
     box3.push(ctx.UI.Button({ contentColor: surfaceVariant, color: surfaceVariant, textColor: surfaceVariant, containerColor: primary, shape: { cornerRadius: 12, type: "rounded" }, text: "保存停止上限", fillMaxWidth: true, onClick: function () { save({ max_wake_stops: stopv }, "停止上限已保存"); } }));
-    children.push(ctx.UI.Card({ containerColor: surfaceVariant, backgroundColor: surfaceVariant, shape: { cornerRadius: 16, type: "rounded" }, padding: 0, elevation: 0, fillMaxWidth: true }, [
+    children.push(ctx.UI.Card({ containerColor: surfaceVariant, border: { width: 1, color: scheme.outline || surfaceVariant }, backgroundColor: surfaceVariant, shape: { cornerRadius: 16, type: "rounded" }, padding: 0, elevation: 0, fillMaxWidth: true }, [
         ctx.UI.Column({ backgroundColor: surfaceVariant, fillMaxWidth: true, padding: 14, spacing: 6 }, box3)
     ]));
 
     children.push(ctx.UI.Button({ contentColor: onSurface, color: onSurface, textColor: onSurface, containerColor: surfaceVariant, shape: { cornerRadius: 12, type: "rounded" }, text: "返回主页", fillMaxWidth: true, onClick: goHome }));
     if (msg) {
-        children.push(ctx.UI.Card({ containerColor: surfaceVariant, backgroundColor: surfaceVariant, shape: { cornerRadius: 16, type: "rounded" }, padding: 0, elevation: 0, fillMaxWidth: true }, [
+        children.push(ctx.UI.Card({ containerColor: surfaceVariant, border: { width: 1, color: scheme.outline || surfaceVariant }, backgroundColor: surfaceVariant, shape: { cornerRadius: 16, type: "rounded" }, padding: 0, elevation: 0, fillMaxWidth: true }, [
             ctx.UI.Row({ backgroundColor: surfaceVariant, fillMaxWidth: true, padding: 14, verticalAlignment: "center" }, [
                 ctx.UI.Text({ text: msg, style: "bodyMedium", color: onSurface, weight: 1 })
             ])

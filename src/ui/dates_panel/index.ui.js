@@ -1,4 +1,9 @@
 function Screen(ctx) {
+    // 给主题色加透明度：#RRGGBB -> #AARRGGBB（不依赖 backgroundAlpha）
+    function wa(c, a) {
+        if (typeof c === "string" && /^#[0-9a-fA-F]{6}$/.test(c)) return "#" + a + c.slice(1);
+        return c;
+    }
 
     // ===== 工具调用辅助（v1.9.2）：兼容 UI 侧 callTool 返回（字符串/对象/裸数据）=====
     function unwrapRaw(o) {
@@ -126,7 +131,7 @@ function Screen(ctx) {
     if (errMsg) {
         children.push(ctx.UI.Text({ text: errMsg, style: "bodySmall", color: (scheme.error || "#B00020") }));
     }
-    children.push(ctx.UI.Text({ text: "日期静默", style: "titleMedium", fontWeight: "semiBold", color: onSurface }));
+    children.push(ctx.UI.Text({ text: "日期静默", fontSize: 24, fontWeight: "bold", color: primary }));
     children.push(ctx.UI.Text({ text: "点选日期 = 全天硬静默（不因设备活动解除）；蓝色=已静默", style: "bodySmall", color: onSurfaceVariant }));
 
     var head = [];
@@ -153,7 +158,7 @@ function Screen(ctx) {
         }
         head.push(ctx.UI.Row({ spacing: 4, fillMaxWidth: true }, rowKids));
     }
-    children.push(ctx.UI.Card({ containerColor: surfaceVariant, backgroundColor: surfaceVariant, shape: { cornerRadius: 16, type: "rounded" }, padding: 0, elevation: 0, fillMaxWidth: true }, [
+    children.push(ctx.UI.Card({ containerColor: surfaceVariant, border: { width: 1, color: scheme.outline || surfaceVariant }, backgroundColor: surfaceVariant, shape: { cornerRadius: 16, type: "rounded" }, padding: 0, elevation: 0, fillMaxWidth: true }, [
         ctx.UI.Column({ backgroundColor: surfaceVariant, fillMaxWidth: true, padding: 14, spacing: 6 }, head)
     ]));
 
@@ -162,14 +167,14 @@ function Screen(ctx) {
     flags.push(ctx.UI.Button({ contentColor: onSurface, color: onSurface, textColor: onSurface, containerColor: schoolAuto ? primary : surfaceVariant, shape: { cornerRadius: 12, type: "rounded" }, text: schoolAuto ? "上学日自动静默：开" : "上学日自动静默：关", fillMaxWidth: true, onClick: function () { var v = !schoolAuto; setSchoolAuto(v); saveFlag({ school_day_auto_quiet: v }, v ? "上学日静默已开启" : "上学日静默已关闭"); } }));
     flags.push(ctx.UI.Button({ contentColor: onSurface, color: onSurface, textColor: onSurface, containerColor: studentMode ? primary : surfaceVariant, shape: { cornerRadius: 12, type: "rounded" }, text: studentMode ? "学生模式：开（寒暑假算特殊日）" : "学生模式：关（成年人）", fillMaxWidth: true, onClick: function () { var v = !studentMode; setStudentMode(v); saveFlag({ student_mode: v }, v ? "学生模式已开启" : "学生模式已关闭"); } }));
     flags.push(ctx.UI.Text({ text: holFetch ? ("节假日表更新于 " + holFetch + "，共 " + holidays.length + " 天") : "节假日表尚未联网更新（暂用内置表）", style: "bodySmall", color: onSurfaceVariant }));
-    flags.push(ctx.UI.Button({ contentColor: onSurface, color: onSurface, textColor: onSurface, containerColor: surfaceVariant, shape: { cornerRadius: 12, type: "rounded" }, text: busy ? "处理中…" : "立即更新节假日表", fillMaxWidth: true, onClick: doFetchHolidays }));
-    children.push(ctx.UI.Card({ containerColor: surfaceVariant, backgroundColor: surfaceVariant, shape: { cornerRadius: 16, type: "rounded" }, padding: 0, elevation: 0, fillMaxWidth: true }, [
+    flags.push(ctx.UI.Button({ contentColor: onSurface, color: onSurface, textColor: onSurface, containerColor: surfaceVariant, shape: { cornerRadius: 12, type: "rounded" }, text: "立即更新节假日表", fillMaxWidth: true, onClick: doFetchHolidays }));
+    children.push(ctx.UI.Card({ containerColor: surfaceVariant, border: { width: 1, color: scheme.outline || surfaceVariant }, backgroundColor: surfaceVariant, shape: { cornerRadius: 16, type: "rounded" }, padding: 0, elevation: 0, fillMaxWidth: true }, [
         ctx.UI.Column({ backgroundColor: surfaceVariant, fillMaxWidth: true, padding: 14, spacing: 6 }, flags)
     ]));
 
     children.push(ctx.UI.Button({ contentColor: onSurface, color: onSurface, textColor: onSurface, containerColor: surfaceVariant, shape: { cornerRadius: 12, type: "rounded" }, text: "返回主页", fillMaxWidth: true, onClick: goHome }));
     if (msg) {
-        children.push(ctx.UI.Card({ containerColor: surfaceVariant, backgroundColor: surfaceVariant, shape: { cornerRadius: 16, type: "rounded" }, padding: 0, elevation: 0, fillMaxWidth: true }, [
+        children.push(ctx.UI.Card({ containerColor: surfaceVariant, border: { width: 1, color: scheme.outline || surfaceVariant }, backgroundColor: surfaceVariant, shape: { cornerRadius: 16, type: "rounded" }, padding: 0, elevation: 0, fillMaxWidth: true }, [
             ctx.UI.Row({ backgroundColor: surfaceVariant, fillMaxWidth: true, padding: 14, verticalAlignment: "center" }, [
                 ctx.UI.Text({ text: msg, style: "bodyMedium", color: onSurface, weight: 1 })
             ])

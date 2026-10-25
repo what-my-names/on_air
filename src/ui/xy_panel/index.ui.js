@@ -599,7 +599,11 @@ function Screen(ctx) {
     ["控制台", "toolpkg:com.operit.on_air:ui:on_air_console", "直调 API：掷骰 / 查沉默 / 全量读数 / 工具清单", "Terminal"]
   ];
 
-  // ===== 渲染（v2.2.0+1 视觉层次）=====
+  // ===== 渲染（v2.2.0+3 视觉层次）=====
+  function wa(c, a) {
+    if (typeof c === "string" && /^#[0-9a-fA-F]{6}$/.test(c)) return "#" + a + c.slice(1);
+    return c;
+  }
   var C = {
     bg: P.bg,
     card: P.card,
@@ -613,7 +617,7 @@ function Screen(ctx) {
   function sectionLabel(txt) {
     return ctx.UI.Row({ fillMaxWidth: true, verticalAlignment: "center", spacing: 8 }, [
       ctx.UI.Box({ width: 3, height: 14, background: C.primary, shape: { cornerRadius: 2, type: "rounded" } }),
-      ctx.UI.Text({ text: txt, fontSize: 12, fontWeight: "bold", color: C.dim })
+      ctx.UI.Text({ text: txt, fontSize: 12, fontWeight: "bold", color: C.primary })
     ]);
   }
   function metric(label, value, color) {
@@ -644,7 +648,7 @@ function Screen(ctx) {
   children.push(ctx.UI.Row({ fillMaxWidth: true, horizontalArrangement: "spaceBetween", verticalAlignment: "center" }, [
     ctx.UI.Column({ spacing: 3 }, [
       ctx.UI.Text({ text: "随机上线", fontSize: 26, fontWeight: "bold", color: C.text }),
-      ctx.UI.Text({ text: "装成真人的主动消息 · v2.2.0+1", fontSize: 12, color: C.dim })
+      ctx.UI.Text({ text: "装成真人的主动消息 · v2.2.0+3", fontSize: 12, color: C.dim })
     ]),
     ctx.UI.Surface({ containerColor: C.primary, alpha: 0.14, shape: { cornerRadius: 100, type: "rounded" } }, [
       ctx.UI.Row({ padding: { horizontal: 10, vertical: 6 }, spacing: 6, verticalAlignment: "center" }, [
@@ -682,7 +686,7 @@ function Screen(ctx) {
   var cardTxt = stCardName ? stCardName : "跟随当前对话";
   children.push(ctx.UI.Card({
     containerColor: C.card, shape: { cornerRadius: 20, type: "rounded" },
-    border: { width: 1, color: C.line, alpha: 0.35 }, elevation: 2, fillMaxWidth: true
+    border: { width: 1, color: C.line }, elevation: 2, fillMaxWidth: true
   }, [
     ctx.UI.Column({ padding: 18, spacing: 12, fillMaxWidth: true }, [
       ctx.UI.Row({ fillMaxWidth: true, horizontalArrangement: "spaceBetween", verticalAlignment: "center" }, [
@@ -713,7 +717,7 @@ function Screen(ctx) {
       return navRow(it[3], it[0], it[2], it[1]);
     })(NAV_ITEMS[ni]));
   }
-  children.push(ctx.UI.Card({ containerColor: C.card, shape: { cornerRadius: 18, type: "rounded" }, border: { width: 1, color: C.line, alpha: 0.35 }, elevation: 1, fillMaxWidth: true }, [
+  children.push(ctx.UI.Card({ containerColor: C.card, shape: { cornerRadius: 18, type: "rounded" }, border: { width: 1, color: C.line }, elevation: 1, fillMaxWidth: true }, [
     ctx.UI.Column({ padding: 0, spacing: 0, fillMaxWidth: true }, navRows)
   ]));
 
@@ -738,7 +742,7 @@ function Screen(ctx) {
       ])
     ]));
   }
-  children.push(ctx.UI.Text({ text: "v2.2.0+1 · 打开面板时自动检查更新", fontSize: 11, color: C.dim }));
+  children.push(ctx.UI.Text({ text: "v2.2.0+3 · 打开面板时自动检查更新", fontSize: 11, color: C.dim }));
 
   return ctx.UI.LazyColumn({ containerColor: P.bg, backgroundColor: P.bg,
     onLoad: async function () {
