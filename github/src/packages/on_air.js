@@ -131,7 +131,7 @@ METADATA
         {
             "name": "check_update",
             "description": { "zh": "检查 GitHub 仓库是否有新版本（带 6 小时缓存）；返回当前版本、最新版本、更新说明、下载地址", "en": "Check GitHub releases for a newer version (6h cache)" },
-            "parameters": []
+            "parameters": [{ "name": "force", "type": "boolean", "description": "true=忽略 6 小时缓存，强制重新拉取", "required": false }]
         },
         {
             "name": "download_update",
@@ -194,6 +194,10 @@ METADATA
  */
 
 // ============ 路径常量：全插件只定义这一次 ============
+// 下载整体单例（声明放模块顶部：get_download_status 也会读它）
+var __dlRunning = false;
+var __dlStartedAt = 0;
+
 var BASE_DIR = "/sdcard/Download/Operit/plugins/on_air/";
 var STATE_PATH = BASE_DIR + "state.json";
 var FORMULA_PATH = BASE_DIR + "formula.json";
@@ -2408,7 +2412,7 @@ exports.maybe_awake = async function (params) {
                 meta.cooldown_until = (Number(formula.cooldown_minutes) > 0) ? fmtCooldown(formula.cooldown_minutes) : null;
                 state.jealousy_count = (state.jealousy_count || 0) + 1;
                 // N10：多对话也要走停止上限与置气消息（原来这里 return 早于上限判断）
-                var stopAtM = Number(formula.max_wake_stops) || 2;
+                var stopAtM = Number(formula.max_wake_stops) || 5;
                 if (state.jealousy_count >= stopAtM) {
                     var fierceM = buildPrompt(formula, "prompt_stop", { "次数": String(stopAtM), "上限": String(stopAtM) });
                     try { await sendToAiOne(formula, fierceM, cid); } catch (eStopM) { }
@@ -2696,9 +2700,6 @@ exports.get_download_status = async function (params) {
     });
 };
 
-// DL1/DL3：下载整体单例（只锁状态拦不住并行的 resp.execute）
-var __dlRunning = false;
-var __dlStartedAt = 0;
 exports.download_update = async function (params) {
     var needForce = !!(params && params.force);
     // DL1：整个下载过程只允许一个实例；超过 10 分钟自动失效（防止漏释放把功能卡死）

@@ -191,14 +191,7 @@ function Screen(ctx) {
         ctx.UI.Column({ backgroundColor: surfaceVariant, fillMaxWidth: true, padding: 14, spacing: 6 }, b3)
     ]));
 
-    var b4 = [];
-    b4.push(ctx.UI.Text({ text: "目标对话（用对话名字反查，不发任何消息）", style: "bodySmall", color: onSurfaceVariant }));
-    b4.push(ctx.UI.TextField({ value: chatName, onValueChange: setChatName, singleLine: true, placeholder: ctx.UI.Text({ text: "对话的名字，如：猫娘", color: onSurfaceVariant }), style: { color: onSurface } }));
-    b4.push(ctx.UI.Button({ contentColor: onSurface, color: onSurface, textColor: onSurface, containerColor: surfaceVariant, shape: { cornerRadius: 12, type: "rounded" }, text: "按名字选中对话", fillMaxWidth: true, onClick: doLink }));
-    if (linked) b4.push(ctx.UI.Text({ text: "已选中对话 ID：" + linked, style: "bodySmall", color: onSurfaceVariant }));
-    children.push(ctx.UI.Card({ containerColor: surfaceVariant, border: { width: 1, color: scheme.outline || surfaceVariant }, backgroundColor: surfaceVariant, shape: { cornerRadius: 16, type: "rounded" }, padding: 0, elevation: 0, fillMaxWidth: true }, [
-        ctx.UI.Column({ backgroundColor: surfaceVariant, fillMaxWidth: true, padding: 14, spacing: 6 }, b4)
-    ]));
+    // 目标对话已统一到「参数设置」页（chat_ids），本页不再提供入口
 
     var b5 = [];
     b5.push(ctx.UI.Text({ text: "AI 静默建议（按你的发言习惯算，可选填对话名）", style: "bodySmall", color: onSurfaceVariant }));

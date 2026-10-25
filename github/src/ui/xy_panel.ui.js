@@ -2,7 +2,6 @@
 var __dlPolling = false;
 var __dlPollGen = 0;
 
-var __xyFlags = { qde: false, se: { dateQuietOn: false, studentMode: false, schoolAuto: false } };
 
 function Screen(ctx) {
   /*
@@ -32,7 +31,6 @@ function Screen(ctx) {
   };
   // ===== 状态 =====
   var loadingState = ctx.useState("loading", true);
-  var loading = loadingState[0];
   var setLoading = loadingState[1];
 
   var msgState = ctx.useState("msg", "");
@@ -270,13 +268,7 @@ function Screen(ctx) {
     if (alreadyInited) return;     // 输入框只在首次回填，避免覆盖正在编辑的内容
     var s = fresh.st;
     var f = fresh.fm;
-    if (s && typeof s.x === "number") setXInput(String(s.x));
     if (f) {
-      if (typeof f.cooldown_minutes === "number") setCoolInput(String(f.cooldown_minutes));
-      if (typeof f.a === "number") setAInput(String(f.a));
-      if (typeof f.b === "number") setBInput(String(f.b));
-      if (typeof f.c === "number") setCInput(String(f.c));
-      if (Array.isArray(f.awake_messages)) setTalkInput(f.awake_messages.join("\n"));
       if (f.awake_mode) setAwakeMode(f.awake_mode);
       if (f.send_mode) {
         // 未安装温柔巡检时 A2 不可用，界面回落到 A1
@@ -290,15 +282,7 @@ function Screen(ctx) {
       if (f.quiet_day_end) setQuietDayEnd(String(f.quiet_day_end));
       if (f.quiet_night_start) setQuietNightStart(String(f.quiet_night_start));
       if (f.quiet_night_end) setQuietNightEnd(String(f.quiet_night_end));
-      if (f.quiet_suggest) setSuggest(f.quiet_suggest);
-      if (f.chat_id) setLinkedChat(String(f.chat_id));
       // 日历与节假日（v1.5.8 起 / v1.6.10 起逻辑反转 / v1.7.10 起学生模式+总开关）
-      if (!__xyFlags.qde && f.quiet_dates && typeof f.quiet_dates === "object") setCalDates(f.quiet_dates);
-      if (!__xyFlags.se.schoolAuto && f.school_day_auto_quiet !== undefined) setSchoolAuto(f.school_day_auto_quiet === true || f.school_day_auto_quiet === "true");
-      if (!__xyFlags.se.studentMode && f.student_mode !== undefined) setStudentMode(f.student_mode === true || f.student_mode === "true");
-      if (!__xyFlags.se.dateQuietOn && f.date_quiet_enabled !== undefined) setDateQuietOn(f.date_quiet_enabled !== false && f.date_quiet_enabled !== "false");
-      if (Array.isArray(f.holiday_dates)) setHolidayDates(f.holiday_dates);
-      if (f.holiday_fetch_date) setHolidayFetchDate(String(f.holiday_fetch_date));
     }
   }
 
@@ -333,8 +317,6 @@ function Screen(ctx) {
     var r = await callTool("on_air:suggest_quiet", params);
     setSuggestBusy(false);
     if (r.success && r.data && r.data.suggestion) {
-      setSuggest(r.data.suggestion);
-      if (r.data.chat_id) setLinkedChat(String(r.data.chat_id));
       var sampleNote = (typeof r.data.sample_count === "number")
         ? ("（样本 " + r.data.sample_count + " 条）") : "";
       await showMsg((r.data.source === "ai" ? "AI" : "本地算法") + "建议已生成" + sampleNote + "：白天 " +
@@ -356,7 +338,6 @@ function Screen(ctx) {
     var r = await callTool("on_air:link_agent", { chat_name: name });
     setSuggestBusy(false);
     if (r.success && r.data && r.data.chat_id) {
-      setLinkedChat(String(r.data.chat_id));
       await showMsg(r.message || "已选中对话「" + name + "」");
       await refresh();
     } else {
@@ -572,7 +553,6 @@ function Screen(ctx) {
     return st.running ? "运行中" : "空闲态";
   }
 
-  var yPreview = computeY(xInput);
   var stX = (st && st.x != null) ? st.x : null;
   var stY = (st && st.y != null) ? st.y : null;
   var stMiss = (st && st.miss_count != null) ? st.miss_count : null;

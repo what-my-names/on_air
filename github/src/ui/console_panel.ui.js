@@ -46,15 +46,11 @@ function Screen(ctx) {
     var scheme = (ctx.MaterialTheme && ctx.MaterialTheme.colorScheme) ? ctx.MaterialTheme.colorScheme : {};
     var onSurface = scheme.onSurface || "#222222";
     var onSurfaceVariant = scheme.onSurfaceVariant || "#666666";
-    var surface = scheme.surface || "#FFFFFF";
     var surfaceVariant = scheme.surfaceVariant || "#F2F2F2";
     var cardBg = scheme.surfaceContainerHigh || surfaceVariant;
     var innerBg = scheme.surfaceContainerLow || scheme.surface || "#FFFFFF";   // 直接兜底，不依赖局部变量
     var primary = scheme.primary || "#222222";
     var onPrimary = scheme.onPrimary || "#FFFFFF";
-    var primaryContainer = scheme.primaryContainer || primary;
-    var onPrimaryContainer = scheme.onPrimaryContainer || onPrimary;
-    var outline = scheme.outline || "#CCCCCC";
     var errColor = scheme.error || "#B00020";
     var errContainer = scheme.errorContainer || surfaceVariant;
     var onErrContainer = scheme.onErrorContainer || errColor;
