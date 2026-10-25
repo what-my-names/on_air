@@ -13,16 +13,6 @@ var __importDefault = function(mod) {
 };
 var ui = __importDefault(require("./ui/xy_panel/index.ui.js"));
 var Screen = ui.default || ui;
-var promptUi = __importDefault(require("./ui/prompt_panel/index.ui.js"));
-var PromptScreen = promptUi.default || promptUi;
-var paramsUi = __importDefault(require("./ui/params_panel/index.ui.js"));
-var ParamsScreen = paramsUi.default || paramsUi;
-var quietUi = __importDefault(require("./ui/quiet_panel/index.ui.js"));
-var QuietScreen = quietUi.default || quietUi;
-var datesUi = __importDefault(require("./ui/dates_panel/index.ui.js"));
-var DatesScreen = datesUi.default || datesUi;
-var consoleUi = __importDefault(require("./ui/console_panel/index.ui.js"));
-var ConsoleScreen = consoleUi.default || consoleUi;
 
 function registerToolPkg() {
     ToolPkg.registerUiRoute({
@@ -34,48 +24,6 @@ function registerToolPkg() {
             zh: "随机上线",
             en: "On Air",
         }
-    });
-
-    ToolPkg.registerUiRoute({
-        id: "on_air_prompts",
-        runtime: "compose_dsl",
-        screen: PromptScreen,
-        params: {},
-        title: {
-            zh: "提示词设置",
-            en: "Prompts"
-        }
-    });
-
-    ToolPkg.registerUiRoute({
-        id: "on_air_params",
-        runtime: "compose_dsl",
-        screen: ParamsScreen,
-        params: {},
-        title: { zh: "参数设置", en: "Params" }
-    });
-
-    ToolPkg.registerUiRoute({
-        id: "on_air_quiet",
-        runtime: "compose_dsl",
-        screen: QuietScreen,
-        params: {},
-        title: { zh: "免打扰", en: "Quiet" }
-    });
-
-    ToolPkg.registerUiRoute({
-        id: "on_air_dates",
-        runtime: "compose_dsl",
-        screen: DatesScreen,
-        params: {},
-        title: { zh: "日期静默", en: "Dates" }
-    });
-    ToolPkg.registerUiRoute({
-        id: "on_air_console",
-        runtime: "compose_dsl",
-        screen: ConsoleScreen,
-        params: {},
-        title: { zh: "控制台", en: "Console" }
     });
 
     ToolPkg.registerNavigationEntry({

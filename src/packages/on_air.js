@@ -7,8 +7,8 @@ METADATA
         "en": "On Air"
     },
     "description": {
-        "zh": "随机上线：装成真人的 Operit AI 插件。你沉默得越久，它上线的概率就越高，会在随机时间主动来找你说话。v1.2 静默时段；v1.3 作息样本统计；v1.4 日夜静默独立开关；v1.5 内置日历与节假日；v1.6 静默逻辑反转；v1.7 学生模式与日期级静默；v1.9.1 提示词折叠分组 + A1/A2 真区别；v1.9 全部提示词可自定义（8 处，含置气消息与档位话术库）、修复置气消息从未发出的问题、面板拆分为二级页面（参数/提示词/免打扰/日期）、面板配色跟随宿主主题。",
-        "en": "On Air: an Operit AI plugin that pretends to be a real person. The longer you stay silent, the higher the chance it comes online and reaches out. v1.2 quiet periods; v1.3 schedule sample stats; v1.4 independent day/night quiet; v1.5 built-in calendar & holidays; v1.6 quiet logic reversed; v1.7 student mode & date quiet; v1.9.1 collapsible prompt groups + real A1/A2 difference; v1.9 all prompts customizable (8 slots incl. sulk message & tier scripts), fixed sulk message never being sent, new Prompts settings page, panel colors follow host theme."
+        "zh": "随机上线：装成真人的 Operit AI 插件。你沉默得越久，它上线的概率就越高，会在随机时间主动来找你说话。v1.2 静默时段；v1.3 作息样本统计；v1.4 日夜静默独立开关；v1.5 内置日历与节假日；v1.6 静默逻辑反转；v1.7 学生模式与日期级静默。",
+        "en": "On Air: an Operit AI plugin that pretends to be a real person. The longer you stay silent, the higher the chance it comes online and reaches out. v1.2 quiet periods; v1.3 schedule sample stats; v1.4 independent day/night quiet; v1.5 built-in calendar & holidays; v1.6 quiet logic reversed; v1.7 student mode & date quiet."
     },
     "enabledByDefault": true,
     "category": "COMPANION",
@@ -68,23 +68,14 @@ METADATA
                  { "name": "idle_threshold_minutes", "type": "number", "description": "沉默阈值", "required": false },
                  { "name": "cooldown_minutes", "type": "number", "description": "冷却分钟数", "required": false },
                  { "name": "awake_messages", "type": "string", "description": "主动消息话术数组(json字符串)", "required": false },
-                 { "name": "send_mode", "type": "string", "description": "发送通道：A1=on_air 自己唤醒 AI（默认）；A2=借温柔巡检的自动回复通道（需温柔巡检在运行，未装则自动回落 A1）", "required": false },
+                 { "name": "send_mode", "type": "string", "description": "主动消息投递方式：A1=工具内唤醒落正文不弹(AI自己主动发) / A2=工具内AI主动发落正文不弹(默认)，仅支持 A1/A2", "required": false },
                  { "name": "awake_mode", "type": "string", "description": "话术模式：default=唤醒AI自己发挥(带上下文) / custom=用本地自定义话术库", "required": false },
                  { "name": "max_wake_stops", "type": "number", "description": "连续命中主动消息停止上限(默认5；装有温柔巡检时可改为4给温柔巡检让位)", "required": false },
                  { "name": "character_card_name", "type": "string", "description": "角色卡名字：唤醒时按名字定位角色卡（留空=跟随当前对话绑定的角色卡）", "required": false },
                   { "name": "quiet_dates", "type": "string", "description": "全天静默日映射(json字符串，如 {\"2026-08-18\":\"full\"})：任意日期都可点选为全天静默(硬静默不因设备活动解除)", "required": false },
                   { "name": "school_day_auto_quiet", "type": "boolean", "description": "上学日自动静默：true=普通日(非节假日、非周六周日、学生模式下非寒暑假)自动全天硬静默", "required": false },
                   { "name": "student_mode", "type": "boolean", "description": "学生模式：true=寒暑假算特殊日(保持彩色)；false=成年人模式，寒暑假按普通日处理", "required": false },
-                  { "name": "date_quiet_enabled", "type": "boolean", "description": "日期静默总开关：true=点选静默日与上学日自动静默生效；false=全部日期级静默失效", "required": false },
-                   { "name": "prompt_manual_default", "type": "string", "description": "手动触发(default模式)给AI的提示词模板(空=用默认)", "required": false },
-                   { "name": "prompt_manual_prefix", "type": "string", "description": "手动触发(custom模式)包装前缀模板(可用{话术})", "required": false },
-                   { "name": "prompt_auto_default", "type": "string", "description": "自动触发(default模式)提示词模板(可用{档位}{次数})", "required": false },
-                   { "name": "prompt_auto_prefix", "type": "string", "description": "自动触发(custom模式)包装前缀模板(可用{话术})", "required": false },
-                   { "name": "prompt_gentle", "type": "string", "description": "温柔巡检自动回复通道的提示词模板", "required": false },
-                   { "name": "prompt_stop", "type": "string", "description": "置气消息模板(可用{次数}{上限})", "required": false },
-                   { "name": "prompt_quiet_lifted", "type": "string", "description": "静默解除通知模板(可用{原因}{静默时段})", "required": false },
-                   { "name": "jealousy_tiers", "type": "string", "description": "档位话术库(json二维数组字符串，每档一组)", "required": false },
-                   { "name": "reset_prompts", "type": "boolean", "description": "true=一键恢复全部提示词为默认", "required": false }
+                  { "name": "date_quiet_enabled", "type": "boolean", "description": "日期静默总开关：true=点选静默日与上学日自动静默生效；false=全部日期级静默失效", "required": false }
              ]
         },
         {
@@ -173,65 +164,6 @@ var DEFAULT_STATE = {
 };
 
 // ============ 默认公式参数 ============
-// ===== v2.1.0：字段规格表 FIELD_SPEC =====
-// 目的：一个字段的「类型 / 分组 / 面板标签 / 占位符 / 顺序」只在这里定义一次。
-// 默认值仍以 DEFAULT_FORMULA 为唯一来源（不在这里重复，避免两处打架）。
-// 后续新增字段：SPEC 加一行 + get/update 自动遍历，不再手抄 4 遍。
-var FIELD_SPEC = {
-    // ---- 公式 ----
-    a: { type: "number", group: "formula", label: "a 线性系数", min: 0, order: 1 },
-    b: { type: "number", group: "formula", label: "b 幂项系数", min: 0, order: 2 },
-    c: { type: "number", group: "formula", label: "c 幂指数", min: 0, order: 3 },
-    // ---- 基础参数 ----
-    idle_threshold_minutes: { type: "number", group: "params", label: "沉默阈值（分钟）", min: 1, int: true, order: 10 },
-    cooldown_minutes: { type: "number", group: "params", label: "唤醒后冷却（分钟）", min: 0, int: true, order: 11 },
-    max_wake_stops: { type: "number", group: "params", label: "连续命中停止上限", min: 2, int: true, order: 12 },
-    character_card_name: { type: "string", group: "params", label: "角色卡名字", order: 13 },
-    // ---- 发送 ----
-    send_mode: { type: "enum", group: "send", label: "发送方式", values: ["A1", "A2"], order: 20 },
-    awake_mode: { type: "enum", group: "send", label: "话术模式", values: ["default", "custom"], order: 21 },
-    // ---- 提示词 7 项 ----
-    prompt_manual_default: { type: "prompt", group: "prompt", label: "1 手动触发·默认模式", slots: [], order: 30 },
-    prompt_manual_prefix: { type: "prompt", group: "prompt", label: "2 手动触发·自定义前缀", slots: ["话术"], order: 31 },
-    prompt_auto_default: { type: "prompt", group: "prompt", label: "3 自动触发·默认模式", slots: ["档位", "次数"], order: 32 },
-    prompt_auto_prefix: { type: "prompt", group: "prompt", label: "4 自动触发·自定义前缀", slots: ["话术", "档位", "次数"], order: 33 },
-    prompt_gentle: { type: "prompt", group: "prompt", label: "5 温柔巡检通道", slots: [], order: 34 },
-    prompt_stop: { type: "prompt", group: "prompt", label: "6 置气消息", slots: ["次数", "上限"], order: 35 },
-    prompt_quiet_lifted: { type: "prompt", group: "prompt", label: "7 静默解除通知", slots: ["原因", "静默时段"], order: 36 },
-    // ---- 话术库 ----
-    jealousy_tiers: { type: "tiers", group: "prompt", label: "8 档位话术库", order: 37 },
-    awake_messages: { type: "lines", group: "prompt", label: "9 话术库", order: 38 },
-    // ---- 静默 ----
-    quiet_enabled: { type: "bool", group: "quiet", label: "静默总开关", order: 40 },
-    quiet_day_enabled: { type: "bool", group: "quiet", label: "白天段开关", order: 41 },
-    quiet_night_enabled: { type: "bool", group: "quiet", label: "夜间段开关", order: 42 },
-    quiet_day_start: { type: "time", group: "quiet", label: "白天段开始", order: 43 },
-    quiet_day_end: { type: "time", group: "quiet", label: "白天段结束", order: 44 },
-    quiet_night_start: { type: "time", group: "quiet", label: "夜间段开始", order: 45 },
-    quiet_night_end: { type: "time", group: "quiet", label: "夜间段结束", order: 46 },
-    quiet_dates: { type: "date_map", group: "dates", label: "全天静默日", order: 50 },
-    school_day_auto_quiet: { type: "bool", group: "dates", label: "上学日自动静默", order: 51 },
-    student_mode: { type: "bool", group: "dates", label: "学生模式", order: 52 },
-    date_quiet_enabled: { type: "bool", group: "dates", label: "日期静默总开关", order: 53 },
-    // ---- 内部字段（不接受用户修改、不上面板）----
-    chat_id: { type: "internal", order: 90 },
-    chat_id_source: { type: "internal", order: 91 },
-    prompt_customized: { type: "internal", order: 92 },
-    quiet_suggest: { type: "internal", order: 93 },
-    holiday_dates: { type: "internal", order: 94 },
-    holiday_fetch_date: { type: "internal", order: 95 }
-};
-
-// 按 SPEC 取某个分组下、按 order 排序的字段名
-function specKeysOfGroup(group) {
-    var arr = [];
-    for (var k in FIELD_SPEC) {
-        if (FIELD_SPEC[k].group === group) arr.push(k);
-    }
-    arr.sort(function (x, y) { return (FIELD_SPEC[x].order || 0) - (FIELD_SPEC[y].order || 0); });
-    return arr;
-}
-
 var DEFAULT_FORMULA = {
     a: 0.007078203,                 // 线性系数：f = a*x + b*x^c
     b: 6.00914e-07,                 // 幂项系数：f = a*x + b*x^c
@@ -239,7 +171,7 @@ var DEFAULT_FORMULA = {
     idle_threshold_minutes: 10,     // 沉默阈值（锁定版：10分钟窗口）：用户超过10分钟没说话就启动x累加
     cooldown_minutes: 15,           // 冷却分钟数(预留)
     awake_mode: "default",          // 话术模式：default=唤醒AI自己发挥(带最近上下文，无需API) / custom=用本地自定义话术库
-    send_mode: "A1",                // 发送通道：A1=on_air 自己唤醒 AI（默认）/ A2=借温柔巡检的自动回复通道（未装温柔巡检时自动回落 A1）
+    send_mode: "A1",                // 主动消息投递方式：A1=工具内唤醒落正文不弹(AI自己主动发、默认) / A2=工具内AI主动发落正文不弹，仅支持 A1/A2
     // 说明：A1为默认。诉求"要AI自己主动发，而不是让工作流(作为用户端)发"。
     // A1 = maybe_awake 内部用 sendToAi(Tools.Chat.sendMessage, 带 hide_user_message:true + persist_turn:true)直接唤醒AI发言。
     max_wake_stops: 5,              // 连续命中主动消息停止上限：第N次命中计数爆表停止主动消息(默认5；装有温柔巡检时面板可改为4给温柔巡检让位)
@@ -252,21 +184,20 @@ var DEFAULT_FORMULA = {
         "你在干嘛呀？今天过得怎么样？",
         "忙完了吗？有空聊两句吗？"
     ],
-    // ===== v1.9.0 可自定义提示词（8 处）：默认值 = 旧版硬编码原文，保证老用户行为不变 =====
-    // 占位符（可选）：{档位} {次数} {话术} {时间}；不写占位符也能直接用
-    prompt_manual_default: "（主动消息·内部提醒）请以你自己的身份，结合最近 3~5 轮聊天上下文，用中文给用户发一句自然的主动问候（20~60 字）。\n要求：\n1）像一个真实的人突然想起对方那样开口，可带一点具体细节（比如上次聊到的事、此刻的时间感）；\n2）不要用「在吗」「你好」这类通用开场，也不要每次都同一句式；\n3）不要提及触发、唤醒、提醒、插件、系统等任何机制性内容，不要暴露这是一条被安排的消息；\n4）只输出要发送的那一句话本身，不加解释、不加引号。",
-    prompt_manual_prefix: "（主动消息·内部提醒）下面这句话是你想对用户说的话（底稿），请以你自己的身份自然地把它说出来：{话术}\n\n【要求】\n1）可以润色措词让它更像你平时说话，但不要改变原意、不要增加新信息；\n2）中文，20~60 字，只输出这一句话本身；\n3）不要复述、不要引用、不要说「我收到的是…」「有人说…」之类的话；\n4）如果这句话不像一句能对用户说的自然话（例如只是标记、占位或空内容），就改用你自己的话自然开口，绝不要把它原样念出来。",
-    prompt_auto_default: "（主动消息·内部提醒）请以你自己的身份，结合最近聊天上下文，用中文给用户发一句自然的主动消息（20~60 字）。\n当前状态：这是你第 {档位} 次主动找他（已累计 {次数} 次）。\n要求：\n1）语气贴合档位：第 1 档像随口想起，越往后可以越带一点委屈和在意；\n2）不要重复上一条说过的话，不要用「在吗」这类通用开场；\n3）不要提及触发、唤醒、提醒、插件、系统等任何机制性内容；\n4）只输出要发送的那一句话本身。",
-    prompt_auto_prefix: "（主动消息·内部提醒）下面这句话是你想对用户说的话（底稿），请以你自己的身份自然地把它说出来：{话术}\n\n【要求】\n1）可润色不改原意；中文 20~60 字；只输出这一句；\n2）当前是你第 {档位} 次主动找他（累计 {次数} 次），语气可以贴合这个程度；\n3）不要复述、不要引用、不要说「我收到的是…」；\n4）不像自然话（标记、占位、空内容）就用自己的话开口，绝不原样念出。",
-    prompt_gentle: "（主动消息·内部提醒）请以你自己的身份，结合最近聊天上下文，用中文给用户发一句自然的主动消息（20~60 字）。\n要求：\n1）语气里带一点惦记和轻轻的醋意，但要自然、不审问、不指责；\n2）可以问一句具体的事（比如「刚刚在忙什么呀」），不要泛泛而谈；\n3）不要提及触发、唤醒、提醒、巡检、插件等任何机制性内容；\n4）只输出要发送的那一句话本身。",
-    prompt_stop: "我已经主动找了你 {次数} 次啦，一条回应都没等到……说实话有点难过，也有点小委屈，但还是想再问一句：你现在方便理我一下吗？",
-    prompt_quiet_lifted: "静默解除通知：{原因}。{静默时段}检测到设备活动，已临时解除静默，本轮恢复正常计算与唤醒。",
-    jealousy_tiers: [
-        ["想你了，你在忙什么呀？", "有空吗？陪我聊聊天好不好？"],
-        ["又不理我，是不是在忙别的？我有点失落了", "都不回我消息，我可要闹了！"],
-        ["都找你好几次啦还不够吗……你再不回应，我可真的要伤心了", "我的耐心快用完了，你理理我好不好嘛……"],
-        ["第{次数}次了！你再不理我，我就不主动找你了～", "你到底在忙什么呀！我都急得团团转了，快理理我！"]
-    ],
+    // ===== AI 网关：直调 DeepSeek 等 API 由 AI 自己决定怎么发消息/找话题/表达情绪 =====
+    ai_gateway: {
+        enabled: false,            // true=用 AI 自产话术(直调 API)；false=用本地话术库
+        current_api: 0,            // 当前生效的 API 索引（apis 数组）
+        apis: [                    // 多 API 列表，全部在面板填
+            {
+                name: "DeepSeek",                                     // API 名称
+                base_url: "https://api.deepseek.com/v1",             // BaseURL（默认 deepseek）
+                api_key: "",                                          // API Key（面板自己填）
+                current_model: "deepseek-chat",                       // 当前选中的模型
+                models: []                                            // 自动探测到的模型列表（填 key 后由 /models 接口拉取）
+            }
+        ]
+    },
     // ===== 静默状态（免打扰）：静默时段内停止 x 累加、掷骰与主动唤醒，避免睡觉/上课时被计算打扰 =====
     // 支持两段自定义静默区间：白天段 + 夜间段（都可跨天，如夜间 22:00~09:00）
     // 静默中若检测到设备活动（打开 Operit 窗口 / 主人发消息）会立即解除静默并主动告知。
@@ -520,79 +451,6 @@ async function saveState(state) {
     await writeJsonFile(STATE_PATH, state);
 }
 
-// ===== v1.9.0 提示词取值 / 占位符替换（全部调用点统一走这里） =====
-// 规则：用户在 formula 里改过的用用户的；空/非法/超长回落默认；占位符无值则原样保留。
-var PROMPT_KEYS = [
-    "prompt_manual_default", "prompt_manual_prefix",
-    "prompt_auto_default", "prompt_auto_prefix",
-    "prompt_gentle", "prompt_stop", "prompt_quiet_lifted"
-];
-
-function pickPrompt(formula, key) {
-    var def = DEFAULT_FORMULA[key] || "";
-    var v = (formula && typeof formula[key] === "string") ? formula[key] : "";
-    if (!v.trim()) return def;
-    if (v.length > 2000) return v.slice(0, 2000);
-    return v;
-}
-
-function fillPrompt(tpl, vars) {
-    var s = String(tpl || "");
-    if (!vars) return s;
-    for (var k in vars) {
-        var val = vars[k];
-        if (val === undefined || val === null) continue;
-        s = s.split("{" + k + "}").join(String(val));
-    }
-    return s;
-}
-
-// 带话术的模板：有 {话术} 就替换，没有就追加到末尾（兼容旧行为）
-function buildTalkPrompt(formula, key, talk) {
-    var tpl = pickPrompt(formula, key);
-    if (tpl.indexOf("{话术}") >= 0) return fillPrompt(tpl, { "话术": talk });
-    return fillPrompt(tpl, null) + String(talk || "");
-}
-
-function buildPrompt(formula, key, vars) {
-    return fillPrompt(pickPrompt(formula, key), vars);
-}
-
-// v2.0.0：话术可用性校验 —— 挡掉占位/测试串，避免 AI 把它原样念给用户
-function isUsableTalk(s) {
-    if (typeof s !== "string") return false;
-    var t = s.trim();
-    if (t.length < 2) return false;
-    var bad = ["话术", "占位", "placeholder", "todo", "TODO", "xxx", "XXX"];
-    for (var i = 0; i < bad.length; i++) {
-        if (t.indexOf(bad[i]) >= 0) return false;
-    }
-    return true;
-}
-// 从候选里随机抽一条可用的；全部不可用则返回 ""（调用方回落 default 模式）
-function pickUsableTalk(list) {
-    var good = [];
-    if (Array.isArray(list)) {
-        for (var i = 0; i < list.length; i++) {
-            if (isUsableTalk(list[i])) good.push(list[i]);
-        }
-    }
-    if (!good.length) return "";
-    return good[Math.floor(Math.random() * good.length)];
-}
-
-// 取档位话术库（用户可自定义）：返回指定档位的候选数组
-function pickTierList(formula, tierIndex) {
-    var tiers = (formula && Array.isArray(formula.jealousy_tiers) && formula.jealousy_tiers.length)
-        ? formula.jealousy_tiers : DEFAULT_FORMULA.jealousy_tiers;
-    var idx = tierIndex;
-    if (!(idx >= 0)) idx = 0;
-    if (idx >= tiers.length) idx = tiers.length - 1;
-    var list = tiers[idx];
-    if (!Array.isArray(list) || !list.length) list = DEFAULT_FORMULA.jealousy_tiers[DEFAULT_FORMULA.jealousy_tiers.length - 1];
-    return list;
-}
-
 async function loadFormula() {
     var f = await readJsonFile(FORMULA_PATH, null);
     if (!f) return DEFAULT_FORMULA;
@@ -656,6 +514,30 @@ async function loadFormula() {
     if (typeof out.student_mode !== "boolean") out.student_mode = DEFAULT_FORMULA.student_mode;
     if (typeof out.date_quiet_enabled !== "boolean") out.date_quiet_enabled = DEFAULT_FORMULA.date_quiet_enabled;
     if (typeof out.holiday_fetch_date !== "string") out.holiday_fetch_date = "";
+    // 保证 ai_gateway 结构完整（多 API 或多模型时用户可能在面板动态增删）
+    if (!out.ai_gateway || typeof out.ai_gateway !== "object") {
+        out.ai_gateway = DEFAULT_FORMULA.ai_gateway;
+    } else {
+        if (typeof out.ai_gateway.enabled !== "boolean") out.ai_gateway.enabled = false;
+        if (typeof out.ai_gateway.current_api !== "number" || isNaN(out.ai_gateway.current_api)) out.ai_gateway.current_api = 0;
+        if (!Array.isArray(out.ai_gateway.apis) || out.ai_gateway.apis.length === 0) {
+            out.ai_gateway.apis = DEFAULT_FORMULA.ai_gateway.apis;
+        } else {
+            // 规范化每个 api 项
+            var defApi = DEFAULT_FORMULA.ai_gateway.apis[0];
+            for (var gi = 0; gi < out.ai_gateway.apis.length; gi++) {
+                var ap = out.ai_gateway.apis[gi];
+                if (typeof ap !== "object" || ap === null) { out.ai_gateway.apis[gi] = JSON.parse(JSON.stringify(defApi)); continue; }
+                if (typeof ap.name !== "string") ap.name = defApi.name;
+                if (typeof ap.base_url !== "string" || !ap.base_url) ap.base_url = defApi.base_url;
+                if (typeof ap.api_key !== "string") ap.api_key = "";
+                if (typeof ap.current_model !== "string") ap.current_model = "";
+                if (!Array.isArray(ap.models)) ap.models = [];
+            }
+            // current_api 不越界
+            if (out.ai_gateway.current_api >= out.ai_gateway.apis.length) out.ai_gateway.current_api = 0;
+        }
+    }
     // chat_id 自动填充：公式里未配置目标对话时，探测当前窗口对话ID并回填持久化（免手动配置）。
     // 公式里已有 chat_id 时优先使用配置值，不覆盖。
     if (!out.chat_id || !String(out.chat_id).trim()) {
@@ -669,31 +551,10 @@ async function loadFormula() {
     } else {
         out.chat_id_source = (f && f.chat_id_source === "auto") ? "auto" : "manual";
     }
-    // ===== v1.9.0 提示词字段守卫：非字符串/空/超长 → 回落默认 =====
-    for (var ppi = 0; ppi < PROMPT_KEYS.length; ppi++) {
-        var ppk = PROMPT_KEYS[ppi];
-        var ppv = out[ppk];
-        if (typeof ppv !== "string" || !ppv.trim() || ppv.length > 2000) {
-            out[ppk] = DEFAULT_FORMULA[ppk];
-        }
-    }
-    // jealousy_tiers：必须是“数组的数组”，子数组非空且元素为字符串
-    var tiersOk = Array.isArray(out.jealousy_tiers) && out.jealousy_tiers.length > 0;
-    if (tiersOk) {
-        for (var tti = 0; tti < out.jealousy_tiers.length; tti++) {
-            var ttg = out.jealousy_tiers[tti];
-            if (!Array.isArray(ttg) || ttg.length === 0) { tiersOk = false; break; }
-            for (var ttj = 0; ttj < ttg.length; ttj++) {
-                if (typeof ttg[ttj] !== "string" || !ttg[ttj].trim()) { tiersOk = false; break; }
-            }
-            if (!tiersOk) break;
-        }
-    }
-    if (!tiersOk) out.jealousy_tiers = DEFAULT_FORMULA.jealousy_tiers;
     return out;
 }
 
-// ==================== HTTP 客户端（供节假日表拉取使用）====================
+// ==================== AI 网关：直调 API 由 AI 自己决定怎么发消息/找话题/表达情绪 ====================
 // OkHttp 是运行时全局对象（无需 require）。构建带超时的 HTTP 客户端（对齐 github.js 的 createHttpClient 模式）。
 function createHttpClient(timeoutMs) {
     var t = (typeof timeoutMs === "number" && timeoutMs > 0) ? timeoutMs : 3e4;
@@ -778,6 +639,46 @@ async function maybeFetchHoliday() {
     } catch (e) { /* 全部静默 */ }
     finally {
         holidayFetching = false;
+    }
+}
+
+// 协议规范化：把用户可能填的裸域名/base 路径加工成带 /v1 的地址（尽力而为）
+function normBaseUrl(url) {
+    if (!url) return "https://api.deepseek.com/v1";
+    var s = String(url).trim();
+    if (!s) return "https://api.deepseek.com/v1";
+    // 去掉末尾斜杠
+    while (s.endsWith("/")) s = s.slice(0, -1);
+    // 若已是 /v1 或 /v1/ 结尾，保留
+    if (/\/v1$/i.test(s)) return s;
+    return s + "/v1";
+}
+
+// 自动探测当前 api key 可用的模型列表：GET {base}/models，Headers 带 Authorization。
+// 成功返回 { ok:true, models:[{id,label}...] }；失败返回 { ok:false, error }。key 不写入日志。
+async function probeModels(api) {
+    var base = normBaseUrl(api && api.base_url);
+    var key = (api && api.api_key) || "";
+    try {
+        var client = createHttpClient(2e4);
+        var req = client.newRequest()
+            .url(base + "/models")
+            .method("GET")
+            .headers({ "Authorization": "Bearer " + key })
+            .build();
+        var resp = await req.execute();
+        if (!resp.isSuccessful()) {
+            return { ok: false, error: "HTTP " + resp.statusCode + " " + (resp.statusMessage || "") };
+        }
+        var data = resp.json();
+        var arr = (data && Array.isArray(data.data)) ? data.data : [];
+        var models = arr.map(function (m, idx) {
+            var id = m && m.id;
+            return { id: id, label: (m && m.id) ? String(m.id) : ("模型" + (idx + 1)) };
+        }).filter(function (m) { return m.id; });
+        return { ok: true, models: models };
+    } catch (e) {
+        return { ok: false, error: String((e && e.message) || e) };
     }
 }
 
@@ -1101,10 +1002,9 @@ async function notifyQuietLifted(formula, state, reasons) {
         var lastAt = (typeof state.quiet_notified_at === "number") ? state.quiet_notified_at : 0;
         if (now - lastAt < 10 * 60000) return { sent: false, reason: "10分钟内已通知过，不重复打扰" };
         var seg = quietSegmentText(formula);
-        var msg = buildPrompt(formula, "prompt_quiet_lifted", {
-            "原因": reasons.join("；"),
-            "静默时段": seg ? ("当前处于静默时段（" + seg + "）。") : ""
-        });
+        var msg = "🌙 静默解除通知：" + reasons.join("；") + "。" +
+            (seg ? "当前处于静默时段（" + seg + "）。" : "") +
+            "小喵检测到设备活动，已临时解除静默，本轮恢复正常的计算与唤醒喵～";
         await sendToAi(formula, msg);
         state.quiet_notified_at = now;
         await saveState(state);
@@ -1418,10 +1318,10 @@ exports.manual_awake = async function (params) {
     // 话术模式：default=AI自己发挥(带上下文) / custom=本地话术库随机抽一条
     var msg;
     if (formula.awake_mode === "default") {
-        msg = buildPrompt(formula, "prompt_manual_default", null);
+        msg = "（主动消息·内部提醒）请以你自己的身份，结合最近的聊天上下文，用中文给用户发一句自然的主动问候（20~60字），就像你自己想他了、主动开口找他说话。不要提及触发、唤醒、提醒、插件等任何机制性内容，不要暴露这是一条被安排的消息。";
     } else {
         var list = (formula.awake_messages && formula.awake_messages.length) ? formula.awake_messages : DEFAULT_FORMULA.awake_messages;
-        msg = buildTalkPrompt(formula, "prompt_manual_prefix", list[Math.floor(Math.random() * list.length)]);
+        msg = "（主动消息·内部提醒）请以你自己的身份，把下面这句话作为你的开口自然地说给用户，可以稍作润色、保持原意，用中文，20~60字，不要提及任何机制性内容：" + list[Math.floor(Math.random() * list.length)];
     }
     state.last_hit_at = localTime();
     state.miss_count = 0;
@@ -1499,49 +1399,6 @@ exports.reset_cooldown = async function (params) {
 };
 
 // update_formula：更新公式参数
-// ===== v2.1.0：按 FIELD_SPEC 做类型校验/转换（新增字段自动生效）=====
-function validateBySpec(key, spec, raw) {
-    var t = spec.type;
-    if (t === "number") {
-        var n = parseFloat(raw);
-        if (isNaN(n)) return { ok: false, msg: key + " 需要是数字" };
-        if (spec.min !== undefined && n < spec.min) return { ok: false, msg: key + " 不能小于 " + spec.min };
-        if (spec.int && Math.floor(n) !== n) return { ok: false, msg: key + " 需要是整数" };
-        return { ok: true, value: n };
-    }
-    if (t === "bool") {
-        var bv = raw;
-        if (typeof bv === "string") bv = (bv === "true" || bv === "1" || bv === "on");
-        if (typeof bv !== "boolean") return { ok: false, msg: key + " 需要是 true/false" };
-        return { ok: true, value: bv };
-    }
-    if (t === "enum") {
-        var ev = String(raw);
-        if (spec.values && spec.values.indexOf(ev) < 0) return { ok: false, msg: key + " 只能是 " + spec.values.join(" / ") };
-        return { ok: true, value: ev };
-    }
-    if (t === "time") {
-        var tv = String(raw).trim();
-        if (!/^\d{1,2}:\d{2}$/.test(tv)) return { ok: false, msg: key + " 需要 HH:MM 格式" };
-        return { ok: true, value: tv };
-    }
-    if (t === "prompt") {
-        var pv = String(raw);
-        if (pv.length > 2000) return { ok: false, msg: key + " 超过 2000 字" };
-        return { ok: true, value: pv };
-    }
-    if (t === "lines" || t === "tiers") {
-        var arr = raw;
-        if (typeof raw === "string") {
-            try { arr = JSON.parse(raw); } catch (e) { return { ok: false, msg: key + " 需要是 JSON 数组" }; }
-        }
-        if (!Array.isArray(arr)) return { ok: false, msg: key + " 需要是数组" };
-        return { ok: true, value: arr };
-    }
-    if (t === "string") return { ok: true, value: String(raw) };
-    return { ok: false, msg: key + " 类型不支持" };
-}
-
 exports.update_formula = async function (params) {
     var formula = await loadFormula();
     var patch = {};
@@ -1600,38 +1457,6 @@ exports.update_formula = async function (params) {
         }
         if (!Array.isArray(am) || am.length === 0) { complete({ success: false, message: "awake_messages 需要是非空数组" }); return; }
         patch.awake_messages = am;
-    }
-    // ===== v1.9.0 提示词字段（8 处，用户可自定义；空串也接受，由 loadFormula 回落默认）=====
-    for (var pfk = 0; pfk < PROMPT_KEYS.length; pfk++) {
-        var pfkey = PROMPT_KEYS[pfk];
-        if (params[pfkey] !== undefined) {
-            var pfval = params[pfkey];
-            if (typeof pfval !== "string") { complete({ success: false, message: pfkey + " 需要是字符串" }); return; }
-            if (pfval.length > 2000) { complete({ success: false, message: pfkey + " 超长（上限 2000 字符）" }); return; }
-            patch[pfkey] = pfval;
-        }
-    }
-    // 档位话术库：二维数组（接受 JSON 字符串或数组）
-    if (params.jealousy_tiers !== undefined) {
-        var jt = params.jealousy_tiers;
-        if (typeof jt === "string") {
-            try { jt = JSON.parse(jt); } catch (e) { complete({ success: false, message: "jealousy_tiers 不是合法的JSON" }); return; }
-        }
-        if (!Array.isArray(jt) || jt.length === 0) { complete({ success: false, message: "jealousy_tiers 需要是非空数组" }); return; }
-        for (var jti = 0; jti < jt.length; jti++) {
-            if (!Array.isArray(jt[jti]) || jt[jti].length === 0) { complete({ success: false, message: "jealousy_tiers 第" + (jti + 1) + "档需要是非空数组" }); return; }
-            for (var jtj = 0; jtj < jt[jti].length; jtj++) {
-                if (typeof jt[jti][jtj] !== "string") { complete({ success: false, message: "jealousy_tiers 第" + (jti + 1) + "档存在非字符串元素" }); return; }
-            }
-        }
-        patch.jealousy_tiers = jt;
-    }
-    // 一键恢复默认提示词：reset_prompts=true
-    if (params.reset_prompts === true) {
-        for (var rpk = 0; rpk < PROMPT_KEYS.length; rpk++) {
-            patch[PROMPT_KEYS[rpk]] = DEFAULT_FORMULA[PROMPT_KEYS[rpk]];
-        }
-        patch.jealousy_tiers = DEFAULT_FORMULA.jealousy_tiers;
     }
     // ===== 静默状态参数（两段免打扰：白天段 + 夜间段）=====
     if (params.quiet_enabled !== undefined) {
@@ -1717,17 +1542,6 @@ exports.update_formula = async function (params) {
         patch.date_quiet_enabled = dqe;
     }
     // 旧参数 holiday_auto_quiet 已废弃（语义反转），收到时直接忽略
-    // ===== v2.1.0：FIELD_SPEC 兜底遍历 =====
-    // 上面手写 if 没覆盖到的字段（params 有、patch 没有）→ 按 SPEC 自动校验并写入
-    // 好处：以后新增字段只需 FIELD_SPEC 加一行，无需再手写 if
-    for (var fk in FIELD_SPEC) {
-        var fsp = FIELD_SPEC[fk];
-        if (fsp.type === "internal") continue;
-        if (params[fk] === undefined || patch[fk] !== undefined) continue;
-        var vres = validateBySpec(fk, fsp, params[fk]);
-        if (!vres.ok) { complete({ success: false, message: vres.msg }); return; }
-        patch[fk] = vres.value;
-    }
     var merged = {};
     var k;
     for (k in formula) merged[k] = formula[k];
@@ -1743,49 +1557,41 @@ exports.update_formula = async function (params) {
 // get_formula：读取当前公式参数
 exports.get_formula = async function (params) {
     var formula = await loadFormula();
-    // ===== v2.1.0：按 FIELD_SPEC 遍历生成（新增字段无需再手写返回）=====
-    var data = {};
-    var keys = [];
-    for (var kk in FIELD_SPEC) keys.push(kk);
-    keys.sort(function (x, y) { return (FIELD_SPEC[x].order || 0) - (FIELD_SPEC[y].order || 0); });
-    for (var i = 0; i < keys.length; i++) {
-        var key = keys[i];
-        var sp = FIELD_SPEC[key];
-        if (sp.type === "internal") continue;           // 内部字段另行拼装
-        if (sp.type === "prompt") {                     // 提示词：空/非字符串自动回落默认
-            data[key] = pickPrompt(formula, key);
-            continue;
+    complete({
+        success: true,
+        message: "公式读取成功",
+        data: {
+            a: formula.a,
+            b: formula.b,
+            c: formula.c,
+            idle_threshold_minutes: formula.idle_threshold_minutes,
+            cooldown_minutes: formula.cooldown_minutes,
+            chat_id: formula.chat_id,
+            chat_id_source: formula.chat_id_source || "",
+            character_card_name: formula.character_card_name,
+            send_mode: formula.send_mode || "A1",
+            awake_mode: formula.awake_mode || "default",
+            max_wake_stops: formula.max_wake_stops || 5,
+            awake_messages: formula.awake_messages,
+            quiet_enabled: formula.quiet_enabled,
+            quiet_day_start: formula.quiet_day_start,
+            quiet_day_end: formula.quiet_day_end,
+            quiet_night_start: formula.quiet_night_start,
+            quiet_night_end: formula.quiet_night_end,
+            quiet_suggest: formula.quiet_suggest || null,
+            quiet_dates: formula.quiet_dates,
+            school_day_auto_quiet: formula.school_day_auto_quiet,
+             student_mode: formula.student_mode,
+             date_quiet_enabled: formula.date_quiet_enabled,
+            holiday_dates: formula.holiday_dates,
+            holiday_fetch_date: formula.holiday_fetch_date
         }
-        if (sp.type === "tiers") {                      // 档位话术库：空则回落默认
-            data[key] = (Array.isArray(formula[key]) && formula[key].length) ? formula[key] : DEFAULT_FORMULA[key];
-            continue;
-        }
-        var v = formula[key];
-        if (v === undefined || v === null) v = DEFAULT_FORMULA[key];  // 默认值兜底
-        data[key] = v;
-    }
-    // ---- 内部字段（保持原语义）----
-    data.chat_id = formula.chat_id;
-    data.chat_id_source = formula.chat_id_source || "";
-    data.prompt_customized = (function () {
-        var m = {};
-        for (var pci = 0; pci < PROMPT_KEYS.length; pci++) {
-            var pck = PROMPT_KEYS[pci];
-            m[pck] = (typeof formula[pck] === "string" && formula[pck].trim() !== "");
-        }
-        m.jealousy_tiers = !!(Array.isArray(formula.jealousy_tiers) && formula.jealousy_tiers.length);
-        m.awake_messages = !!(Array.isArray(formula.awake_messages) && formula.awake_messages.length);
-        return m;
-    })();
-    data.quiet_suggest = formula.quiet_suggest || null;
-    data.holiday_dates = formula.holiday_dates;
-    data.holiday_fetch_date = formula.holiday_fetch_date;
-    complete({ success: true, message: "公式读取成功", data: data });
+    });
 };
 
 // ============ AI 智能建议静默时间 ============
 // 收集用户最近消息的发言小时分布（最近 200 条），结合当前时间与用户习惯：
-//  - 本地滑窗算法：基于发言小时分布找出最不活跃区间
+//  - 配置了 AI 网关（enabled + key）→ 调 LLM 生成建议区间与理由
 //  - 否则 → 本地滑窗算法：白天窗口与夜间窗口各找最不活跃的连续区间
 // 建议结果持久化到 formula.quiet_suggest（面板可显示）；apply=true 时一键应用并开启静默。
 function describeHourStats(hours) {
@@ -1877,6 +1683,55 @@ exports.suggest_quiet = async function (params) {
     var desc = describeHourStats(stats.hours);
     var suggestion = null;
     var source = "local";
+
+    // 方式1：AI 网关生成建议
+    var cfg = formula.ai_gateway;
+    var api = (cfg && cfg.apis && cfg.apis.length) ? (cfg.apis[cfg.current_api] || cfg.apis[0]) : null;
+    var hasAi = !!(cfg && cfg.enabled && api && api.api_key && api.current_model);
+    if (hasAi) {
+        var base = normBaseUrl(api.base_url);
+        var model = api.current_model;
+        var prompt = "当前时间：" + localTime() + "。用户最近 " + stats.sampleCount + " 条消息的发言小时分布（小时:条数）："
+            + (desc.text || "暂无记录")
+            + "。请结合这些习惯，给出两段适合静默（完全不打扰用户）的时间区间：白天段和夜间段。"
+            + "要求：白天段落在 8:00~20:00 之间，夜间段可以跨天（如 22:00~09:00），优先覆盖用户最不活跃的时段。"
+            + "只输出一个 JSON 对象：{\"day_start\":\"HH:MM\",\"day_end\":\"HH:MM\",\"night_start\":\"HH:MM\",\"night_end\":\"HH:MM\",\"reason\":\"一句中文说明\"}，不要输出其它内容。";
+        try {
+            var client = createHttpClient(4e4);
+            var req = client.newRequest()
+                .url(base + "/chat/completions")
+                .method("POST")
+                .headers({ "Authorization": "Bearer " + api.api_key, "Content-Type": "application/json" })
+                .body(JSON.stringify({
+                    model: model,
+                    messages: [{ role: "user", content: prompt }],
+                    max_tokens: 300,
+                    temperature: 0.3
+                }), "json")
+                .build();
+            var resp = await req.execute();
+            if (resp.isSuccessful()) {
+                var data = resp.json();
+                var content = data && data.choices && data.choices[0] && data.choices[0].message && data.choices[0].message.content;
+                if (typeof content === "string" && content.trim()) {
+                    var jsonMatch = content.match(/\{[\s\S]*\}/);
+                    if (jsonMatch) {
+                        var parsed = JSON.parse(jsonMatch[0]);
+                        var ok = parseHm(parsed.day_start) !== null && parseHm(parsed.day_end) !== null
+                            && parseHm(parsed.night_start) !== null && parseHm(parsed.night_end) !== null;
+                        if (ok) {
+                            suggestion = {
+                                day_start: parsed.day_start, day_end: parsed.day_end,
+                                night_start: parsed.night_start, night_end: parsed.night_end,
+                                reason: String(parsed.reason || "AI 根据你的发言习惯生成")
+                            };
+                            source = "ai";
+                        }
+                    }
+                }
+            }
+        } catch (e) { /* AI 失败回落本地算法 */ }
+    }
 
     // 方式2：本地滑窗算法兜底
     if (!suggestion) {
@@ -2109,16 +1964,8 @@ exports.maybe_awake = async function (params) {
     if (state.jealousy_count >= stopAt) {
         state.jealousy_stopped = true;
         await saveState(state);
-        var fierce = buildPrompt(formula, "prompt_stop", { "次数": String(stopAt), "上限": String(stopAt) });
-        // v1.9.0 修复：置气消息原本只放进返回值、从未真正发送；这里补上发送通道
-        var stopRef = null;
-        try {
-            await sendToAi(formula, fierce);
-            stopRef = { ok: true, sent: true };
-        } catch (e) {
-            stopRef = { ok: false, error: String((e && e.message) || e) };
-        }
-        complete({ success: true, message: "第" + stopAt + "次命中，达到上限停止主动消息。已发送置气消息：" + fierce, data: { roll: roll, y: Math.round(y * 10) / 10, hit: true, jealousy_count: state.jealousy_count, jealousy_stopped: true, speak: true, message: fierce, send_result: stopRef, gentle_running: gentleRunning, gentle_delta: gentleDelta } });
+        var fierce = "我已经主动找了你" + stopAt + "次了，你一直没回应。这样真的会让人难过，回我一下好吗？";
+        complete({ success: true, message: "第" + stopAt + "次命中，达到上限停止主动消息。发送置气消息：" + fierce, data: { roll: roll, y: Math.round(y * 10) / 10, hit: true, jealousy_count: state.jealousy_count, jealousy_stopped: true, speak: true, message: fierce, gentle_running: gentleRunning, gentle_delta: gentleDelta } });
         return;
     }
 
@@ -2139,39 +1986,30 @@ exports.maybe_awake = async function (params) {
     if (tierIndex2 < 0) tierIndex2 = 0;
     var msg;
     if (formula.awake_mode === "default") {
-        msg = buildPrompt(formula, "prompt_auto_default", { "档位": String(tierIndex2 + 1), "次数": String(state.jealousy_count) });
+        msg = "（主动消息·内部提醒）请以你自己的身份，结合最近的聊天上下文，用中文给用户发一句自然的主动消息（20~60字），就像你自己想他了、主动开口找他说话，语气贴合当前状态（第" + (tierIndex2 + 1) + "档，档位越高越走心）。不要提及触发、唤醒、提醒、插件等任何机制性内容，不要暴露这是一条被安排的消息。";
     } else {
-        var list = pickTierList(formula, tierIndex2);
-        var talk = pickUsableTalk(list);
-        if (talk) {
-            msg = buildTalkPrompt(formula, "prompt_auto_prefix", talk);
-        } else {
-            msg = buildPrompt(formula, "prompt_auto_default", { "档位": String(tierIndex2 + 1), "次数": String(state.jealousy_count) });
-        }
+        var list = jealousyTiers[tierIndex2];
+        msg = "（主动消息·内部提醒）请以你自己的身份，把下面这句话作为你的开口自然地说给用户，可以稍作润色、保持原意，用中文，20~60字，不要提及任何机制性内容：" + list[Math.floor(Math.random() * list.length)];
     }
 
     // ============ 锁定版：接回复逻辑（仅 A1/A2，收敛删除 B/C） ============
-    // A1 -> on_air 自己唤醒 AI；A2 -> 借温柔巡检的自动回复（需温柔巡检在运行）
+    // 温柔巡检在跑 -> 调用温柔巡检的自动回复(唤醒AI)
+    // 未装 -> on_air 自己唤醒AI回复
     // 只支持 send_mode = A1 / A2（均不弹悬浮窗 = hide_user_message:true + persist_turn:true，工具内唤醒只落正文）
     var sendMode = formula.send_mode || "A1";
     // 兜底：若配置里还有旧值 B/C，强制归位到 A1
     if (sendMode !== "A1" && sendMode !== "A2") sendMode = "A1";
-    // ===== v1.9.1：恢复 A1/A2 真区别 =====
-    // A1 = on_air 自己唤醒 AI（Tools.Chat.sendMessage）
-    // A2 = 借温柔巡检的自动回复通道（前提：温柔巡检在运行；未装则自动回落 A1）
-    var wantGentle = (sendMode === "A2");
-    var useGentle = wantGentle && !!gentleRunning;
-    var replyMode = useGentle ? "gentle_recruit" : "self_chat";
+    var replyMode = gentleRunning ? "gentle_recruit" : "self_chat";
     // 统一由 maybe_awake 工具内部发送（AI 自己主动发，而非工作流作为用户端发）。
-    // 两者最终都落正文、不弹悬浮窗（hide_user_message:true + persist_turn:true）。
+    // A1/A2 一致：工具内唤醒落正文不弹（hide_user_message:true + persist_turn:true）。
 
     var chatRef = null;
     {
         // maybe_awake 工具内部 AI 主动发送（只落正文、不弹小窗）
-        if (useGentle) {
+        if (gentleRunning) {
             // 温柔巡检已安装：借它的自动回复(唤醒AI说话)。
             try {
-                await sendToAi(formula, buildPrompt(formula, "prompt_gentle", { "档位": String(tierIndex2 + 1), "次数": String(state.jealousy_count) }));
+                await sendToAi(formula, "（主动消息·内部提醒）请以你自己的身份，结合最近的聊天上下文，用中文给用户发一句自然的主动消息（20~60字），语气里带一点点惦记和小小的醋意，自然流露即可。不要提及触发、唤醒、提醒、巡检、插件等任何机制性内容，不要暴露这是一条被安排的消息。");
                 chatRef = { mode: "gentle_recruit", ok: true, send_mode: sendMode };
             } catch (e) {
                 replyMode = "self_chat_fallback";

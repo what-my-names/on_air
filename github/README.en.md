@@ -1,0 +1,151 @@
+# On Air (随机上线)
+
+[中文](README.md)
+
+> **Current Release Status**: **v2.1.2 STABLE** — feature complete and ready for daily use; feedback welcome.
+
+> **Authorship Notice**: This project is a "novice × AI creation" — co-developed by a novice developer together with an AI assistant. The code and docs are still growing; corrections, issues and PRs are welcome.
+
+> **Platform Notice**: This plugin is built exclusively for **Operit AI** (an Android AI assistant app) and runs inside its sandboxed ToolPkg runtime. It does not work on other platforms.
+>
+> - Operit official repo: https://github.com/AAswordman/Operit
+> - Script & toolpkg development docs: https://cdn.jsdelivr.net/gh/AAswordman/Operit@main/docs/SCRIPT_DEV_SKILL.md
+
+> **Supported version**: developed and tested on **Operit AI 1.12.1** (Android); earlier versions may lack some ToolPkg capabilities, 1.12.1 or newer is recommended.
+
+**On Air**: an Operit AI plugin that pretends to be a real person. It never clocks in on a schedule — instead it quietly comes online at random times and reaches out to you on its own.
+
+- **Not a timer, but a probability**: the longer you stay silent, the more likely it shows up. While idle it checks your silence every 15 minutes; once running it rolls a dice every minute, and a hit means it pops in to talk.
+- **Not a robot, but "maybe they're around right now"**: the wake message exposes no mechanism keywords — the AI speaks as if it suddenly felt like chatting with you, and it plays the part all the way.
+
+## Features
+
+- **Removed the quiet-lifted notice (v2.1.2)**: when device activity is detected during a quiet window, the plugin now only clears the quiet state internally — no message into the chat and no extra AI turn
+- **Reset prompts now correctly returns the "default" tag (v2.1.1)**
+- **Field-driven refactor (v2.1.0)**: every config field lives in one FIELD_SPEC table; get_formula iterates it and update_formula auto-validates — structurally eliminating the "added update, forgot get" class of bugs
+- **Strengthened default prompts (v2.1.0)**: 7 prompts rewritten with explicit rules (more human, no repetition, no meta talk), old emoji removed
+- **Wording safety (v2.0.0 STABLE)**: placeholder/empty entries in the wording library are skipped automatically; when none are usable it falls back to the AI improvising; the default prefix prompt is hard-constrained so the AI only says the wording and **never echoes internal prompts**
+- **No emoji, rebuilt hierarchy**: titles in primary color and bold, descriptions in secondary color, primary vs soft buttons, results in their own block; 'expand/collapse' words instead of arrows, 'current ·' instead of checkmarks
+- **Console (sub-page)**: exposes the APIs you could not reach anywhere else — roll once (maybe_awake) / roll without sending (roll_dice) / check silence / enter running / set X; full raw readings (get_xy + get_formula); newly exposed configs such as the **silence threshold**; a list of all 17 tools + the full API docs; one-tap jump to the Prompts page
+- **All prompts & wording customizable (11 items, collapsible groups)**: three groups (Trigger guidance x4 / Special cases x3 / Wording & delivery x4). Collapsed shows title + default-or-modified tag + summary; tap the title to expand. Each box is pre-filled with the text that will actually be sent (untouched = the built-in default) and annotated with "when it is used · placeholders"; empty falls back to the built-in default, one tap restores defaults
+- **Saving never mislabels "modified"**: boxes you did not touch are skipped on save
+- **A1/A2 delivery channels really differ**: `A1` = on_air wakes the AI itself (default); `A2` = borrow the Gentle-Guardian auto-reply channel (requires Gentle-Guardian running; falls back to A1 automatically) — documented in both the panel and the tool signature
+- **Read failures are reported**: if the panel cannot load the config it shows the reason plus a snippet of the raw response instead of showing a row of empty boxes
+- **Two-level panel**: the home page keeps only status and entries; Params / Prompts / Quiet / Dates are separate sub-pages, each with a back-to-home button
+- **Panel colors follow the host theme**: adapts to light/dark automatically, no more hard-coded black & white
+- **Optional placeholders**: `{档位}` `{次数}` `{话术}` `{时间}` `{原因}` `{静默时段}` `{上限}` — use them when you want live values inside a prompt
+- **Triple-chain state machine**: idle patrol on a timer, per-minute accumulation while running, and a hit wakes the AI to speak proactively
+- **Smooth probability formula**: `f = a·x + b·x^c`, `y = 100·f / (1 + f)`, where x is minutes of silence
+  - Defaults: `a=0.007078203`, `b=6.00914e-07`, `c=3.15168`
+  - Reference curve: x=60 → ~40%, x=120 → ~75%, x=180 → ~90%, monotonically increasing, approaching 100%
+- **Natural wake-up wording**: the wake message exposes no mechanism keywords; the AI speaks as if it thought of the user on its own
+- **Character-card name targeting**: messages are routed by "character card name" lookup — no manual chat ID config needed; leave it empty to follow the current chat
+- **Instant trigger**: manual trigger returns immediately without waiting for the AI reply; panel clicks take effect at once
+- **Chinese-only replies**: all wake-up wording is forced to Chinese output
+- **Cooldown & consecutive-hit cap**: cooldown after each hit; proactive messages stop automatically when consecutive hits reach the cap
+- **Gentle Guardian linkage**: when the "Gentle Guardian" plugin is running, its jealousy counter is updated (capped, no penalty tier)
+- **Quiet periods**: independent day/night quiet segments with customizable time ranges (for shift work, naps, classes, etc.)
+- **Calendar quiet**: three-color calendar highlight (today purple, quiet days dark, others bright); any date can be tapped for full-day hard quiet — one tap to apply, tap again to cancel
+- **School-day auto quiet**: ordinary days (non-holiday, non-weekend, non-vacation in student mode) are automatically hard-quiet all day
+- **Student mode switch**: on = summer/winter vacation counts as special days (stay colorful); off = adult mode, vacations treated as ordinary days
+- **Date quiet master switch**: one tap disables all date-level quiet (tapped quiet days and school-day auto quiet)
+- **Built-in 2026 Chinese public holidays**: fetches holidays online after 12:00 daily to auto-recognize special days
+- **Privacy-safe sample stats**: only message timestamps and sender identity are read to detect silence — message content is never read or stored
+- **Sidebar panel (two-level)**: home shows live x/y and the action row + 5 entry cards (Params / Prompts & wording / Quiet / Date quiet / Console)
+
+## Directory Layout
+
+```
+src/
+  main.js                          # entry
+  manifest.json                    # toolpkg manifest
+  packages/on_air.js               # core logic (tool implementation)
+  ui/xy_panel/index.ui.js          # sidebar panel
+  ui/params_panel/index.ui.js      # sub-page: params
+  ui/prompt_panel/index.ui.js      # sub-page: prompts & wording
+  ui/quiet_panel/index.ui.js       # sub-page: quiet
+  ui/dates_panel/index.ui.js       # sub-page: date quiet
+  ui/console_panel/index.ui.js     # sub-page: Console (call APIs / raw readings / missing configs / tool list)
+  resources/on_air_workflow_market.json  # workflow template
+formula.example.json               # config example (copy to formula.json)
+```
+
+## Installation
+
+1. Place the whole directory into the Operit AI plugin dir on the device: `/sdcard/Download/Operit/plugins/on_air/`
+2. In the Operit AI app, use "debug burn" to install `src/manifest.json` (or import a packaged `.toolpkg` into the external package dir)
+3. Import the workflows (three chains) provided by `resources/on_air_workflow_market.json`
+4. Open "On Air" in the sidebar panel and tweak parameters as needed
+
+## Configuration (formula.json)
+
+| Field | Description |
+| --- | --- |
+| a / b / c | Formula params: `f = a·x + b·x^c` |
+| idle_threshold_minutes | Silence threshold (minutes); accumulation starts after it |
+| cooldown_minutes | Cooldown after a wake (minutes) |
+| awake_mode | `default` = AI free-form with context; `custom` = use local wording library |
+| send_mode | A1/A2 only; both wake inside the chat, body text only |
+| max_wake_stops | Cap on consecutive proactive messages |
+| character_card_name | Character card located by name when waking; empty follows current chat |
+| awake_messages | Custom wording library (one phrase per line) |
+| prompt_manual_default / prompt_manual_prefix | Prompt templates for manual trigger (default / custom modes) |
+| prompt_auto_default / prompt_auto_prefix | Prompt templates for auto trigger (default / custom modes) |
+| prompt_gentle | Prompt template for the Gentle-Guardian auto-reply channel |
+| prompt_stop | Sulk message template (sent when the consecutive-hit cap is reached) |
+| prompt_quiet_lifted | Quiet-lifted notice template |
+| jealousy_tiers | Tier wording library (4 tiers, multiple lines each) |
+| quiet_enabled | Quiet master switch (period quiet) |
+| quiet_day_enabled / quiet_night_enabled | Independent day / night segment switches |
+| quiet_day_start / quiet_day_end | Day segment HH:MM (default 09:00~18:00) |
+| quiet_night_start / quiet_night_end | Night segment HH:MM (default 22:00~09:00, overnight) |
+| quiet_dates | Tapped full-day quiet date map, e.g. `{"2026-08-18":"full"}` |
+| school_day_auto_quiet | School-day auto quiet switch |
+| student_mode | Student mode switch |
+| date_quiet_enabled | Date quiet master switch |
+
+Do not commit real runtime data (`formula.json`, `state.json`) to the repo.
+
+## Public API (for other plugins / workflows)
+
+Every tool exported by this plugin is auto-registered by the Operit framework, so other plugins and workflows can call them directly with the `on_air:` prefix.
+
+**Getting started**: call `on_air:api_docs` first to get full docs for all tools (parameters, return shape, examples).
+
+| Tool | Purpose | Example |
+| --- | --- | --- |
+| get_xy | Read current state (x, y, cooldown, formula) | `on_air:get_xy` |
+| compute_y | Compute probability y from the formula | `on_air:compute_y {x:20}` |
+| set_x | Manually set x | `on_air:set_x {x:5}` |
+| increment_x | Increment x by 1 | `on_air:increment_x` |
+| check_activity | Check the user's last speaking time | `on_air:check_activity {threshold_minutes:10}` |
+| roll_dice | Roll with current y as probability | `on_air:roll_dice` |
+| manual_awake | Manually trigger one wake message | `on_air:manual_awake` |
+| coax | Coax: reset counters and link Gentle Guardian | `on_air:coax` |
+| reset_cooldown | Reset / set cooldown | `on_air:reset_cooldown {minutes:0}` |
+| update_formula | Update formula and config params | `on_air:update_formula {a:0.007}` |
+| get_formula | Read formula config | `on_air:get_formula` |
+| maybe_awake | Running-state roll; only a hit sends a message | `on_air:maybe_awake` |
+| enter_running | Enter running state and start accumulation | `on_air:enter_running` |
+| suggest_quiet | Suggest quiet ranges from your activity (optionally apply) | `on_air:suggest_quiet {apply:true}` |
+| link_agent | Resolve and save the target chat by its name | `on_air:link_agent {chat_name:"Neko"}` |
+| fetch_holidays | Fetch this & next year's public holidays now | `on_air:fetch_holidays` |
+| api_docs | Return the API docs of all tools | `on_air:api_docs` |
+
+All tools return `{success, message, data}`; parameters are passed as an object and are optional unless marked required.
+
+## Versioning (SemVer)
+
+Versions follow semantic versioning X.Y.Z:
+
+| Change | Version bump | Example |
+| --- | --- | --- |
+| Small fix (backward-compatible) | Patch +1 | v1.0.0 → v1.0.1 |
+| New feature / bigger improvement (backward-compatible) | Minor +1, patch reset to 0 | v1.0.5 → v1.1.0 |
+| Breaking change | Major +1, minor & patch reset to 0 | v1.9.2 → v2.0.0 |
+
+Beta releases carry a `-beta` suffix (e.g. `v1.0.0-beta`); stable releases use a plain version number.
+
+## License
+
+MIT License
