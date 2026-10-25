@@ -228,89 +228,129 @@ function Screen(ctx) {
 
     function goHome() { if (ctx.navigate) ctx.navigate("toolpkg:com.operit.on_air:ui:on_air_sidebar"); }
 
-    // ===== 渲染 =====
+    // ===== 渲染（v2.3.0 视觉层次）=====
+    var C = {
+        card: surfaceVariant,
+        line: scheme.outlineVariant || scheme.outline || onSurfaceVariant,
+        primary: primary,
+        text: onSurface,
+        dim: onSurfaceVariant,
+        err: errColor,
+        soft: scheme.secondaryContainer || surfaceVariant
+    };
+    function hdiv() { return ctx.UI.HorizontalDivider({ thickness: 1, color: C.line }); }
+    function groupHeader(title, count) {
+        return ctx.UI.Row({ fillMaxWidth: true, verticalAlignment: "center", spacing: 8, padding: { horizontal: 14, vertical: 12 } }, [
+            ctx.UI.Box({ width: 3, height: 16, background: C.primary, shape: { cornerRadius: 2, type: "rounded" } }),
+            ctx.UI.Text({ text: title, fontSize: 15, fontWeight: "bold", color: C.text }),
+            ctx.UI.Text({ text: "共 " + count + " 处", fontSize: 11, color: C.dim })
+        ]);
+    }
+    function itemHeader(it, itemOpen, itemCustom) {
+        return ctx.UI.Row({
+            fillMaxWidth: true, horizontalArrangement: "spaceBetween", verticalAlignment: "center",
+            padding: { horizontal: 14, vertical: 12 },
+            onClick: function () { toggle(it.k); }
+        }, [
+            ctx.UI.Row({ spacing: 10, verticalAlignment: "center" }, [
+                ctx.UI.Icon({ name: "Article", size: 18, tint: itemCustom ? C.primary : C.dim }),
+                ctx.UI.Column({ spacing: 3 }, [
+                    ctx.UI.Text({ text: it.label, fontSize: 14, fontWeight: "bold", color: C.text, maxLines: 1 }),
+                    ctx.UI.Text({ text: itemCustom ? "已改过 · 点开编辑" : "内置默认 · 点开编辑", fontSize: 11, color: itemCustom ? C.primary : C.dim, maxLines: 1 })
+                ])
+            ]),
+            ctx.UI.Icon({ name: itemOpen ? "ExpandMore" : "ChevronRight", size: 18, tint: C.dim })
+        ]);
+    }
+    function hintBlock(txt) {
+        return ctx.UI.Surface({ containerColor: C.card, alpha: 0.6, shape: { cornerRadius: 10, type: "rounded" } }, [
+            ctx.UI.Text({ text: txt, fontSize: 12, color: C.dim, padding: 10 })
+        ]);
+    }
+    function choiceRow(aOn, aText, aFn, bOn, bText, bFn) {
+        return ctx.UI.Row({ spacing: 8, fillMaxWidth: true }, [
+            ctx.UI.Button({ containerColor: aOn ? C.primary : C.card, contentColor: aOn ? C.soft : C.text, shape: { cornerRadius: 10, type: "rounded" }, text: (aOn ? "当前 · " : "") + aText, weight: 1, onClick: aFn }),
+            ctx.UI.Button({ containerColor: bOn ? C.primary : C.card, contentColor: bOn ? C.soft : C.text, shape: { cornerRadius: 10, type: "rounded" }, text: (bOn ? "当前 · " : "") + bText, weight: 1, onClick: bFn })
+        ]);
+    }
     var children = [];
-    children.push(ctx.UI.Text({ text: "提示词与话术", style: "titleMedium", fontWeight: "semiBold", color: onSurface }));
-    children.push(ctx.UI.Text({ text: "框里预填的就是当前真正会发出去的文案（没改过 = 内置默认原文）。可以整段改写；把格子清空再保存 = 回落内置默认。", style: "bodySmall", color: onSurfaceVariant }));
-    children.push(ctx.UI.Text({ text: "点标题展开/收起；没动过的格子保存时会自动跳过，不会误标成「已改」。", style: "bodySmall", color: onSurfaceVariant }));
 
+    // ---- 页头 ----
+    children.push(ctx.UI.Column({ spacing: 6 }, [
+        ctx.UI.Text({ text: "提示词与话术", fontSize: 26, fontWeight: "bold", color: C.text }),
+        ctx.UI.Text({ text: "框里预填的就是真正会发出去的文案（没改过 = 内置默认）。清空后保存 = 回落默认。", fontSize: 12, color: C.dim }),
+        ctx.UI.Text({ text: "点任意一行展开编辑；没动过的格子保存时自动跳过，不会误标成「已改」。", fontSize: 12, color: C.dim })
+    ]));
+
+    // ---- 错误提示 ----
     if (errMsg) {
-        children.push(ctx.UI.Card({ containerColor: surfaceVariant, backgroundColor: surfaceVariant, shape: { cornerRadius: 12, type: "rounded" }, padding: 0, elevation: 0, fillMaxWidth: true }, [
-            ctx.UI.Row({ backgroundColor: surfaceVariant, fillMaxWidth: true, padding: 12 }, [
-                ctx.UI.Text({ text: errMsg, style: "bodySmall", color: errColor, weight: 1 })
+        children.push(ctx.UI.Card({ containerColor: C.soft, shape: { cornerRadius: 12, type: "rounded" }, border: { width: 1, color: C.err, alpha: 0.5 }, elevation: 0, fillMaxWidth: true }, [
+            ctx.UI.Row({ padding: 12, spacing: 8, verticalAlignment: "center", fillMaxWidth: true }, [
+                ctx.UI.Icon({ name: "Warning", size: 18, tint: C.err }),
+                ctx.UI.Text({ text: errMsg, fontSize: 12, color: C.err })
             ])
         ]));
     }
 
+    // ---- 批量操作 ----
     children.push(ctx.UI.Row({ spacing: 8, fillMaxWidth: true }, [
-        ctx.UI.Button({ contentColor: onSurface, color: onSurface, textColor: onSurface, containerColor: surfaceVariant, shape: { cornerRadius: 12, type: "rounded" }, text: "全部展开", weight: 1, onClick: function () { setAll(true); } }),
-        ctx.UI.Button({ contentColor: onSurface, color: onSurface, textColor: onSurface, containerColor: surfaceVariant, shape: { cornerRadius: 12, type: "rounded" }, text: "全部收起", weight: 1, onClick: function () { setAll(false); } }),
-        ctx.UI.Button({ contentColor: onSurface, color: onSurface, textColor: onSurface, containerColor: surfaceVariant, shape: { cornerRadius: 12, type: "rounded" }, text: busy ? "…" : "恢复默认", weight: 1, onClick: doReset })
+        ctx.UI.Button({ containerColor: C.card, contentColor: C.text, shape: { cornerRadius: 12, type: "rounded" }, text: "全部展开", weight: 1, onClick: function () { setAll(true); } }),
+        ctx.UI.Button({ containerColor: C.card, contentColor: C.text, shape: { cornerRadius: 12, type: "rounded" }, text: "全部收起", weight: 1, onClick: function () { setAll(false); } }),
+        ctx.UI.Button({ containerColor: C.card, contentColor: C.text, shape: { cornerRadius: 12, type: "rounded" }, text: busy ? "…" : "恢复默认", weight: 1, onClick: doReset })
     ]));
 
+    // ---- 分组 ----
     for (var gi2 = 0; gi2 < GROUPS.length; gi2++) {
         var grp = GROUPS[gi2];
         var box = [];
-        box.push(ctx.UI.Text({ text: grp.title, style: "titleSmall", fontWeight: "semiBold", color: onSurface }));
+        box.push(groupHeader(grp.title, grp.items.length));
         for (var ii2 = 0; ii2 < grp.items.length; ii2++) {
             (function (it) {
-                var openIt = isOpen(it.k);
-                var yes = isCustom(it.k);
-                var headText = (openIt ? "收起 " : "展开 ") + it.label + "    " + (yes ? "〔已改〕" : "〔默认〕");
-                box.push(ctx.UI.Button({ contentColor: onSurface, color: onSurface, textColor: onSurface, containerColor: surfaceVariant, shape: { cornerRadius: 10, type: "rounded" }, text: headText, fillMaxWidth: true, onClick: function () { toggle(it.k); } }));
-                if (it.k === "awake_mode") {
-                    if (openIt) {
-                        box.push(ctx.UI.Text({ text: it.hint, style: "bodySmall", color: onSurfaceVariant }));
-                        box.push(ctx.UI.Row({ spacing: 8, fillMaxWidth: true }, [
-                            ctx.UI.Button({ contentColor: vMode === "default" ? surfaceVariant : onSurface, color: vMode === "default" ? surfaceVariant : onSurface, textColor: vMode === "default" ? surfaceVariant : onSurface, containerColor: vMode === "default" ? primary : surfaceVariant, shape: { cornerRadius: 10, type: "rounded" }, text: (vMode === "default" ? "当前 · " : "") + "AI 自己发挥", weight: 1, onClick: function () { setMode("default"); } }),
-                            ctx.UI.Button({ contentColor: vMode === "custom" ? surfaceVariant : onSurface, color: vMode === "custom" ? surfaceVariant : onSurface, textColor: vMode === "custom" ? surfaceVariant : onSurface, containerColor: vMode === "custom" ? primary : surfaceVariant, shape: { cornerRadius: 10, type: "rounded" }, text: (vMode === "custom" ? "当前 · " : "") + "用话术库", weight: 1, onClick: function () { setMode("custom"); } })
-                        ]));
-                    } else {
-                        box.push(ctx.UI.Text({ text: "   当前：" + (vMode === "custom" ? "用话术库" : "AI 自己发挥"), style: "bodySmall", color: onSurfaceVariant }));
-                    }
+                var itemOpen = isOpen(it.k);
+                var itemCustom = isCustom(it.k);
+                box.push(hdiv());
+                box.push(itemHeader(it, itemOpen, itemCustom));
+                if (!itemOpen) {
+                    box.push(ctx.UI.Text({ text: summary(it.val(), 34), fontSize: 12, color: C.dim, maxLines: 1, overflow: "ellipsis", padding: { horizontal: 14, vertical: 0 } }));
+                    box.push(ctx.UI.Spacer({ height: 12 }));
                     return;
                 }
-                if (it.k === "send_mode") {
-                    if (openIt) {
-                        box.push(ctx.UI.Text({ text: it.hint, style: "bodySmall", color: onSurfaceVariant }));
-                        box.push(ctx.UI.Row({ spacing: 8, fillMaxWidth: true }, [
-                            ctx.UI.Button({ contentColor: vSend === "A1" ? surfaceVariant : onSurface, color: vSend === "A1" ? surfaceVariant : onSurface, textColor: vSend === "A1" ? surfaceVariant : onSurface, containerColor: vSend === "A1" ? primary : surfaceVariant, shape: { cornerRadius: 10, type: "rounded" }, text: (vSend === "A1" ? "当前 · " : "") + "A1 自己唤醒", weight: 1, onClick: function () { setSend("A1"); } }),
-                            ctx.UI.Button({ contentColor: vSend === "A2" ? surfaceVariant : onSurface, color: vSend === "A2" ? surfaceVariant : onSurface, textColor: vSend === "A2" ? surfaceVariant : onSurface, containerColor: vSend === "A2" ? primary : surfaceVariant, shape: { cornerRadius: 10, type: "rounded" }, text: (vSend === "A2" ? "当前 · " : "") + "A2 温柔巡检", weight: 1, onClick: function () { setSend("A2"); } })
-                        ]));
-                    } else {
-                        box.push(ctx.UI.Text({ text: "   当前：" + (vSend === "A2" ? "A2 借温柔巡检通道" : "A1 自己唤醒"), style: "bodySmall", color: onSurfaceVariant }));
-                    }
-                    return;
-                }
-                if (openIt) {
-                    box.push(ctx.UI.Text({ text: it.hint, style: "bodySmall", color: onSurfaceVariant }));
-                    box.push(ctx.UI.TextField({ value: it.val(), onValueChange: it.set, singleLine: false, placeholder: ctx.UI.Text({ text: "（留空 = 使用内置默认）", color: onSurfaceVariant }), style: { color: onSurface } }));
-                } else {
-                    box.push(ctx.UI.Text({ text: "   " + summary(it.val(), 30), style: "bodySmall", color: onSurfaceVariant }));
-                }
+                box.push(ctx.UI.Column({ padding: { horizontal: 14, vertical: 4 }, spacing: 8, fillMaxWidth: true }, [
+                    hintBlock(it.hint),
+                    (it.k === "awake_mode")
+                        ? choiceRow(vMode === "default", "AI 自己发挥", function () { setMode("default"); }, vMode === "custom", "用话术库", function () { setMode("custom"); })
+                        : (it.k === "send_mode")
+                            ? choiceRow(vSend === "A1", "A1 自己唤醒", function () { setSend("A1"); }, vSend === "A2", "A2 温柔巡检", function () { setSend("A2"); })
+                            : ctx.UI.TextField({ value: it.val(), onValueChange: it.set, singleLine: false, placeholder: ctx.UI.Text({ text: "（留空 = 使用内置默认）", color: C.dim }), style: { color: C.text } })
+                ]));
+                box.push(ctx.UI.Spacer({ height: 10 }));
             })(grp.items[ii2]);
         }
-        children.push(ctx.UI.Card({ containerColor: surfaceVariant, backgroundColor: surfaceVariant, shape: { cornerRadius: 16, type: "rounded" }, padding: 0, elevation: 0, fillMaxWidth: true }, [
-            ctx.UI.Column({ backgroundColor: surfaceVariant, fillMaxWidth: true, padding: 14, spacing: 8 }, box)
+        children.push(ctx.UI.Card({ containerColor: C.card, shape: { cornerRadius: 18, type: "rounded" }, border: { width: 1, color: C.line, alpha: 0.35 }, elevation: 1, fillMaxWidth: true }, [
+            ctx.UI.Column({ padding: 0, spacing: 0, fillMaxWidth: true }, box)
         ]));
     }
 
-    children.push(ctx.UI.Button({ contentColor: surfaceVariant, color: surfaceVariant, textColor: surfaceVariant, containerColor: primary, shape: { cornerRadius: 12, type: "rounded" }, text: busy ? "保存中…" : "保存全部", fillMaxWidth: true, onClick: doSave }));
-    children.push(ctx.UI.Button({ contentColor: onSurface, color: onSurface, textColor: onSurface, containerColor: surfaceVariant, shape: { cornerRadius: 12, type: "rounded" }, text: "返回主页", fillMaxWidth: true, onClick: goHome }));
+    // ---- 保存 / 返回 ----
+    children.push(ctx.UI.Button({ containerColor: C.primary, contentColor: C.soft, shape: { cornerRadius: 14, type: "rounded" }, text: busy ? "保存中…" : "保存全部修改", fillMaxWidth: true, onClick: doSave }));
+    children.push(ctx.UI.Button({ containerColor: C.card, contentColor: C.text, shape: { cornerRadius: 12, type: "rounded" }, text: "返回主页", fillMaxWidth: true, onClick: goHome }));
+
     if (msg) {
-        children.push(ctx.UI.Card({ containerColor: surfaceVariant, backgroundColor: surfaceVariant, shape: { cornerRadius: 12, type: "rounded" }, padding: 0, elevation: 0, fillMaxWidth: true }, [
-            ctx.UI.Row({ backgroundColor: surfaceVariant, fillMaxWidth: true, padding: 12 }, [
-                ctx.UI.Text({ text: msg, style: "bodyMedium", color: onSurface, weight: 1 })
+        children.push(ctx.UI.Card({ containerColor: C.soft, shape: { cornerRadius: 12, type: "rounded" }, elevation: 0, fillMaxWidth: true }, [
+            ctx.UI.Row({ padding: 12, spacing: 8, verticalAlignment: "center", fillMaxWidth: true }, [
+                ctx.UI.Icon({ name: "CheckCircle", size: 18, tint: C.primary }),
+                ctx.UI.Text({ text: msg, fontSize: 13, color: C.text })
             ])
         ]));
     }
 
+    var pageBg = scheme.background || surfaceVariant;
     return ctx.UI.LazyColumn({
+        containerColor: pageBg,
         onLoad: async function () { await load(); },
-        fillMaxSize: true, padding: 16, spacing: 12
+        fillMaxSize: true, padding: 16, spacing: 14
     }, children);
 }
-
 module.exports = Screen;
 module.exports.default = Screen;
 module.exports.Screen = Screen;

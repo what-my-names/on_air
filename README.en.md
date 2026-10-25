@@ -2,7 +2,7 @@
 
 [中文](README.md)
 
-> **Current Release Status**: **v2.2.0 STABLE** — feature complete and ready for daily use; feedback welcome.
+> **Current Release Status**: **v2.2.0+1 STABLE** (patch bundle) — feature complete and ready for daily use; feedback welcome.
 
 > **Authorship Notice**: This project is a "novice × AI creation" — co-developed by a novice developer together with an AI assistant. The code and docs are still growing; corrections, issues and PRs are welcome.
 

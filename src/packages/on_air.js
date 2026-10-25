@@ -725,15 +725,15 @@ function createHttpClient(timeoutMs) {
 }
 
 // ==================== v2.2.0：GitHub Release 更新检测 ====================
-var CURRENT_VERSION = "2.2.0";  // 每次发布同步修改
+var CURRENT_VERSION = "2.2.0+1";  // 每次发布同步修改
 var UPDATE_REPO = "what-my-names/on_air";
 var UPDATE_API = "https://api.github.com/repos/" + UPDATE_REPO + "/releases/latest";
 var UPDATE_TTL_MS = 6 * 60 * 60 * 1000; // 6 小时缓存
 
 // 语义化版本比较：a>b 返回 1，a<b 返回 -1，相等 0（忽略前缀 v）
 function cmpVersion(a, b) {
-    var pa = String(a || "").replace(/^v/i, "").split(".");
-    var pb = String(b || "").replace(/^v/i, "").split(".");
+    var pa = String(a || "").replace(/^v/i, "").replace(/\+/g, ".").split(".");
+    var pb = String(b || "").replace(/^v/i, "").replace(/\+/g, ".").split(".");
     var n = Math.max(pa.length, pb.length);
     for (var i = 0; i < n; i++) {
         var na = parseInt(pa[i] || "0", 10); if (isNaN(na)) na = 0;
@@ -744,6 +744,22 @@ function cmpVersion(a, b) {
     return 0;
 }
 
+
+// 把 Release 的 Markdown 正文转成纯文本（面板不支持 Markdown 渲染）
+function mdToPlain(md) {
+    var s = String(md || "").replace(/\r/g, "");
+    s = s.replace(/```[\s\S]*?```/g, " ");
+    s = s.replace(/!\[[^\]]*\]\([^)]*\)/g, "");
+    s = s.replace(/\[([^\]]*)\]\([^)]*\)/g, "$1");
+    s = s.split("\n").map(function (line) {
+        return line.replace(/^\s{0,3}(#{1,6}\s*|>\s?|[-*+]\s+|\d+\.\s+)/, "")
+            .replace(/\*\*([^*]+)\*\*/g, "$1")
+            .replace(/`([^`]*)`/g, "$1")
+            .replace(/^\s*[-=]{3,}\s*$/, "")
+            .trim();
+    }).filter(function (x) { return x !== ""; }).join("\n");
+    return s.slice(0, 1200);
+}
 // 拉取最新 Release（带 6h 缓存，缓存存在 state.update_cache）
 async function fetchLatestRelease(state) {
     try {
@@ -773,7 +789,7 @@ async function fetchLatestRelease(state) {
         var rel = {
             tag: String(data.tag_name || ""),
             name: String(data.name || ""),
-            body: String(data.body || "").slice(0, 4000),
+            body: mdToPlain(String(data.body || "")),
             url: String(data.html_url || ""),
             published_at: String(data.published_at || ""),
             asset_url: assetUrl,

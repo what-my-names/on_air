@@ -591,86 +591,154 @@ function Screen(ctx) {
   var stCool = (st && st.cooldown_until) ? st.cooldown_until : null;
   var stCardName = (fm && fm.character_card_name) ? String(fm.character_card_name) : "";
 
-  // ===== 渲染 =====
-  var children = [];
-  // ===== v2.2.0：有更新时顶部横幅（方案 A，不主动发消息）=====
-  if (updData && updData.hasUpdate && !updHide) {
-    children.push(ctx.UI.Card({ containerColor: P.card, backgroundColor: P.card, shape: { cornerRadius: 16, type: "rounded" }, padding: 0, elevation: 0, fillMaxWidth: true }, [
-      ctx.UI.Column({ backgroundColor: P.card, fillMaxWidth: true, padding: 16, spacing: 8 }, [
-        ctx.UI.Text({ text: "发现新版本 " + String(updData.latest || ""), style: "titleSmall", fontWeight: "bold", color: P.accent }),
-        ctx.UI.Text({ text: "当前 v" + String(updData.current || "") + (updData.published_at ? (" · 发布于 " + String(updData.published_at).slice(0, 10)) : ""), style: "bodySmall", color: P.dim }),
-        ctx.UI.Text({ text: String(updData.notes || "").replace(/\r/g, "").split("\n").slice(0, 3).join("\n"), style: "bodySmall", color: P.text }),
-        ctx.UI.Row({ spacing: 8, fillMaxWidth: true }, [
-          ctx.UI.Button({ contentColor: P.btnText, color: P.btnText, textColor: P.btnText, containerColor: P.btn, shape: { cornerRadius: 10, type: "rounded" }, text: "下载更新包", weight: 1, onClick: doDownloadUpdate }),
-          ctx.UI.Button({ contentColor: P.text, color: P.text, textColor: P.text, containerColor: P.card, shape: { cornerRadius: 10, type: "rounded" }, text: "稍后", weight: 1, onClick: function () { setUpdHide(true); } }),
-          ctx.UI.Button({ contentColor: P.text, color: P.text, textColor: P.text, containerColor: P.card, shape: { cornerRadius: 10, type: "rounded" }, text: "跳过此版本", weight: 1, onClick: doSkipUpdate })
-        ])
-      ])
-    ]));
-    if (updMsg) children.push(ctx.UI.Text({ text: updMsg, style: "bodySmall", color: P.dim }));
+  var NAV_ITEMS = [
+    ["提示词设置", "toolpkg:com.operit.on_air:ui:on_air_prompts", "递给 AI 的每一句话：触发引导 / 前缀 / 温柔巡检 / 置气 / 档位话术", "Article"],
+    ["参数设置", "toolpkg:com.operit.on_air:ui:on_air_params", "X 值、公式 a·b·c、冷却、角色卡名字、连续上限", "Tune"],
+    ["免打扰", "toolpkg:com.operit.on_air:ui:on_air_quiet", "静默时段、目标对话、AI 静默建议", "Notifications"],
+    ["日期静默", "toolpkg:com.operit.on_air:ui:on_air_dates", "日历点选静默、上学日、学生模式、节假日表", "CalendarMonth"],
+    ["控制台", "toolpkg:com.operit.on_air:ui:on_air_console", "直调 API：掷骰 / 查沉默 / 全量读数 / 工具清单", "Terminal"]
+  ];
+
+  // ===== 渲染（v2.2.0+1 视觉层次）=====
+  var C = {
+    bg: P.bg,
+    card: P.card,
+    line: scheme.outlineVariant || scheme.outline || P.dim,
+    primary: P.accent,
+    text: P.text,
+    dim: P.dim,
+    onPrimary: P.btnText,
+    soft: scheme.secondaryContainer || P.card
+  };
+  function sectionLabel(txt) {
+    return ctx.UI.Row({ fillMaxWidth: true, verticalAlignment: "center", spacing: 8 }, [
+      ctx.UI.Box({ width: 3, height: 14, background: C.primary, shape: { cornerRadius: 2, type: "rounded" } }),
+      ctx.UI.Text({ text: txt, fontSize: 12, fontWeight: "bold", color: C.dim })
+    ]);
   }
+  function metric(label, value, color) {
+    return ctx.UI.Column({ spacing: 2 }, [
+      ctx.UI.Text({ text: label, fontSize: 11, color: C.dim, maxLines: 1 }),
+      ctx.UI.Text({ text: value, fontSize: 13, fontWeight: "bold", color: color || C.text, maxLines: 1, overflow: "ellipsis" })
+    ]);
+  }
+  function navRow(iconName, title, desc, route) {
+    return ctx.UI.Row({
+      fillMaxWidth: true, horizontalArrangement: "spaceBetween", verticalAlignment: "center",
+      padding: { horizontal: 14, vertical: 12 },
+      onClick: function () { if (ctx.navigate) ctx.navigate(route); }
+    }, [
+      ctx.UI.Row({ spacing: 12, verticalAlignment: "center" }, [
+        ctx.UI.Icon({ name: iconName, size: 22, tint: C.primary }),
+        ctx.UI.Column({ spacing: 3 }, [
+          ctx.UI.Text({ text: title, fontSize: 15, fontWeight: "bold", color: C.text, maxLines: 1 }),
+          ctx.UI.Text({ text: desc, fontSize: 12, color: C.dim, maxLines: 2, overflow: "ellipsis" })
+        ])
+      ]),
+      ctx.UI.Icon({ name: "ChevronRight", size: 20, tint: C.dim })
+    ]);
+  }
+  var children = [];
 
-  // ---- 顶部：标题 + 状态 ----
-  children.push(ctx.UI.Row({ verticalAlignment: "center", fillMaxWidth: true }, [
-    ctx.UI.Text({ text: "随机上线", style: "headlineSmall", fontWeight: "bold", color: P.text, weight: 1 }),
-    ctx.UI.Text({ text: statusText(), style: "labelLarge", fontWeight: "bold", color: P.accent })
-  ]));
-
-  // ---- 大字号唤醒概率 y ----
-  children.push(ctx.UI.Card({ containerColor: P.card, backgroundColor: P.card, shape: { cornerRadius: 16, type: "rounded" }, padding: 0, elevation: 0, fillMaxWidth: true }, [
-    ctx.UI.Column({ backgroundColor: P.card, fillMaxWidth: true, padding: 14, spacing: 2 }, [
-      ctx.UI.Text({ text: "唤醒概率 y", style: "bodySmall", color: P.text }),
-      ctx.UI.Text({ text: (stY != null) ? String(stY) + "%" : "…%", style: "headlineLarge", fontWeight: "bold", color: P.accent }),
-      ctx.UI.Text({ text: (stX != null) ? "当前 X = " + stX + " 分钟" : "状态读取中…", style: "bodySmall", color: P.text })
+  // ---- 顶部标题 / 状态 ----
+  children.push(ctx.UI.Row({ fillMaxWidth: true, horizontalArrangement: "spaceBetween", verticalAlignment: "center" }, [
+    ctx.UI.Column({ spacing: 3 }, [
+      ctx.UI.Text({ text: "随机上线", fontSize: 26, fontWeight: "bold", color: C.text }),
+      ctx.UI.Text({ text: "装成真人的主动消息 · v2.2.0+1", fontSize: 12, color: C.dim })
+    ]),
+    ctx.UI.Surface({ containerColor: C.primary, alpha: 0.14, shape: { cornerRadius: 100, type: "rounded" } }, [
+      ctx.UI.Row({ padding: { horizontal: 10, vertical: 6 }, spacing: 6, verticalAlignment: "center" }, [
+        ctx.UI.Box({ width: 7, height: 7, background: C.primary, shape: { cornerRadius: 4, type: "rounded" } }),
+        ctx.UI.Text({ text: statusText(), fontSize: 11, fontWeight: "bold", color: C.primary, maxLines: 1 })
+      ])
     ])
   ]));
 
-  // ===== v1.9.0：二级页面入口（卡1/卡2/卡3/卡4 已拆分为子页面）=====
-  var NAV_ITEMS = [
-    ["提示词设置", "toolpkg:com.operit.on_air:ui:on_air_prompts", "自定义递给 AI 的每一句话：触发引导 / 包装前缀 / 温柔巡检 / 置气 / 静默通知 / 档位话术库"],
-    ["参数设置", "toolpkg:com.operit.on_air:ui:on_air_params", "X 值、公式 a・b・c、唤醒冷却、角色卡名字、连续上限"],
-    ["免打扰", "toolpkg:com.operit.on_air:ui:on_air_quiet", "静默时段（白天段 + 夜间段）、目标对话、AI 静默建议"],
-    ["日期静默", "toolpkg:com.operit.on_air:ui:on_air_dates", "日历点选全天静默、上学日自动静默、学生模式、节假日表"],
-    ["控制台", "toolpkg:com.operit.on_air:ui:on_air_console", "直调 API：掷骰一次 / 查沉默 / 沉默阈值 / 全量读数 / 工具清单"]
-  ];
-  // ---- v2.2.0 瘦身：5 张入口卡 -> 一张卡内的紧凑列表 ----
-  var navRows = [];
-  for (var ni = 0; ni < NAV_ITEMS.length; ni++) {
-    (function (item) {
-      navRows.push(ctx.UI.Row({ verticalAlignment: "center", fillMaxWidth: true, spacing: 8 }, [
-        ctx.UI.Column({ backgroundColor: P.card, fillMaxWidth: true, spacing: 2, weight: 1 }, [
-          ctx.UI.Text({ text: item[0], style: "titleSmall", fontWeight: "bold", color: P.accent }),
-          ctx.UI.Text({ text: item[2], style: "bodySmall", color: P.dim })
-        ]),
-        ctx.UI.Button({ contentColor: P.accent, color: P.accent, textColor: P.accent, containerColor: P.card, shape: { cornerRadius: 10, type: "rounded" }, text: "打开", onClick: function () { if (ctx.navigate) ctx.navigate(item[1]); } })
-      ]));
-    })(NAV_ITEMS[ni]);
-  }
-  children.push(ctx.UI.Card({ containerColor: P.card, backgroundColor: P.card, shape: { cornerRadius: 16, type: "rounded" }, padding: 0, elevation: 0, fillMaxWidth: true }, [
-    ctx.UI.Column({ backgroundColor: P.card, fillMaxWidth: true, padding: 12, spacing: 10 }, navRows)
-  ]));
-  // ---- 一行操作：触发 / 重置冷却 / 重置计数 ----
-  children.push(ctx.UI.Row({ spacing: 8, fillMaxWidth: true }, [
-    ctx.UI.Button({ contentColor: P.btnText, color: P.btnText, textColor: P.btnText, containerColor: P.btn, shape: { cornerRadius: 12, type: "rounded" }, text: "触发唤醒", fillMaxWidth: true, weight: 1, onClick: doAwake }),
-    ctx.UI.Button({ contentColor: P.btnText, color: P.btnText, textColor: P.btnText, containerColor: P.btn, shape: { cornerRadius: 12, type: "rounded" }, text: "刷新状态", fillMaxWidth: true, weight: 1, onClick: doRefresh })
-  ]));
-  children.push(ctx.UI.Row({ spacing: 8, fillMaxWidth: true }, [
-    ctx.UI.Button({ contentColor: P.text, color: P.text, textColor: P.text, containerColor: P.card, shape: { cornerRadius: 12, type: "rounded" }, text: "重置冷却", fillMaxWidth: true, weight: 1, onClick: doResetCool }),
-    ctx.UI.Button({ contentColor: P.text, color: P.text, textColor: P.text, containerColor: P.card, shape: { cornerRadius: 12, type: "rounded" }, text: "重置计数", fillMaxWidth: true, weight: 1, onClick: doCoax })
-  ]));
-
-  // ---- v2.2.0：底部状态卡已合并进顶部状态卡 ----
-
-  // ---- 消息提示 ----
-  if (msg) {
-    children.push(ctx.UI.Card({ containerColor: P.card, backgroundColor: P.card, shape: { cornerRadius: 16, type: "rounded" }, padding: 0, elevation: 0, fillMaxWidth: true }, [
-      ctx.UI.Row({ backgroundColor: P.card, fillMaxWidth: true, padding: 14, verticalAlignment: "center" }, [
-        ctx.UI.Text({ text: msg, style: "bodyMedium", color: P.text, weight: 1 })
+  // ---- 更新横幅 ----
+  if (updData && updData.hasUpdate && !updHide) {
+    var banner = [
+      ctx.UI.Row({ fillMaxWidth: true, verticalAlignment: "center", spacing: 8 }, [
+        ctx.UI.Icon({ name: "SystemUpdate", size: 20, tint: C.primary }),
+        ctx.UI.Text({ text: "发现新版本 " + String(updData.latest || ""), fontSize: 15, fontWeight: "bold", color: C.primary, maxLines: 1 }),
+        ctx.UI.Text({ text: "当前 v" + String(updData.current || ""), fontSize: 11, color: C.dim, maxLines: 1 })
+      ]),
+      ctx.UI.Text({ text: String(updData.notes || "").replace(/\r/g, "").split("\n").filter(function (x) { return String(x).trim() !== ""; }).slice(0, 3).join("\n"), fontSize: 12, color: C.text }),
+      ctx.UI.Row({ spacing: 8, fillMaxWidth: true }, [
+        ctx.UI.Button({ containerColor: C.primary, contentColor: C.onPrimary, shape: { cornerRadius: 12, type: "rounded" }, text: "下载更新包", onClick: doDownloadUpdate, fillMaxWidth: true, weight: 1 }),
+        ctx.UI.Button({ containerColor: C.card, contentColor: C.text, shape: { cornerRadius: 12, type: "rounded" }, text: "稍后", onClick: function () { setUpdHide(true); }, weight: 1 }),
+        ctx.UI.Button({ containerColor: C.card, contentColor: C.text, shape: { cornerRadius: 12, type: "rounded" }, text: "跳过此版本", onClick: doSkipUpdate, weight: 1 })
       ])
+    ];
+    if (updMsg) banner.push(ctx.UI.Text({ text: updMsg, fontSize: 12, color: C.dim }));
+    children.push(ctx.UI.Card({ containerColor: C.soft, shape: { cornerRadius: 16, type: "rounded" }, border: { width: 1, color: C.primary, alpha: 0.4 }, elevation: 0, fillMaxWidth: true }, [
+      ctx.UI.Column({ padding: 14, spacing: 10, fillMaxWidth: true }, banner)
     ]));
   }
 
-  // ---- v2.2.0：刷新已并入操作行 ----
+  // ---- 主状态卡 ----
+  var yTxt = (stY != null) ? String(stY) : "--";
+  var xTxt = (stX != null) ? String(stX) : "--";
+  var coolTxt = (stCool != null) ? "冷却中" : "无冷却";
+  var cardTxt = stCardName ? stCardName : "跟随当前对话";
+  children.push(ctx.UI.Card({
+    containerColor: C.card, shape: { cornerRadius: 20, type: "rounded" },
+    border: { width: 1, color: C.line, alpha: 0.35 }, elevation: 2, fillMaxWidth: true
+  }, [
+    ctx.UI.Column({ padding: 18, spacing: 12, fillMaxWidth: true }, [
+      ctx.UI.Row({ fillMaxWidth: true, horizontalArrangement: "spaceBetween", verticalAlignment: "center" }, [
+        ctx.UI.Text({ text: "唤醒概率 Y", fontSize: 12, fontWeight: "bold", color: C.dim }),
+        ctx.UI.Text({ text: "X = " + xTxt + " 分钟", fontSize: 12, color: C.dim })
+      ]),
+      ctx.UI.Row({ verticalAlignment: "end", spacing: 3 }, [
+        ctx.UI.Text({ text: yTxt, fontSize: 46, fontWeight: "bold", color: C.primary, maxLines: 1 }),
+        ctx.UI.Text({ text: "%", fontSize: 20, fontWeight: "bold", color: C.primary }),
+        ctx.UI.Text({ text: "每分钟掷一次", fontSize: 11, color: C.dim, padding: { horizontal: 8, vertical: 6 } })
+      ]),
+      ctx.UI.HorizontalDivider({ thickness: 1, color: C.line }),
+      ctx.UI.Row({ fillMaxWidth: true, horizontalArrangement: "spaceBetween" }, [
+        metric("未命中", (stMiss != null) ? String(stMiss) + " 次" : "--"),
+        metric("上一次命中", stLastHit ? String(stLastHit).slice(5, 16) : "没有过"),
+        metric("冷却", coolTxt, stCool ? C.primary : C.text),
+        metric("角色卡", cardTxt)
+      ])
+    ])
+  ]));
+
+  // ---- 入口 ----
+  children.push(sectionLabel("设置与工具"));
+  var navRows = [];
+  for (var ni = 0; ni < NAV_ITEMS.length; ni++) {
+    if (ni > 0) navRows.push(ctx.UI.HorizontalDivider({ thickness: 1, color: C.line }));
+    navRows.push((function (it) {
+      return navRow(it[3], it[0], it[2], it[1]);
+    })(NAV_ITEMS[ni]));
+  }
+  children.push(ctx.UI.Card({ containerColor: C.card, shape: { cornerRadius: 18, type: "rounded" }, border: { width: 1, color: C.line, alpha: 0.35 }, elevation: 1, fillMaxWidth: true }, [
+    ctx.UI.Column({ padding: 0, spacing: 0, fillMaxWidth: true }, navRows)
+  ]));
+
+  // ---- 操作 ----
+  children.push(sectionLabel("操作"));
+  children.push(ctx.UI.Button({
+    containerColor: C.primary, contentColor: C.onPrimary, shape: { cornerRadius: 14, type: "rounded" },
+    text: "立即触发唤醒", fillMaxWidth: true, onClick: doAwake
+  }));
+  children.push(ctx.UI.Row({ spacing: 8, fillMaxWidth: true }, [
+    ctx.UI.Button({ containerColor: C.card, contentColor: C.text, shape: { cornerRadius: 12, type: "rounded" }, text: "刷新状态", weight: 1, onClick: doRefresh }),
+    ctx.UI.Button({ containerColor: C.card, contentColor: C.text, shape: { cornerRadius: 12, type: "rounded" }, text: "重置冷却", weight: 1, onClick: doResetCool }),
+    ctx.UI.Button({ containerColor: C.card, contentColor: C.text, shape: { cornerRadius: 12, type: "rounded" }, text: "重置计数", weight: 1, onClick: doCoax })
+  ]));
+
+  // ---- 消息 ----
+  if (msg) {
+    children.push(ctx.UI.Card({ containerColor: C.soft, shape: { cornerRadius: 12, type: "rounded" }, elevation: 0, fillMaxWidth: true }, [
+      ctx.UI.Row({ padding: 12, verticalAlignment: "center", spacing: 8, fillMaxWidth: true }, [
+        ctx.UI.Icon({ name: "CheckCircle", size: 18, tint: C.primary }),
+        ctx.UI.Text({ text: msg, fontSize: 13, color: C.text })
+      ])
+    ]));
+  }
+  children.push(ctx.UI.Text({ text: "v2.2.0+1 · 打开面板时自动检查更新", fontSize: 11, color: C.dim }));
 
   return ctx.UI.LazyColumn({ containerColor: P.bg, backgroundColor: P.bg,
     onLoad: async function () {
@@ -679,11 +747,11 @@ function Screen(ctx) {
     },
     fillMaxSize: true,
     padding: 16,
-    spacing: 12
+    spacing: 14
   }, children);
-}
 
 // ===== 导出：compose_dsl 运行时从这里找入口函数 =====
+}
 module.exports = Screen;
 module.exports.default = Screen;
 module.exports.Screen = Screen;
