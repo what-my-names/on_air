@@ -1,11 +1,6 @@
 function Screen(ctx) {
     // 给主题色加透明度：#RRGGBB -> #AARRGGBB（不依赖 backgroundAlpha）
-    function wa(c, a) {
-        if (typeof c === "string" && /^#[0-9a-fA-F]{6}$/.test(c)) return "#" + a + c.slice(1);
-        return c;
-    }
-
-    // ===== 工具调用辅助（v1.9.2）：兼容 UI 侧 callTool 返回（字符串/对象/裸数据）=====
+        // ===== 工具调用辅助（v1.9.2）：兼容 UI 侧 callTool 返回（字符串/对象/裸数据）=====
     function unwrapRaw(o) {
         if (!o || typeof o !== "object") return o;
         var keys = [];
@@ -79,7 +74,7 @@ function Screen(ctx) {
                 if (d.quiet_day_end) setDEnd(String(d.quiet_day_end));
                 if (d.quiet_night_start) setNStart(String(d.quiet_night_start));
                 if (d.quiet_night_end) setNEnd(String(d.quiet_night_end));
-                if (d.character_card_name) setChatName(String(d.character_card_name));
+                // 多对话目标在「参数设置」页配置；本页只管静默时段
             }
         } catch (e) { setErrMsg("读取失败：" + String((e && e.message) || e)); }
         setLoaded(true);
@@ -196,14 +191,7 @@ function Screen(ctx) {
         ctx.UI.Column({ backgroundColor: surfaceVariant, fillMaxWidth: true, padding: 14, spacing: 6 }, b3)
     ]));
 
-    var b4 = [];
-    b4.push(ctx.UI.Text({ text: "目标对话（用对话名字反查，不发任何消息）", style: "bodySmall", color: onSurfaceVariant }));
-    b4.push(ctx.UI.TextField({ value: chatName, onValueChange: setChatName, singleLine: true, placeholder: ctx.UI.Text({ text: "对话的名字，如：猫娘", color: onSurfaceVariant }), style: { color: onSurface } }));
-    b4.push(ctx.UI.Button({ contentColor: onSurface, color: onSurface, textColor: onSurface, containerColor: surfaceVariant, shape: { cornerRadius: 12, type: "rounded" }, text: "按名字选中对话", fillMaxWidth: true, onClick: doLink }));
-    if (linked) b4.push(ctx.UI.Text({ text: "已选中对话 ID：" + linked, style: "bodySmall", color: onSurfaceVariant }));
-    children.push(ctx.UI.Card({ containerColor: surfaceVariant, border: { width: 1, color: scheme.outline || surfaceVariant }, backgroundColor: surfaceVariant, shape: { cornerRadius: 16, type: "rounded" }, padding: 0, elevation: 0, fillMaxWidth: true }, [
-        ctx.UI.Column({ backgroundColor: surfaceVariant, fillMaxWidth: true, padding: 14, spacing: 6 }, b4)
-    ]));
+    // 目标对话已统一到「参数设置」页（chat_ids），本页不再提供入口
 
     var b5 = [];
     b5.push(ctx.UI.Text({ text: "AI 静默建议（按你的发言习惯算，可选填对话名）", style: "bodySmall", color: onSurfaceVariant }));

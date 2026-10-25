@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "toolpkg_id": "com.operit.on_air",
-  "version": "2.2.2",
+  "version": "2.2.1+2",
   "author": [
     "时空指令"
   ],
@@ -12,8 +12,8 @@
     "en": "On Air"
   },
   "description": {
-    "zh": "随机上线 —— 让 AI 像真人一样，在你沉默时主动找你说话。你越久没说话，它上线的概率越高；它会在某个随机时刻自己出现，发一条主动消息。\n\n装好之后：\n· 侧边栏能看到当前唤醒概率、下次大概什么时候可能上线\n· 可以随时手动触发一次唤醒，不用等概率\n· 静默时段可分开设（白天段 / 夜间段），支持节假日、学生模式、指定日期免打扰\n· 三组共 11 项提示词与话术都能自己改，不喜欢的就换\n· 可选与「温柔巡检」联动，语气随它的醋意变化（A2 发送方式）\n\n安装、更新、API 与实现细节都在开源仓库：https://github.com/what-my-names/on_air\n\nv2.2.2（Beta）",
-    "en": "On Air — let your AI come to you like a real person. The longer you stay silent, the higher the chance it shows up with a message of its own.\n\nWhat you get:\n· Sidebar shows the current wake-up chance and roughly when it may come online\n· Trigger a wake-up manually at any time\n· Quiet hours with separate day/night windows, plus holidays, student mode and per-date mute\n· All 11 prompts and talk lines are editable\n· Optional integration with Gentle Guardian so its tone follows its jealousy (A2 send mode)\n\nInstall, update notes, API and implementation details: https://github.com/what-my-names/on_air\n\nv2.2.2 (Beta)"
+    "zh": "随机上线 —— 让 AI 像真人一样，在你沉默时主动找你说话。你越久没说话，它上线的概率越高；它会在某个随机时刻自己出现，发一条主动消息。\n\n装好之后：\n· 侧边栏能看到当前唤醒概率、下次大概什么时候可能上线\n· 可以随时手动触发一次唤醒，不用等概率\n· 静默时段可分开设（白天段 / 夜间段），支持节假日、学生模式、指定日期免打扰\n· 三组共 11 项提示词与话术都能自己改，不喜欢的就换\n· 可选与「温柔巡检」联动，语气随它的醋意变化（A2 发送方式）\n\n安装、更新、API 与实现细节都在开源仓库：https://github.com/what-my-names/on_air\n\nv2.2.1+2（Beta）",
+    "en": "On Air — let your AI come to you like a real person. The longer you stay silent, the higher the chance it shows up with a message of its own.\n\nWhat you get:\n· Sidebar shows the current wake-up chance and roughly when it may come online\n· Trigger a wake-up manually at any time\n· Quiet hours with separate day/night windows, plus holidays, student mode and per-date mute\n· All 11 prompts and talk lines are editable\n· Optional integration with Gentle Guardian so its tone follows its jealousy (A2 send mode)\n\nInstall, update notes, API and implementation details: https://github.com/what-my-names/on_air\n\n2.2.1+2 (Beta)"
   },
   "category": "COMPANION",
   "subpackages": [

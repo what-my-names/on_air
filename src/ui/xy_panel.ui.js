@@ -1,3 +1,8 @@
+// DL14/DL15：跨重载保留的轮询状态（UI 重载不会重置这两个）
+var __dlPolling = false;
+var __dlPollGen = 0;
+
+
 function Screen(ctx) {
   /*
    * 随机上线 — 侧边栏面板 v6（简洁版，纯 Compose DSL）
@@ -26,7 +31,6 @@ function Screen(ctx) {
   };
   // ===== 状态 =====
   var loadingState = ctx.useState("loading", true);
-  var loading = loadingState[0];
   var setLoading = loadingState[1];
 
   var msgState = ctx.useState("msg", "");
@@ -61,9 +65,18 @@ function Screen(ctx) {
   var coolInput = coolInputState[0];
   var setCoolInput = coolInputState[1];
 
-  var cardNameInputState = ctx.useState("cardNameInput", "");
-  var cardNameInput = cardNameInputState[0];
-  var setCardNameInput = cardNameInputState[1];
+  var cardsState = ctx.useState("cards", null);
+  var cards = cardsState[0];
+  var setCards = cardsState[1];
+  var cardOpenState = ctx.useState("card_open", false);
+  var cardOpen = cardOpenState[0];
+  var setCardOpen = cardOpenState[1];
+  var chatsState = ctx.useState("chats", null);
+  var chats = chatsState[0];
+  var setChats = chatsState[1];
+  var chatOpenState = ctx.useState("chat_open", false);
+  var chatOpen = chatOpenState[0];
+  var setChatOpen = chatOpenState[1];
 
   var aInputState = ctx.useState("aInput", "");
   var aInput = aInputState[0];
@@ -130,8 +143,6 @@ function Screen(ctx) {
   var calDatesState = ctx.useState("calDates", {});   // { "YYYY-MM-DD": "full" } 全天静默日
   var calDates = calDatesState[0];
   var setCalDates = calDatesState[1];
-  var quietDatesEdited = false;   // 用户点选过静默日后为 true，防止 initOnce 用旧值覆盖
-  var switchEdited = { dateQuietOn: false, studentMode: false, schoolAuto: false };   // 用户点过开关后为 true，防止 initOnce 覆盖
 
   var schoolAutoState = ctx.useState("schoolAuto", false);
   var schoolAuto = schoolAutoState[0];
@@ -178,7 +189,23 @@ function Screen(ctx) {
   var setInited = initedState[1];
 
   // ===== 工具调用辅助 =====
+  function unwrapRaw(o) {
+    if (!o || typeof o !== "object") return o;
+    var keys = [];
+    for (var k in o) { keys.push(k); }
+    if (keys.length === 1) {
+      var only = keys[0];
+      if (only === "result" || only === "content" || only === "text") {
+        var v = o[only];
+        if (typeof v === "string") { try { return JSON.parse(v); } catch (e3) { return v; } }
+        return v;
+      }
+    }
+    return o;
+  }
   function parseResult(raw) {
+    raw = unwrapRaw(raw);
+
     if (typeof raw === "string") {
       try { return JSON.parse(raw); } catch (e) { return { success: false, message: raw }; }
     }
@@ -241,20 +268,13 @@ function Screen(ctx) {
     if (alreadyInited) return;     // 输入框只在首次回填，避免覆盖正在编辑的内容
     var s = fresh.st;
     var f = fresh.fm;
-    if (s && typeof s.x === "number") setXInput(String(s.x));
     if (f) {
-      if (typeof f.cooldown_minutes === "number") setCoolInput(String(f.cooldown_minutes));
-      if (typeof f.a === "number") setAInput(String(f.a));
-      if (typeof f.b === "number") setBInput(String(f.b));
-      if (typeof f.c === "number") setCInput(String(f.c));
-      if (Array.isArray(f.awake_messages)) setTalkInput(f.awake_messages.join("\n"));
       if (f.awake_mode) setAwakeMode(f.awake_mode);
       if (f.send_mode) {
         // 未安装温柔巡检时 A2 不可用，界面回落到 A1
         var hasGentle = !!(fresh.st && fresh.st.gentle_installed);
         setSendMode((f.send_mode === "A2" && !hasGentle) ? "A1" : f.send_mode);
       }
-      if (f.character_card_name !== undefined) setCardNameInput(String(f.character_card_name || ""));
       if (f.quiet_enabled !== undefined) setQuietEnabled(f.quiet_enabled === true || f.quiet_enabled === "true");
       if (f.quiet_day_enabled !== undefined) setQuietDayOn(f.quiet_day_enabled !== false && f.quiet_day_enabled !== "false");
       if (f.quiet_night_enabled !== undefined) setQuietNightOn(f.quiet_night_enabled !== false && f.quiet_night_enabled !== "false");
@@ -262,15 +282,7 @@ function Screen(ctx) {
       if (f.quiet_day_end) setQuietDayEnd(String(f.quiet_day_end));
       if (f.quiet_night_start) setQuietNightStart(String(f.quiet_night_start));
       if (f.quiet_night_end) setQuietNightEnd(String(f.quiet_night_end));
-      if (f.quiet_suggest) setSuggest(f.quiet_suggest);
-      if (f.chat_id) setLinkedChat(String(f.chat_id));
       // 日历与节假日（v1.5.8 起 / v1.6.10 起逻辑反转 / v1.7.10 起学生模式+总开关）
-      if (!quietDatesEdited && f.quiet_dates && typeof f.quiet_dates === "object") setCalDates(f.quiet_dates);
-      if (!switchEdited.schoolAuto && f.school_day_auto_quiet !== undefined) setSchoolAuto(f.school_day_auto_quiet === true || f.school_day_auto_quiet === "true");
-      if (!switchEdited.studentMode && f.student_mode !== undefined) setStudentMode(f.student_mode === true || f.student_mode === "true");
-      if (!switchEdited.dateQuietOn && f.date_quiet_enabled !== undefined) setDateQuietOn(f.date_quiet_enabled !== false && f.date_quiet_enabled !== "false");
-      if (Array.isArray(f.holiday_dates)) setHolidayDates(f.holiday_dates);
-      if (f.holiday_fetch_date) setHolidayFetchDate(String(f.holiday_fetch_date));
     }
   }
 
@@ -297,45 +309,6 @@ function Screen(ctx) {
   }
 
   // ===== 动作 =====
-  async function doSaveX() {
-    var r = await callTool("on_air:set_x", { x: xInput });
-    await showMsg(r.success ? ("X 已写入：" + xInput) : ("写入失败：" + (r.message || "")));
-    if (r.success) await refresh();
-  }
-
-  async function doSaveCool() {
-    var r = await callTool("on_air:update_formula", { cooldown_minutes: coolInput });
-    await showMsg(r.success ? ("冷却时间已保存：" + coolInput + " 分钟") : ("保存失败：" + (r.message || "")));
-    if (r.success) await refresh();
-  }
-
-  async function doSaveCardName() {
-    var r = await callTool("on_air:update_formula", { character_card_name: cardNameInput });
-    await showMsg(r.success ? "角色卡名字已保存" : ("保存失败：" + (r.message || "")));
-    if (r.success) await refresh();
-  }
-
-  async function doSaveQuiet() {
-    var params = {
-      quiet_enabled: quietEnabled === true,
-      quiet_day_enabled: quietDayOn === true,
-      quiet_night_enabled: quietNightOn === true
-    };
-    if (String(quietDayStart || "").trim()) params.quiet_day_start = String(quietDayStart).trim();
-    if (String(quietDayEnd || "").trim()) params.quiet_day_end = String(quietDayEnd).trim();
-    if (String(quietNightStart || "").trim()) params.quiet_night_start = String(quietNightStart).trim();
-    if (String(quietNightEnd || "").trim()) params.quiet_night_end = String(quietNightEnd).trim();
-    var r = await callTool("on_air:update_formula", params);
-    if (r.success) {
-      await showMsg("静默状态已保存：" + (params.quiet_enabled
-        ? ("白天段" + (params.quiet_day_enabled ? "开" : "关") + "（" + (params.quiet_day_start || "—") + "~" + (params.quiet_day_end || "—") + "），夜间段" + (params.quiet_night_enabled ? "开" : "关") + "（" + (params.quiet_night_start || "—") + "~" + (params.quiet_night_end || "—") + "）")
-        : "已关闭（总开关）"));
-      await refresh();
-    } else {
-      await showMsg("保存失败：" + (r.message || ""));
-    }
-  }
-
   async function doSuggest() {
     setSuggestBusy(true);
     setMsg("正在分析聊天记录的时间分布…");
@@ -344,8 +317,6 @@ function Screen(ctx) {
     var r = await callTool("on_air:suggest_quiet", params);
     setSuggestBusy(false);
     if (r.success && r.data && r.data.suggestion) {
-      setSuggest(r.data.suggestion);
-      if (r.data.chat_id) setLinkedChat(String(r.data.chat_id));
       var sampleNote = (typeof r.data.sample_count === "number")
         ? ("（样本 " + r.data.sample_count + " 条）") : "";
       await showMsg((r.data.source === "ai" ? "AI" : "本地算法") + "建议已生成" + sampleNote + "：白天 " +
@@ -367,7 +338,6 @@ function Screen(ctx) {
     var r = await callTool("on_air:link_agent", { chat_name: name });
     setSuggestBusy(false);
     if (r.success && r.data && r.data.chat_id) {
-      setLinkedChat(String(r.data.chat_id));
       await showMsg(r.message || "已选中对话「" + name + "」");
       await refresh();
     } else {
@@ -442,97 +412,6 @@ function Screen(ctx) {
     for (var d = 1; d <= days; d++) cells.push(d);
     return cells;
   }
-  function doCalPrevMonth() {
-    var y = calYear, m = calMonth - 1;
-    if (m < 0) { m = 11; y = y - 1; }
-    setCalYear(y); setCalMonth(m);
-  }
-  function doCalNextMonth() {
-    var y = calYear, m = calMonth + 1;
-    if (m > 11) { m = 0; y = y + 1; }
-    setCalYear(y); setCalMonth(m);
-  }
-  async function doToggleQuietDate(dateStr) {
-    // 任意日期（含节假日/周末/寒暑假）都可点选静默
-    quietDatesEdited = true;   // 点击即标记，禁止 initOnce 覆盖
-    var next = {};
-    var k;
-    for (k in calDates) { if (calDates[k] === "full") next[k] = "full"; }
-    var willAdd;
-    if (next[dateStr] === "full") {
-      delete next[dateStr];
-      willAdd = false;
-    } else {
-      next[dateStr] = "full";
-      willAdd = true;
-    }
-    setCalDates(next);   // 乐观更新：点击瞬间立即变色，不等保存
-    var r = await callTool("on_air:update_formula", { quiet_dates: JSON.stringify(next) });
-    if (r.success) {
-      var saved = (r.data && r.data.quiet_dates && typeof r.data.quiet_dates === "object") ? r.data.quiet_dates : next;
-      setCalDates(saved);   // 与后端保存结果对齐
-      await showMsg(willAdd
-        ? (dateStr + " 已标记为全天静默日（硬静默，全天不打扰）")
-        : (dateStr + " 已取消全天静默，恢复原本颜色"));
-    } else {
-      var back = {};
-      for (k in calDates) { if (calDates[k] === "full") back[k] = "full"; }
-      setCalDates(back);   // 保存失败回滚颜色
-      await showMsg("保存失败：" + (r.message || ""));
-    }
-  }
-  async function doSaveSchoolAuto(nv) {
-    var v = (nv !== undefined && nv !== null) ? (nv === true) : (schoolAuto === true);
-    var r = await callTool("on_air:update_formula", { school_day_auto_quiet: v });
-    await showMsg(r.success ? (v ? "上学日静默：已开启" : "上学日静默：已关闭") : ("保存失败：" + (r.message || "")));
-    if (r.success) await refresh();
-  }
-  async function doSaveStudentMode(nv) {
-    var v = (nv !== undefined && nv !== null) ? (nv === true) : (studentMode === true);
-    var r = await callTool("on_air:update_formula", { student_mode: v });
-    await showMsg(r.success ? (v ? "学生模式：已开启" : "学生模式：已关闭") : ("保存失败：" + (r.message || "")));
-    if (r.success) await refresh();
-  }
-  async function doSaveDateQuiet(nv) {
-    var v = (nv !== undefined && nv !== null) ? (nv === true) : (dateQuietOn === true);
-    var r = await callTool("on_air:update_formula", { date_quiet_enabled: v });
-    await showMsg(r.success ? (v ? "日期静默总开关：已开启" : "日期静默总开关：已关闭") : ("保存失败：" + (r.message || "")));
-    if (r.success) await refresh();
-  }
-  async function doFetchHolidays() {
-    setHolidayBusy(true);
-    setMsg("正在联网拉取节假日信息…");
-    var r = await callTool("on_air:fetch_holidays");
-    setHolidayBusy(false);
-    await showMsg(r.message || (r.success ? "已更新" : "拉取失败"));
-    if (r.success) await refresh();
-  }
-
-  async function doSaveAbc() {
-    var params = {};
-    if (String(aInput || "").trim()) params.a = aInput;
-    if (String(bInput || "").trim()) params.b = bInput;
-    if (String(cInput || "").trim()) params.c = cInput;
-    if (!("a" in params) && !("b" in params) && !("c" in params)) {
-      await showMsg("请先填写 a / b / c 再保存");
-      return;
-    }
-    var r = await callTool("on_air:update_formula", params);
-    await showMsg(r.success ? "公式参数已保存" : ("保存失败：" + (r.message || "")));
-    if (r.success) await refresh();
-  }
-
-  async function doSaveTalk() {
-    var lines = String(talkInput || "").split("\n").map(function (s) { return s.trim(); }).filter(Boolean);
-    // 未安装温柔巡检时强制 A1（A2 依赖温柔巡检的自动回复通道）
-    var gentleOk = !!(st && st.gentle_installed);
-    var params = { awake_mode: awakeMode, send_mode: gentleOk ? sendMode : "A1" };
-    if (lines.length) params.awake_messages = JSON.stringify(lines);
-    var r = await callTool("on_air:update_formula", params);
-    await showMsg(r.success ? "已保存" : ("保存失败：" + (r.message || "")));
-    if (r.success) await refresh();
-  }
-
   async function doAwake() {
     setMsg("正在触发…");
     var r = await callTool("on_air:manual_awake");
@@ -593,15 +472,20 @@ function Screen(ctx) {
   }
   function applyDl(d) {
     if (!d) return;
+    var jd = '';
+    try { jd = JSON.stringify(d); } catch (eJ) { jd = ''; }
+    if (jd && String(dl || '') === jd) return;   // 一模一样就不触发重渲染
     var prevMsg = '';
     try { prevMsg = String((dl && dl.message) || ''); } catch (ePM) { }
-    setDl(JSON.stringify(d));
+    setDl(jd || JSON.stringify(d));
     if (d.status === 'done' && d.path) setUpdPath(String(d.path));
+    else setUpdPath("");   // 不是完成态就清掉上次的「已下载到」路径，别让残留状态一直挂在面板上
     // 只在内容真变化时才改提示，避免 onLoad 反复触发导致提示乱跳
     if (d.message && String(d.message) !== prevMsg) setUpdMsg(String(d.message));
   }
-  async function pollDownload() {
+  async function pollDownload(myGen) {
     for (var i = 0; i < 400; i++) {
+      if (myGen !== undefined && myGen !== __dlPollGen) return;   // UI 重载后旧循环自己退出
       var r = null;
       try { r = await callTool('on_air:get_download_status'); } catch (e0) { r = null; }
       if (r && r.success && r.data) {
@@ -613,15 +497,21 @@ function Screen(ctx) {
     }
   }
   function startPollOnce() {
-    if (polling) return;
+    if (__dlPolling) return;
+    __dlPolling = true;
     setPolling(true);
-    pollDownload().then(function () { setPolling(false); }).catch(function () { setPolling(false); });
+    var myGen = ++__dlPollGen;
+    pollDownload(myGen).then(function () { if (myGen === __dlPollGen) { __dlPolling = false; setPolling(false); } }).catch(function () { if (myGen === __dlPollGen) { __dlPolling = false; setPolling(false); } });
   }
   async function doDownloadUpdate() {
     // 连点保护：一次点击只发起一次下载，避免两次请求互相覆盖状态
     if (dlBusy) return;
     setDlBusy(true);
     try {
+      if (!dl || !dl.status) {
+        var stq = await callTool('on_air:get_download_status');
+        if (stq && stq.success && stq.data && stq.data.status === 'running') { applyDl(stq.data); startPollOnce(); return; }
+      }
       if (dl && dl.status === 'running') { startPollOnce(); return; }
       var total0 = Number((updData && updData.asset_size) || 0);
       setDl(JSON.stringify({ status: 'running', received: 0, total: total0, percent: 0, message: '正在获取最新版本信息…' }));
@@ -663,28 +553,22 @@ function Screen(ctx) {
     return st.running ? "运行中" : "空闲态";
   }
 
-  var yPreview = computeY(xInput);
   var stX = (st && st.x != null) ? st.x : null;
   var stY = (st && st.y != null) ? st.y : null;
   var stMiss = (st && st.miss_count != null) ? st.miss_count : null;
   var stLastHit = (st && st.last_hit_at) ? st.last_hit_at : null;
   var stCool = (st && st.cooldown_until) ? st.cooldown_until : null;
-  var stCardName = (fm && fm.character_card_name) ? String(fm.character_card_name) : "";
 
   var NAV_ITEMS = [
     ["提示词设置", "toolpkg:com.operit.on_air:ui:on_air_prompts", "递给 AI 的每一句话：触发引导 / 前缀 / 温柔巡检 / 置气 / 档位话术", "Article"],
-    ["参数设置", "toolpkg:com.operit.on_air:ui:on_air_params", "X 值、公式 a·b·c、冷却、角色卡名字、连续上限", "Tune"],
+    ["参数设置", "toolpkg:com.operit.on_air:ui:on_air_params", "X 值、公式 a·b·c、冷却、目标对话、连续上限", "Tune"],
     ["免打扰", "toolpkg:com.operit.on_air:ui:on_air_quiet", "静默时段、目标对话、AI 静默建议", "Notifications"],
     ["日期静默", "toolpkg:com.operit.on_air:ui:on_air_dates", "日历点选静默、上学日、学生模式、节假日表", "CalendarMonth"],
     ["控制台", "toolpkg:com.operit.on_air:ui:on_air_console", "直调 API：掷骰 / 查沉默 / 全量读数 / 工具清单", "Terminal"]
   ];
 
   // ===== 渲染（v2.2.1 视觉层次）=====
-  function wa(c, a) {
-    if (typeof c === "string" && /^#[0-9a-fA-F]{6}$/.test(c)) return "#" + a + c.slice(1);
-    return c;
-  }
-  var C = {
+    var C = {
     bg: P.bg,
     card: P.card,
     line: scheme.outlineVariant || scheme.outline || P.dim,
@@ -788,7 +672,8 @@ function Screen(ctx) {
   var yTxt = (stY != null) ? String(stY) : "--";
   var xTxt = (stX != null) ? String(stX) : "--";
   var coolTxt = (stCool != null) ? "冷却中" : "无冷却";
-  var cardTxt = stCardName ? stCardName : "跟随当前对话";
+  var boundChatCount = (fm && Array.isArray(fm.chat_ids)) ? fm.chat_ids.length : 0;
+  var cardTxt = boundChatCount ? ("已绑 " + boundChatCount + " 个") : "当前对话";
   children.push(ctx.UI.Card({
     containerColor: C.card, shape: { cornerRadius: 20, type: "rounded" },
     border: { width: 1, color: C.line }, elevation: 2, fillMaxWidth: true
@@ -808,7 +693,7 @@ function Screen(ctx) {
         metric("未命中", (stMiss != null) ? String(stMiss) + " 次" : "--"),
         metric("上一次命中", stLastHit ? String(stLastHit).slice(5, 16) : "没有过"),
         metric("冷却", coolTxt, stCool ? C.primary : C.text),
-        metric("角色卡", cardTxt)
+        metric("目标对话", cardTxt)
       ])
     ])
   ]));

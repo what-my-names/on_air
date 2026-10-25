@@ -19,6 +19,16 @@ METADATA
             "parameters": []
         },
         {
+            "name": "get_character_cards",
+            "description": { "zh": "列出本机全部角色卡（id / 名字 / 是否默认），供面板让用户自己选唤醒时用哪张卡", "en": "List all character cards" },
+            "parameters": []
+        },
+        {
+            "name": "get_chats",
+            "description": { "zh": "列出本机全部对话（id / 标题 / 绑定的角色卡名），供面板多选目标对话", "en": "List all chats" },
+            "parameters": []
+        },
+        {
             "name": "compute_y",
             "description": { "zh": "按公式 y=100*f/(1+f) 计算y，其中 f=a*x+b*x^c", "en": "Compute y = 100*f/(1+f) where f=a*x+b*x^c" },
             "parameters": [ { "name": "x", "type": "number", "description": "当前x值(可选,缺省用状态里的x)", "required": false } ]
@@ -121,7 +131,7 @@ METADATA
         {
             "name": "check_update",
             "description": { "zh": "检查 GitHub 仓库是否有新版本（带 6 小时缓存）；返回当前版本、最新版本、更新说明、下载地址", "en": "Check GitHub releases for a newer version (6h cache)" },
-            "parameters": []
+            "parameters": [{ "name": "force", "type": "boolean", "description": "true=忽略 6 小时缓存，强制重新拉取", "required": false }]
         },
         {
             "name": "download_update",
@@ -184,6 +194,10 @@ METADATA
  */
 
 // ============ 路径常量：全插件只定义这一次 ============
+// 下载整体单例（声明放模块顶部：get_download_status 也会读它）
+var __dlRunning = false;
+var __dlStartedAt = 0;
+
 var BASE_DIR = "/sdcard/Download/Operit/plugins/on_air/";
 var STATE_PATH = BASE_DIR + "state.json";
 var FORMULA_PATH = BASE_DIR + "formula.json";
@@ -197,7 +211,6 @@ var DEFAULT_STATE = {
     running: false,     // 是否处于运行态(是否已启动x累加)
     started_at: null,   // 本次运行态开始时间
     cooldown_until: null, // 冷却结束时间(本地时间字符串)
-    history: [],        // 最近触发记录
     jealousy_count: 0,  // 计数：连续命中主动消息次数(第一档1/第二档2/...达到上限爆表)
     jealousy_stopped: false // 是否已因计数爆表停止主动消息
 };
@@ -245,6 +258,7 @@ var FIELD_SPEC = {
     date_quiet_enabled: { type: "bool", group: "dates", label: "日期静默总开关", order: 53 },
     // ---- 内部字段（不接受用户修改、不上面板）----
     chat_id: { type: "internal", order: 90 },
+    chat_ids: { type: "internal", order: 92 },
     chat_id_source: { type: "internal", order: 91 },
     prompt_customized: { type: "internal", order: 92 },
     quiet_suggest: { type: "internal", order: 93 },
@@ -275,6 +289,7 @@ var DEFAULT_FORMULA = {
     // A1 = maybe_awake 内部用 sendToAi(Tools.Chat.sendMessage, 带 hide_user_message:true + persist_turn:true)直接唤醒AI发言。
     max_wake_stops: 5,              // 连续命中主动消息停止上限：第N次命中计数爆表停止主动消息(默认5；装有温柔巡检时面板可改为4给温柔巡检让位)
     chat_id: "",                    // 目标对话ID（首次使用需配置；可在面板或 formula.json 中填写）
+    chat_ids: [],                    // 目标对话ID列表（空=当前对话；可多选，多个对话都会收到主动消息）
     skipped_version: "",             // v2.2.0：用户选择“跳过此版本”时记录的 tag
     character_card_name: "",        // 角色卡名：唤醒时按名字定位角色卡（留空=跟随当前对话绑定的角色卡）
     awake_messages: [               // 主动话术：AI自由发挥的起点提示
@@ -541,7 +556,6 @@ async function loadState() {
     // 兜底字段
     if (typeof state.x !== "number" || isNaN(state.x)) state.x = DEFAULT_STATE.x;
     if (typeof state.miss_count !== "number" || isNaN(state.miss_count)) state.miss_count = 0;
-    if (!Array.isArray(state.history)) state.history = [];
     if (typeof state.running !== "boolean") state.running = DEFAULT_STATE.running;
     if (typeof state.jealousy_count !== "number" || isNaN(state.jealousy_count)) state.jealousy_count = 0;
     if (typeof state.jealousy_stopped !== "boolean") state.jealousy_stopped = false;
@@ -595,7 +609,8 @@ function isUsableTalk(s) {
     if (typeof s !== "string") return false;
     var t = s.trim();
     if (t.length < 2) return false;
-    var bad = ["话术", "占位", "placeholder", "todo", "TODO", "xxx", "XXX"];
+    // N2：只认明确的占位标记；含“话术”二字的正常句子不能误判
+    var bad = ["占位", "placeholder", "todo", "TODO"];
     for (var i = 0; i < bad.length; i++) {
         if (t.indexOf(bad[i]) >= 0) return false;
     }
@@ -699,7 +714,11 @@ async function loadFormula() {
             out.chat_id = autoChatId;
             out.chat_id_source = "auto";
             // 回填持久化：下次加载直接命中，面板/公式里也能看到
-            try { await writeJsonFile(FORMULA_PATH, out); } catch (e) {}
+            try {
+                var __cp = {};
+                for (var __k in out) { if (__k !== "_provided") __cp[__k] = out[__k]; }
+                await writeJsonFile(FORMULA_PATH, __cp);
+            } catch (e) {}
         }
     } else {
         out.chat_id_source = (f && f.chat_id_source === "auto") ? "auto" : "manual";
@@ -739,7 +758,7 @@ function createHttpClient(timeoutMs) {
 }
 
 // ==================== v2.2.0：GitHub Release 更新检测 ====================
-var CURRENT_VERSION = "2.2.2";  // 每次发布同步修改
+var CURRENT_VERSION = "2.2.1+2";  // 每次发布同步修改
 var UPDATE_REPO = "what-my-names/on_air";
 var UPDATE_API = 'https://api.github.com/repos/' + UPDATE_REPO + '/releases?per_page=5';
 var UPDATE_TTL_MS = 6 * 60 * 60 * 1000; // 6 小时缓存
@@ -827,9 +846,12 @@ async function fetchLatestRelease(state, opts) {
         if (!resp.isSuccessful()) return { cached: false, error: "HTTP " + resp.code() };
         var list = resp.json() || [];
         if (!Array.isArray(list)) return { cached: false, error: '返回格式异常' };
+        // 取版本号最大的那个（列表按创建时间倒序，Beta 与正式版混排时取第一个会拿错）
         var data = null;
         for (var li = 0; li < list.length; li++) {
-            if (list[li] && !list[li].draft) { data = list[li]; break; }
+            var relOne = list[li];
+            if (!relOne || relOne.draft) continue;
+            if (!data || cmpVersion(relOne.tag_name, data.tag_name) > 0) data = relOne;
         }
         if (!data) return { cached: false, error: '没有可用的 Release' };
         var assetUrl = '', assetName = '', assetSize = 0, assetId = 0;
@@ -898,7 +920,7 @@ async function fetchHolidaysAll() {
     var now = new Date();
     var year = now.getFullYear();
     var list1 = await fetchHolidayYear(year);
-    var list2 = (year === now.getFullYear()) ? await fetchHolidayYear(year + 1) : [];
+    var list2 = await fetchHolidayYear(year + 1);
     var seen = {};
     var out = [];
     var all = list1.concat(list2);
@@ -924,7 +946,6 @@ async function maybeFetchHoliday() {
             var dates = await fetchHolidaysAll();
             if (dates && dates.length) {
                 // 官方数据 + 内置表合并（官方优先，内置表兜底不丢）
-                var seen2 = {};
                 var merged = dates.slice();
                 for (var i = 0; i < BUILTIN_HOLIDAYS_2026.length; i++) {
                     if (merged.indexOf(BUILTIN_HOLIDAYS_2026[i]) < 0) merged.push(BUILTIN_HOLIDAYS_2026[i]);
@@ -977,21 +998,39 @@ async function resolveRoleCardId(name) {
     return "";
 }
 
+// 目标对话：chat_ids 非空=逐个指定对话发送；空=当前对话
+function targetChatIds(formula) {
+    var arr = (formula && Array.isArray(formula.chat_ids)) ? formula.chat_ids : [];
+    var out = [];
+    for (var i = 0; i < arr.length; i++) {
+        var id = String(arr[i] || "").trim();
+        if (id && out.indexOf(id) === -1) out.push(id);
+    }
+    return out;
+}
 async function sendToAi(formula, msg) {
     var name = (formula && formula.character_card_name) ? String(formula.character_card_name).trim() : "";
     var roleCardId = await resolveRoleCardId(name);
-    try {
-        var p = Tools.Chat.sendMessage(String(msg), "", roleCardId, null, {
-            hide_user_message: true,
-            persist_turn: true,
-            timeout_ms: 120000
-        });
-        // 立即派发即返回：不等AI回复完成，避免点击后长时间卡住
-        if (p && typeof p.catch === "function") p.catch(function () {});
-    } catch (e) {
-        throw new Error("发送失败：" + String((e && e.message) || e));
+    var ids = targetChatIds(formula);
+    if (!ids.length) ids = [""];   // 空字符串 = 平台默认投递到当前对话
+    var sent = [];
+    var lastErr = null;
+    for (var ci = 0; ci < ids.length; ci++) {
+        try {
+            var p = Tools.Chat.sendMessage(String(msg), ids[ci], roleCardId, null, {
+                hide_user_message: true,
+                persist_turn: true,
+                timeout_ms: 120000
+            });
+            // 立即派发即返回：不等AI回复完成，避免点击后长时间卡住
+            if (p && typeof p.catch === "function") p.catch(function () {});
+            sent.push(ids[ci]);
+        } catch (e) {
+            lastErr = e;
+        }
     }
-    return { dispatched: true, role_card_id: roleCardId };
+    if (!sent.length && lastErr) throw new Error("发送失败：" + String((lastErr && lastErr.message) || lastErr));
+    return { dispatched: true, count: sent.length, chat_ids: sent, role_card_id: roleCardId };
 }
 // ============ 温柔巡检联动：计数外包 ============
 // 需求（锁定版）："增加计数"改为联动外包模块。
@@ -1066,23 +1105,6 @@ async function writeGentleJealousy(delta, reason) {
 // 第四档用概率往60靠但"不必然到60"（随机，有概率低于60）。
 // 这里我们把 jealousy_count(1-5次) 映射为一个"计数评分"(0~59 或四档概率上探)，
 // 用于决定话术语气档位，并配合联动温柔巡检的 jealousy 字段落盘。
-function partialJealousyScore(count) {
-    // 第一档 hit 次数 1: 低酸(10~19)
-    // 第二档 hit 次数 2: 中酸(20~34)
-    // 第三档 hit 次数 3: 高酸(35~59，但封顶<60)
-    // 第四档 hit 次数 >=4: 概率上探60(随机 40~59，大概率靠近58/59，但绝不必然到60)
-    if (count <= 1) return 10 + Math.round(Math.random() * 9);   // 10~19
-    if (count === 2) return 20 + Math.round(Math.random() * 14); // 20~34
-    if (count === 3) return 35 + Math.round(Math.random() * 24); // 35~59（封顶<60）
-    // 第四档(count>=4)：概率往60上靠，但不必然到60
-    var r = Math.random();
-    if (r < 0.5) {
-        return 50 + Math.round(Math.random() * 9);   // 50~59 大概率靠近60
-    } else {
-        return 40 + Math.round(Math.random() * 18);  // 40~58 也有可能回落
-    }
-}
-
 // ============ 平台消息结构兼容 ============
 // 实测平台消息真实字段：sender("user"/"ai")、roleName(中文显示名如"用户"/角色名)、timestamp(毫秒数)。
 // 旧版判断优先取 roleName，会把"用户"当成非 user 跳过，导致样本数为 0。这里改为 sender 优先。
@@ -1212,6 +1234,16 @@ async function fetchChatMessagesAll(chatId, maxCount) {
 async function readLastUserTs() {
     try {
         var formula = await loadFormula();
+        // N13：多对话模式下要看所有目标对话，取最近的一条用户发言
+        var ids = targetChatIds(formula);
+        if (ids.length) {
+            var newest = null;
+            for (var ii = 0; ii < ids.length; ii++) {
+                var t = await readLastUserTsOf(ids[ii]);
+                if (t && (!newest || t > newest)) newest = t;
+            }
+            return newest;
+        }
         if (!formula.chat_id) return null;
         var messages = await fetchChatMessages(formula.chat_id, 8);
         if (!messages) return null;
@@ -1246,9 +1278,9 @@ async function detectDeviceActivity(formula) {
             }
         }
     } catch (e) { /* 无此能力时跳过 */ }
-    // 信号2：主人最近 10 分钟内发过消息
+    // 信号2：主人最近 10 分钟内发过消息（新-4：只查当前对话，不做多对话聚合，避免静默期 N 次 I/O）
     try {
-        var lastTs = await readLastUserTs();
+        var lastTs = formula.chat_id ? await readLastUserTsOf(formula.chat_id) : await readLastUserTs();
         if (lastTs) {
             var minutesSince = (Date.now() - lastTs) / 60000;
             if (minutesSince >= 0 && minutesSince <= 10) {
@@ -1282,6 +1314,54 @@ async function notifyQuietLifted(formula, state, reasons) {
 // ============ 工具实现 ============
 
 // get_xy：读取当前随机连状态
+// 列出全部角色卡：让面板能真的选，而不是靠手打名字
+exports.get_character_cards = async function (params) {
+    var out = [];
+    try {
+        var cards = await Tools.Chat.listCharacterCards();
+        var list = (cards && Array.isArray(cards.cards)) ? cards.cards : (Array.isArray(cards) ? cards : []);
+        for (var i = 0; i < list.length; i++) {
+            var c = list[i] || {};
+            out.push({
+                id: String(c.id || ""),
+                name: String(c.name || ""),
+                isDefault: c.isDefault === true
+            });
+        }
+    } catch (e) {
+        complete({ success: false, message: "读取角色卡列表失败：" + String((e && e.message) || e), data: { cards: [] } });
+        return;
+    }
+    complete({ success: true, message: "共 " + out.length + " 张角色卡", data: { cards: out, total: out.length } });
+};
+
+// 列出全部对话：供面板多选目标对话
+exports.get_chats = async function (params) {
+    var out = [];
+    try {
+        var list = null;
+        if (Tools.Chat && typeof Tools.Chat.listChats === "function") {
+            list = await Tools.Chat.listChats({ limit: 200, sort_by: "updatedAt", sort_order: "desc" });
+        } else if (Tools.Chat && typeof Tools.Chat.listAll === "function") {
+            list = await Tools.Chat.listAll();
+        }
+        var arr = (list && Array.isArray(list.chats)) ? list.chats : (Array.isArray(list) ? list : []);
+        for (var i = 0; i < arr.length; i++) {
+            var c = arr[i] || {};
+            out.push({
+                id: String(c.id || ""),
+                title: String(c.title || c.name || "（无标题）"),
+                card: String(c.characterCardName || c.roleCardName || ""),
+                isCurrent: c.isCurrent === true
+            });
+        }
+    } catch (e) {
+        complete({ success: false, message: "读取对话列表失败：" + String((e && e.message) || e), data: { chats: [] } });
+        return;
+    }
+    complete({ success: true, message: "共 " + out.length + " 个对话", data: { chats: out, total: out.length } });
+};
+
 exports.get_xy = async function (params) {
     var state = await loadState();
     var formula = await loadFormula();
@@ -1314,6 +1394,7 @@ exports.get_xy = async function (params) {
             b: formula.b,
             c: formula.c,
             character_card_name: formula.character_card_name || "",
+            chat_ids: targetChatIds(formula),
             gentle_installed: gentleInstalled,
             gentle_jealousy: gentleJealousy,
             quiet_active: isQuietTime(formula),
@@ -1710,7 +1791,7 @@ exports.update_formula = async function (params) {
     var patch = {};
     if (params.a !== undefined) {
         var a = parseFloat(params.a);
-        if (isNaN(a) || a <= 0) { complete({ success: false, message: "a 需要是正数" }); return; }
+        if (isNaN(a) || a < 0) { complete({ success: false, message: "a 不能是负数" }); return; }
         patch.a = a;
     }
     if (params.b !== undefined) {
@@ -1720,7 +1801,7 @@ exports.update_formula = async function (params) {
     }
     if (params.c !== undefined) {
         var c = parseFloat(params.c);
-        if (isNaN(c) || c <= 0) { complete({ success: false, message: "c 需要是正数" }); return; }
+        if (isNaN(c) || c < 0) { complete({ success: false, message: "c 不能是负数" }); return; }
         patch.c = c;
     }
     if (params.idle_threshold_minutes !== undefined) {
@@ -1730,7 +1811,7 @@ exports.update_formula = async function (params) {
     }
     if (params.cooldown_minutes !== undefined) {
         var cm = parseFloat(params.cooldown_minutes);
-        if (isNaN(cm) || cm <= 0) { complete({ success: false, message: "cooldown_minutes 需要是正数" }); return; }
+        if (isNaN(cm) || cm < 0) { complete({ success: false, message: "cooldown_minutes 不能是负数" }); return; }
         patch.cooldown_minutes = cm;
     }
     if (params.send_mode !== undefined) {
@@ -1755,6 +1836,22 @@ exports.update_formula = async function (params) {
     if (params.character_card_name !== undefined) {
         // 角色卡名字：唤醒时按名字定位角色卡；留空=跟随当前对话绑定的角色卡
         patch.character_card_name = String(params.character_card_name).trim();
+    }
+    if (params.chat_ids !== undefined) {
+        // 目标对话列表：空数组=当前对话；多个对话会各发一条主动消息
+        var cids = params.chat_ids;
+        if (typeof cids === "string") {
+            cids = String(cids).trim();
+            if (!cids) cids = [];
+            else { try { cids = JSON.parse(cids); } catch (e) { cids = [cids]; } }
+        }
+        if (!Array.isArray(cids)) { complete({ success: false, message: "chat_ids 需要是数组或JSON数组字符串" }); return; }
+        var cleanIds = [];
+        for (var ci2 = 0; ci2 < cids.length; ci2++) {
+            var one = String(cids[ci2] || "").trim();
+            if (one && cleanIds.indexOf(one) === -1) cleanIds.push(one);
+        }
+        patch.chat_ids = cleanIds;
     }
     if (params.awake_messages !== undefined) {
         var am = params.awake_messages;
@@ -1902,7 +1999,7 @@ exports.update_formula = async function (params) {
     complete({
         success: true,
         message: "公式参数已更新",
-        data: { a: merged.a, b: merged.b, c: merged.c, idle_threshold_minutes: merged.idle_threshold_minutes, cooldown_minutes: merged.cooldown_minutes, send_mode: merged.send_mode, max_wake_stops: merged.max_wake_stops, character_card_name: merged.character_card_name || "", awake_messages: merged.awake_messages, quiet_enabled: merged.quiet_enabled, quiet_day_start: merged.quiet_day_start, quiet_day_end: merged.quiet_day_end, quiet_night_start: merged.quiet_night_start, quiet_night_end: merged.quiet_night_end, quiet_dates: merged.quiet_dates, school_day_auto_quiet: merged.school_day_auto_quiet, student_mode: merged.student_mode, date_quiet_enabled: merged.date_quiet_enabled }
+        data: { a: merged.a, b: merged.b, c: merged.c, idle_threshold_minutes: merged.idle_threshold_minutes, cooldown_minutes: merged.cooldown_minutes, send_mode: merged.send_mode, max_wake_stops: merged.max_wake_stops, character_card_name: merged.character_card_name || "", chat_ids: Array.isArray(merged.chat_ids) ? merged.chat_ids : [], awake_messages: merged.awake_messages, quiet_enabled: merged.quiet_enabled, quiet_day_start: merged.quiet_day_start, quiet_day_end: merged.quiet_day_end, quiet_night_start: merged.quiet_night_start, quiet_night_end: merged.quiet_night_end, quiet_dates: merged.quiet_dates, school_day_auto_quiet: merged.school_day_auto_quiet, student_mode: merged.student_mode, date_quiet_enabled: merged.date_quiet_enabled }
     });
 };
 
@@ -1932,6 +2029,7 @@ exports.get_formula = async function (params) {
     }
     // ---- 内部字段（保持原语义）----
     data.chat_id = formula.chat_id;
+    data.chat_ids = (Array.isArray(formula.chat_ids)) ? formula.chat_ids : [];
     data.chat_id_source = formula.chat_id_source || "";
     data.prompt_customized = (function () {
         var m = {};
@@ -2152,8 +2250,6 @@ exports.link_agent = async function (params) {
     }
     var formula = await loadFormula();
     formula.chat_id = chat.id;
-    if (chat.characterCardName && !formula.character_card_name) formula.character_card_name = chat.characterCardName;
-    if (!formula.character_card_name) formula.character_card_name = name;
     await saveFormula(formula);
     complete({
         success: true,
@@ -2165,6 +2261,54 @@ exports.link_agent = async function (params) {
 // maybe_awake：运行态核心。按当前y掷骰，命中才真正把主动消息发出去。
 // workflow 用无条件 on_success 连接即可，命中与否的判断封装在工具内部。
 // 锁定版新增：命中时联动计数到温柔巡检 + 接回复逻辑(温柔巡检跑则借它回复，否则自回)
+// ===== 多对话模式：每个对话各算各的沉默时长 / 冷却 / 未命中计数 =====
+function chatMetaOf(state, cid) {
+    if (!state.chat_meta || typeof state.chat_meta !== "object") state.chat_meta = {};
+    var k = String(cid || "");
+    if (!state.chat_meta[k] || typeof state.chat_meta[k] !== "object") {
+        state.chat_meta[k] = { miss_count: 0, cooldown_until: null, last_hit_at: null };
+    }
+    return state.chat_meta[k];
+}
+function cooldownAlive(untilStr) {
+    if (!untilStr) return false;
+    var parts = String(untilStr).split(/[-: ]/);
+    if (parts.length < 5) return false;
+    var cu = new Date(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, parseInt(parts[2], 10), parseInt(parts[3], 10), parseInt(parts[4], 10), parts[5] ? parseInt(parts[5], 10) : 0);
+    return new Date() < cu;
+}
+function fmtCooldown(min) {
+    var d = new Date(Date.now() + Number(min || 0) * 60000);
+    var pad = function (n) { return (n < 10 ? "0" : "") + n; };
+    return d.getFullYear() + "-" + pad(d.getMonth() + 1) + "-" + pad(d.getDate()) + " " + pad(d.getHours()) + ":" + pad(d.getMinutes()) + ":" + pad(d.getSeconds());
+}
+async function readLastUserTsOf(cid) {
+    try {
+        var messages = await fetchChatMessages(cid, 8);
+        if (!messages) return null;
+        for (var i = 0; i < messages.length; i++) {
+            var m = messages[i];
+            if (!isUserMessage(m)) continue;
+            if (m.timestamp === undefined || m.timestamp === null) continue;
+            var ts = typeof m.timestamp === "number" ? m.timestamp : parseInt(m.timestamp, 10);
+            if (!isNaN(ts) && ts > 0) return ts < 1e12 ? ts * 1000 : ts;
+        }
+        return null;
+    } catch (e) { return null; }
+}
+// 只发一个对话（多对话模式下用）
+async function sendToAiOne(formula, msg, cid) {
+    var name = (formula && formula.character_card_name) ? String(formula.character_card_name).trim() : "";
+    var roleCardId = await resolveRoleCardId(name);
+    var p = Tools.Chat.sendMessage(String(msg), cid, roleCardId, null, {
+        hide_user_message: true,
+        persist_turn: true,
+        timeout_ms: 120000
+    });
+    if (p && typeof p.catch === "function") p.catch(function () {});
+    return true;
+}
+
 exports.maybe_awake = async function (params) {
     var state = await loadState();
     var formula = await loadFormula();
@@ -2195,8 +2339,9 @@ exports.maybe_awake = async function (params) {
         complete({ success: true, message: "空闲态(running=false)，用户刚回复过，跳过主动消息不打扰。", data: { skipped: "idle", running: false, hit: false, speak: false, message: "" } });
         return;
     }
-    // 冷却期间直接跳过主动消息
-    if (state.cooldown_until) {
+    // 冷却期间直接跳过主动消息（N11：多对话各有各的冷却，这里不拦截）
+    var __preMultiIds = targetChatIds(formula);
+    if (!__preMultiIds.length && state.cooldown_until) {
         var now = new Date();
         var parts = String(state.cooldown_until).split(/[-: ]/);
         if (parts.length >= 5) {
@@ -2217,6 +2362,75 @@ exports.maybe_awake = async function (params) {
         complete({ success: true, message: "计数已爆表，停止主动消息。等用户来安抚。", data: { jealousy_stopped: true, jealousy_count: state.jealousy_count, speak: false, message: "" } });
         return;
     }
+    // ===== 多对话模式：目标对话有多个时，逐个按各自的沉默时长/冷却处理 =====
+    var multiIds = targetChatIds(formula);
+    if (multiIds.length) {
+        var results = [];
+        var sentCount = 0;
+        // N7：删掉已不在目标列表里的对话条目，避免只增不删
+        if (state.chat_meta && typeof state.chat_meta === "object") {
+            for (var ck in state.chat_meta) {
+                if (multiIds.indexOf(ck) < 0) delete state.chat_meta[ck];
+            }
+        }
+        for (var mi = 0; mi < multiIds.length; mi++) {
+            var cid = multiIds[mi];
+            if (state.jealousy_stopped) break;
+            var meta = chatMetaOf(state, cid);
+            if (cooldownAlive(meta.cooldown_until)) {
+                results.push({ chat_id: cid, skipped: "cooldown", cooldown_until: meta.cooldown_until });
+                continue;
+            }
+            var lastTs2 = await readLastUserTsOf(cid);
+            var idleMin = lastTs2 ? Math.floor((Date.now() - lastTs2) / 60000) : (Number(state.x) || 0);
+            var needMin = Number(formula.idle_threshold_minutes) || 10;
+            if (idleMin < needMin) {
+                results.push({ chat_id: cid, skipped: "active", idle_minutes: idleMin });
+                continue;
+            }
+            var f2 = formula.a * idleMin + formula.b * Math.pow(idleMin, formula.c);
+            var y2 = 100 * f2 / (1 + f2);
+            var roll2 = 1 + Math.floor(Math.random() * 1000);
+            if (roll2 > y2 * 10) {
+                meta.miss_count = (Number(meta.miss_count) || 0) + 1;
+                results.push({ chat_id: cid, hit: false, y: Math.round(y2 * 10) / 10, roll: roll2, miss_count: meta.miss_count });
+                continue;
+            }
+            var tierI = Math.min(Math.max((state.jealousy_count || 0), 1) - 1, 3);
+            var msg2;
+            if (formula.awake_mode === "default") {
+                msg2 = buildPrompt(formula, "prompt_auto_default", { "档位": String(tierI + 1), "次数": String((state.jealousy_count || 0) + 1) });
+            } else {
+                var talk2 = pickUsableTalk(pickTierList(formula, tierI));
+                msg2 = talk2 ? buildTalkPrompt(formula, "prompt_auto_prefix", talk2) : buildPrompt(formula, "prompt_auto_default", { "档位": String(tierI + 1), "次数": String((state.jealousy_count || 0) + 1) });
+            }
+            var sendOk = false;
+            try { await sendToAiOne(formula, msg2, cid); sendOk = true; } catch (e2) { sendOk = false; }
+            if (sendOk) {
+                meta.miss_count = 0;
+                meta.last_hit_at = localTime();
+                meta.cooldown_until = (Number(formula.cooldown_minutes) > 0) ? fmtCooldown(formula.cooldown_minutes) : null;
+                state.jealousy_count = (state.jealousy_count || 0) + 1;
+                // N10：多对话也要走停止上限与置气消息（原来这里 return 早于上限判断）
+                var stopAtM = Number(formula.max_wake_stops) || 5;
+                if (state.jealousy_count >= stopAtM) {
+                    var fierceM = buildPrompt(formula, "prompt_stop", { "次数": String(stopAtM), "上限": String(stopAtM) });
+                    try { await sendToAiOne(formula, fierceM, cid); } catch (eStopM) { }
+                    state.jealousy_stopped = true;
+                }
+                sentCount++;
+            }
+            results.push({ chat_id: cid, hit: true, sent: sendOk, y: Math.round(y2 * 10) / 10, roll: roll2, cooldown_until: meta.cooldown_until });
+        }
+        await saveState(state);
+        complete({
+            success: true,
+            message: sentCount ? ("多对话：已向 " + sentCount + " 个对话发话") : "多对话：本轮没有需要发话的对话",
+            data: { multi: true, sent: sentCount, results: results, jealousy_count: state.jealousy_count }
+        });
+        return;
+    }
+
     // 掷骰
     var f = formula.a * state.x + formula.b * Math.pow(state.x, formula.c);
     var y = 100 * f / (1 + f);
@@ -2294,8 +2508,6 @@ exports.maybe_awake = async function (params) {
         ["都找你好几次啦还不够吗……你再不回应，我可真的要伤心了", "我的耐心快用完了，你理理我好不好嘛……"],
         ["第" + state.jealousy_count + "次了！你再不理我，我就不主动找你了～", "你到底在忙什么呀！我都急得团团转了，快理理我！"]
     ];
-    var tierIndex = Math.min(state.jealousy_count - 1, jealousyTiers.length - 1);
-    if (tierIndex < 0) tierIndex = 0;
 
     // ============ 话术：default=唤醒AI自己发挥(带最近上下文，无需API) / custom=本地话术库 ============
     // 两种模式最终都走 sendToAi(Tools.Chat.sendMessage) 由 AI 自己开口，区别只在给 AI 的起点：
@@ -2429,7 +2641,8 @@ function fmtSize(n) {
 var __dlBusy = false;
 async function writeDlState(patch) {
     // 串行化：连点下载时两次写盘会互相覆盖，导致后面的字段丢失
-    while (__dlBusy) { try { await new Promise(function (r) { setTimeout(r, 20); }); } catch (eW) { break; } }
+    var __waitN = 0;
+    while (__dlBusy && __waitN < 250) { try { await new Promise(function (r) { setTimeout(r, 20); }); } catch (eW) { break; } __waitN++; }
     __dlBusy = true;
     try {
         var state = await loadState();
@@ -2461,7 +2674,7 @@ exports.get_download_status = async function (params) {
         await writeDlState({ status: 'done', received: earlySize, message: '已下载 ' + fmtSize(earlySize) + ' / 共 ' + fmtSize(dTotal0) + ' → ' + d.path });
         d = await readDlState();
     }
-    if (d.status === 'running' && d.updated_at && (Date.now() - d.updated_at > 300000)) {
+    if (d.status === 'running' && !__dlRunning && d.updated_at && (Date.now() - d.updated_at > 600000)) {   // DL5：在执行中不判死，阈值放到 10 分钟
         await writeDlState({ status: 'failed', message: '上次下载中断了（App 或网络被中断），请重新点下载' });
         d = await readDlState();
     }
@@ -2489,6 +2702,14 @@ exports.get_download_status = async function (params) {
 
 exports.download_update = async function (params) {
     var needForce = !!(params && params.force);
+    // DL1：整个下载过程只允许一个实例；超过 10 分钟自动失效（防止漏释放把功能卡死）
+    if (__dlRunning && (Date.now() - __dlStartedAt) < 10 * 60000) {
+        complete({ success: false, message: '正在下载中（已进行 ' + Math.round((Date.now() - __dlStartedAt) / 1000) + ' 秒），等它完成就好', data: { busy: true, status: 'running' } });
+        return;
+    }
+    __dlRunning = true;
+    __dlStartedAt = Date.now();
+    try {
     // 连点保护：上一次还在跑就直接回 busy，不重置进度
     var st0 = await readDlState();
     if (st0 && st0.status === 'running' && st0.updated_at && (Date.now() - st0.updated_at) < 45000) {
@@ -2529,8 +2750,6 @@ exports.download_update = async function (params) {
     var lastErr = '';
     var maxTry = 2;
     for (var attempt = 1; attempt <= maxTry; attempt++) {
-        var lastSaveTs = 0;
-        var lastSaveBytes = 0;
         try {
             await writeDlState({ attempts: attempt, received: 0, message: '第 ' + attempt + '/' + maxTry + ' 次尝试：正在连接…' + (total > 0 ? '（共 ' + fmtSize(total) + '）' : '') });
             var client = createHttpClient(45000);
@@ -2538,7 +2757,7 @@ exports.download_update = async function (params) {
             var dlUrl = rel.asset_id ? ('https://api.github.com/repos/' + UPDATE_REPO + '/releases/assets/' + rel.asset_id) : rel.asset_url;
             var req = client.newRequest().url(dlUrl).method('GET').headers({ 'User-Agent': 'Operit/on_air', 'Accept': 'application/octet-stream' }).build();
             // 只发一次请求：不再用 probe 预下载（那会把包下两遍，而且它的字节数是 base64 累计，会报出 132KB 这种假数字）
-            await writeDlState({ received: 0, message: '正在下载…' + (total > 0 ? '（共 ' + fmtSize(total) + '）' : '') });
+            await writeDlState({ received: 0, message: '正在下载…' + (total > 0 ? '（共 ' + fmtSize(total) + '）' : '') + ' 这期间进度不会跳动，下完会自动校验' });
             var resp = await req.execute();
             if (!resp.isSuccessful()) {
                 var code = resp.code();
@@ -2574,7 +2793,7 @@ exports.download_update = async function (params) {
         } catch (e) {
             lastErr = String((e && e.message) || e);
             if (/ENOSPC|No space|space left|磁盘/i.test(lastErr)) lastErr = '磁盘空间不足，清理后重试（明细：' + lastErr + '）';
-            else if (/failed to connect|Connection|ECONNRESET|timeout|timed out/i.test(lastErr)) lastErr = '连不上 GitHub（网络/代理问题，换网络或开代理再试）'
+            else if (/failed to connect|Connection|ECONNRESET|timeout|timed out/i.test(lastErr)) lastErr = '连不上 GitHub（网络/代理问题，换网络或开代理再试）';
             try { await Tools.Files.deleteFile(part); } catch (e4) { }
             if (attempt < maxTry) {
                 await writeDlState({ status: 'running', message: '第 ' + attempt + ' 次失败：' + lastErr + '，正在自动重试…' });
@@ -2584,7 +2803,8 @@ exports.download_update = async function (params) {
     }
     var failMsg = '下载失败（已重试 ' + maxTry + ' 次）：' + lastErr;
     await writeDlState({ status: 'failed', received: 0, message: failMsg + '｜未完成的临时文件已清理，没留下半个包' });
-    complete({ success: false, message: failMsg + '（未完成的临时文件已清理，没留下半个包）' });
+    complete({ success: false, message: failMsg + '（未完成的临时文件已清理，没留下半个包）', data: { busy: false, status: 'failed', reason: lastErr } });
+    } finally { __dlRunning = false; }
 };
 exports.open_url = async function (params) {
     var url = String((params && params.url) || "");

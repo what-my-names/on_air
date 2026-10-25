@@ -1,11 +1,6 @@
 function Screen(ctx) {
     // 给主题色加透明度：#RRGGBB -> #AARRGGBB（不依赖 backgroundAlpha）
-    function wa(c, a) {
-        if (typeof c === "string" && /^#[0-9a-fA-F]{6}$/.test(c)) return "#" + a + c.slice(1);
-        return c;
-    }
-
-    // ===== 工具调用辅助（v1.9.2）：兼容 UI 侧 callTool 返回（字符串/对象/裸数据）=====
+        // ===== 工具调用辅助（v1.9.2）：兼容 UI 侧 callTool 返回（字符串/对象/裸数据）=====
     function unwrapRaw(o) {
         if (!o || typeof o !== "object") return o;
         var keys = [];
@@ -68,7 +63,6 @@ function Screen(ctx) {
     var apS = ctx.useState("q1_ap", ""); var vAP = apS[0], setAP = apS[1];
     var gS = ctx.useState("q1_g", ""); var vG = gS[0], setG = gS[1];
     var sS = ctx.useState("q1_s", ""); var vS = sS[0], setS = sS[1];
-    var qS = ctx.useState("q1_q", ""); var vQ = qS[0], setQ = qS[1];
     var tS = ctx.useState("q1_t", ""); var vT = tS[0], setT = tS[1];
     var talkS = ctx.useState("q1_talk", ""); var vTalk = talkS[0], setTalk = talkS[1];
     var modeS = ctx.useState("q1_mode", "default"); var vMode = modeS[0], setMode = modeS[1];
@@ -95,10 +89,9 @@ function Screen(ctx) {
             { k: "prompt_auto_default", label: "3 自动触发 · 默认模式", hint: "何时用：冷却时间到、掷骰命中后自动唤醒，且话术模式＝AI 自己发挥。\n占位符：{档位} {次数}", val: function () { return vAD; }, set: setAD },
             { k: "prompt_auto_prefix", label: "4 自动触发 · 自定义前缀", hint: "何时用：自动唤醒且话术模式＝用话术库。\n占位符：{话术} {档位} {次数}", val: function () { return vAP; }, set: setAP }
         ]},
-        { title: "二、特殊场景（3 处）", items: [
+        { title: "二、特殊场景（2 处）", items: [
             { k: "prompt_gentle", label: "5 温柔巡检通道", hint: "何时用：发送方式＝A2 且温柔巡检在运行时，改走它的自动回复通道发出。\n占位符：无", val: function () { return vG; }, set: setG },
             { k: "prompt_stop", label: "6 置气消息", hint: "何时用：连续主动找人达到上限（默认 5 次）都没回应时，真正发出去的这句置气话。\n占位符：{次数} {上限}", val: function () { return vS; }, set: setS },
-            { k: "prompt_quiet_lifted", label: "7 静默解除通知", hint: "何时用：静默时段里检测到设备活动、临时解除静默时发出的通知。\n占位符：{原因} {静默时段}", val: function () { return vQ; }, set: setQ }
         ]},
         { title: "三、话术与发送（4 项）", items: [
             { k: "jealousy_tiers", label: "8 档位话术库", hint: "何时用：话术模式＝用话术库时随机抽一句；档位越高（找人次数越多）用越靠后的档，共 4 档。\n格式：一行一档，档内多条用 | 分隔\n注意：只填真正想说的话；占位/测试性质的条目会被自动跳过。", val: function () { return vT; }, set: setT },
@@ -146,8 +139,7 @@ function Screen(ctx) {
             setAP(d.prompt_auto_prefix || "");
             setG(d.prompt_gentle || "");
             setS(d.prompt_stop || "");
-            setQ(d.prompt_quiet_lifted || "");
-            var t = d.jealousy_tiers;
+                  var t = d.jealousy_tiers;
             if (Array.isArray(t)) {
                 var lines = [];
                 for (var i = 0; i < t.length; i++) { lines.push(Array.isArray(t[i]) ? t[i].join("|") : ""); }
@@ -190,7 +182,7 @@ function Screen(ctx) {
             var unchanged = function (k, cur) { return baseObj[k] !== undefined && String(baseObj[k]) === String(cur == null ? "" : cur); };
             var params = {};
             var changedCount = 0;
-            var strFields = [["prompt_manual_default", vMD], ["prompt_manual_prefix", vMP], ["prompt_auto_default", vAD], ["prompt_auto_prefix", vAP], ["prompt_gentle", vG], ["prompt_stop", vS], ["prompt_quiet_lifted", vQ]];
+            var strFields = [["prompt_manual_default", vMD], ["prompt_manual_prefix", vMP], ["prompt_auto_default", vAD], ["prompt_auto_prefix", vAP], ["prompt_gentle", vG], ["prompt_stop", vS]];
             for (var sf = 0; sf < strFields.length; sf++) {
                 if (!unchanged(strFields[sf][0], strFields[sf][1])) { params[strFields[sf][0]] = String(strFields[sf][1] || ""); changedCount++; }
             }

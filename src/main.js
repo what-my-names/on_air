@@ -11,17 +11,17 @@
 var __importDefault = function(mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
-var ui = __importDefault(require("./ui/xy_panel/index.ui.js"));
+var ui = __importDefault(require("./ui/xy_panel.ui.js"));
 var Screen = ui.default || ui;
-var promptUi = __importDefault(require("./ui/prompt_panel/index.ui.js"));
+var promptUi = __importDefault(require("./ui/prompt_panel.ui.js"));
 var PromptScreen = promptUi.default || promptUi;
-var paramsUi = __importDefault(require("./ui/params_panel/index.ui.js"));
+var paramsUi = __importDefault(require("./ui/params_panel.ui.js"));
 var ParamsScreen = paramsUi.default || paramsUi;
-var quietUi = __importDefault(require("./ui/quiet_panel/index.ui.js"));
+var quietUi = __importDefault(require("./ui/quiet_panel.ui.js"));
 var QuietScreen = quietUi.default || quietUi;
-var datesUi = __importDefault(require("./ui/dates_panel/index.ui.js"));
+var datesUi = __importDefault(require("./ui/dates_panel.ui.js"));
 var DatesScreen = datesUi.default || datesUi;
-var consoleUi = __importDefault(require("./ui/console_panel/index.ui.js"));
+var consoleUi = __importDefault(require("./ui/console_panel.ui.js"));
 var ConsoleScreen = consoleUi.default || consoleUi;
 
 function registerToolPkg() {

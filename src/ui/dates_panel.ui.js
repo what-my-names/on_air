@@ -1,11 +1,6 @@
 function Screen(ctx) {
     // 给主题色加透明度：#RRGGBB -> #AARRGGBB（不依赖 backgroundAlpha）
-    function wa(c, a) {
-        if (typeof c === "string" && /^#[0-9a-fA-F]{6}$/.test(c)) return "#" + a + c.slice(1);
-        return c;
-    }
-
-    // ===== 工具调用辅助（v1.9.2）：兼容 UI 侧 callTool 返回（字符串/对象/裸数据）=====
+        // ===== 工具调用辅助（v1.9.2）：兼容 UI 侧 callTool 返回（字符串/对象/裸数据）=====
     function unwrapRaw(o) {
         if (!o || typeof o !== "object") return o;
         var keys = [];
@@ -89,12 +84,18 @@ function Screen(ctx) {
         var next = {};
         for (var k in quietDates) { if (quietDates[k] === "full") next[k] = "full"; }
         if (next[key]) { delete next[key]; } else { next[key] = "full"; }
+        var prevDates = quietDates || {};   // NU6：失败时要回滚
         setQuietDates(next);
         setBusy(true);
         try {
             var r = await callTool("on_air:update_formula", { quiet_dates: JSON.stringify(next) });
-            setMsg(r && r.success ? (key + (r.data && r.data.quiet_dates && r.data.quiet_dates[key] ? " 已设为全天静默" : " 已取消静默")) : ("保存失败：" + ((r && r.message) || "")));
-        } catch (e) { setMsg("出错：" + String((e && e.message) || e)); }
+            if (r && r.success) {
+                setMsg(key + (r.data && r.data.quiet_dates && r.data.quiet_dates[key] ? " 已设为全天静默" : " 已取消静默"));
+            } else {
+                setQuietDates(prevDates);
+                setMsg("保存失败：" + ((r && r.message) || ""));
+            }
+        } catch (e) { setQuietDates(prevDates); setMsg("出错：" + String((e && e.message) || e)); }
         setBusy(false);
     }
 
