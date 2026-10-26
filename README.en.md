@@ -2,7 +2,7 @@
 
 [中文](README.md)
 
-> **Current Release Status**: **v2.2.2 (stable)**. A usability cleanup of v2.2.1: holiday table now really updates, home readings no longer stick at "not loaded", console trimmed, colors and button borders unified.
+> **Current Release Status**: **v2.2.2+1 (stable)**. This release splits the 2900-line `packages/on_air.js` into 6 modules (update / holidays / chat / config / prompts). No behavior change; still 24 tools; `on_air.js` down to 1901 lines.
 
 > **Authorship Notice**: This project is a "novice × AI creation" — co-developed by a novice developer together with an AI assistant. The code and docs are still growing; corrections, issues and PRs are welcome.
 
