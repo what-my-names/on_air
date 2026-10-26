@@ -199,6 +199,11 @@ var __dlRunning = false;
 var __dlStartedAt = 0;
 
 var BASE_DIR = "/sdcard/Download/Operit/plugins/on_air/";
+// v2.2.2：统一的消息提示（系统 toast）。任何入口（面板/别的插件/工作流）操作后都能看到反馈
+function notifyUser(msg, title) {
+    try { if (Tools.System && Tools.System.toast) Tools.System.toast(String(msg || "")); } catch (e1) { }
+    if (title) { try { if (Tools.System && Tools.System.sendNotification) Tools.System.sendNotification(String(msg || ""), String(title)); } catch (e2) { } }
+}
 var STATE_PATH = BASE_DIR + "state.json";
 var FORMULA_PATH = BASE_DIR + "formula.json";
 
@@ -1678,8 +1683,10 @@ exports.manual_awake = async function (params) {
     try {
         var sentRef = await sendToAi(formula, msg);
         chatRef = { mode: "manual_self_chat", ok: true, dispatched: true, role_card_id: (sentRef && sentRef.role_card_id) || "" };
+        notifyUser("已手动发出：" + String(msg || "").slice(0, 40), "随机上线");
     } catch (e) {
         chatRef = { mode: "manual_self_chat", ok: false, error: String(e && e.message || e) };
+        notifyUser("手动触发失败：" + String((e && e.message) || e), "随机上线");
     }
     complete({
         success: true,
@@ -2000,6 +2007,7 @@ exports.update_formula = async function (params) {
     for (k in formula) merged[k] = formula[k];
     for (k in patch) merged[k] = patch[k];
     await saveFormula(merged);
+    notifyUser("已保存：" + Object.keys(patch).join("、"));
     complete({
         success: true,
         message: "公式参数已更新",
@@ -2847,6 +2855,7 @@ exports.fetch_holidays = async function (params) {
         }
         formula.holiday_fetch_date = todayStr();
         await saveFormula(formula);
+        notifyUser("节假日表已更新：" + formula.holiday_dates.length + " 天" + (dates.length ? "" : "（联网失败，用内置表）"));
         complete({
             success: true,
             message: "节假日信息已更新，共 " + formula.holiday_dates.length + " 个节假日日期（联网" + (dates.length ? "成功" : "失败，使用内置表") + "）",
@@ -2858,6 +2867,7 @@ exports.fetch_holidays = async function (params) {
             }
         });
     } catch (e) {
+        notifyUser("节假日拉取失败：" + String((e && e.message) || e));
         complete({ success: false, message: "拉取失败：" + String((e && e.message) || e) });
     } finally {
         holidayFetching = false;
