@@ -46,6 +46,7 @@ function Screen(ctx) {
     var scheme = (ctx.MaterialTheme && ctx.MaterialTheme.colorScheme) ? ctx.MaterialTheme.colorScheme : {};
     var onSurface = scheme.onSurface || "#222222";
     var onSurfaceVariant = scheme.onSurfaceVariant || "#666666";
+    var outlineVariant = scheme.outlineVariant || scheme.outline || "#C9C9C9";
     var surfaceVariant = scheme.surfaceVariant || "#F2F2F2";
     var cardBg = scheme.surfaceContainerHigh || surfaceVariant;
     var innerBg = scheme.surfaceContainerLow || scheme.surface || "#FFFFFF";   // 直接兜底，不依赖局部变量
@@ -146,12 +147,12 @@ function Screen(ctx) {
         return ctx.UI.Button({ contentColor: onPrimary, color: onPrimary, textColor: onPrimary, containerColor: primary, shape: { cornerRadius: 10, type: "rounded" }, text: label, fillMaxWidth: true, onClick: onTap });
     }
     function softBtn(label, onTap) {
-        return ctx.UI.Button({ contentColor: onSurface, color: onSurface, textColor: onSurface, containerColor: surfaceVariant, shape: { cornerRadius: 10, type: "rounded" }, text: label, fillMaxWidth: true, onClick: onTap });
+        return ctx.UI.Button({ contentColor: onSurface, color: onSurface, textColor: onSurface, containerColor: surfaceVariant, border: { width: 1, color: outlineVariant }, shape: { cornerRadius: 10, type: "rounded" }, text: label, fillMaxWidth: true, onClick: onTap });
     }
     function softBtnRow(items) {
         var btns = [];
         for (var i = 0; i < items.length; i++) {
-            btns.push(ctx.UI.Button({ contentColor: onSurface, color: onSurface, textColor: onSurface, containerColor: surfaceVariant, shape: { cornerRadius: 10, type: "rounded" }, text: items[i][0], weight: 1, onClick: items[i][1] }));
+            btns.push(ctx.UI.Button({ contentColor: onSurface, color: onSurface, textColor: onSurface, containerColor: surfaceVariant, border: { width: 1, color: outlineVariant }, shape: { cornerRadius: 10, type: "rounded" }, text: items[i][0], weight: 1, onClick: items[i][1] }));
         }
         return ctx.UI.Row({ spacing: 8, fillMaxWidth: true }, btns);
     }

@@ -2,6 +2,8 @@
 var __dlPolling = false;
 var __xyLastKick = 0;
 var __xyKickBusy = false;
+var __xyPollTimer = null;   // 页面存活期间的自动刷新定时器
+var __xyPollCount = 0;
 var __dlPollGen = 0;
 
 
@@ -501,6 +503,21 @@ function Screen(ctx) {
       await sleepMs(600);
     }
   }
+  // v2.2.2：页面存活期间每 3 秒自动刷新一次（最多 40 次 ≈ 2 分钟）
+  // 原因：手势返回子页时宿主不销毁主页、也不重跑 onLoad，只能靠定时刷新兜底
+  function startAutoRefresh() {
+    if (__xyPollTimer) return;
+    __xyPollCount = 0;
+    try {
+      __xyPollTimer = setInterval(function () {
+        __xyPollCount++;
+        if (__xyPollCount > 40) { try { clearInterval(__xyPollTimer); } catch (eC) { } __xyPollTimer = null; return; }
+        if (__xyKickBusy) return;
+        __xyKickBusy = true;
+        refresh().then(function () { __xyKickBusy = false; }).catch(function () { __xyKickBusy = false; });
+      }, 3000);
+    } catch (eT) { __xyPollTimer = null; }
+  }
   function startPollOnce() {
     if (__dlPolling) return;
     __dlPolling = true;
@@ -624,11 +641,14 @@ function Screen(ctx) {
       ctx.UI.Text({ text: "随机上线", fontSize: 26, fontWeight: "bold", color: C.text }),
       ctx.UI.Text({ text: "装成真人的主动消息 · v" + ((st && st.current_version) ? String(st.current_version) : '—'), fontSize: 12, color: C.dim })
     ]),
+    ctx.UI.Row({ spacing: 8, verticalAlignment: "center" }, [
+    ctx.UI.Button({ containerColor: C.card, contentColor: C.text, border: { width: 1, color: C.line }, shape: { cornerRadius: 10, type: "rounded" }, text: "刷新", onClick: function () { __xyLastKick = 0; doRefresh(); } }),
     ctx.UI.Surface({ containerColor: C.primary, alpha: 0.14, shape: { cornerRadius: 100, type: "rounded" } }, [
       ctx.UI.Row({ padding: { horizontal: 10, vertical: 6 }, spacing: 6, verticalAlignment: "center" }, [
         ctx.UI.Box({ width: 7, height: 7, background: C.primary, shape: { cornerRadius: 4, type: "rounded" } }),
         ctx.UI.Text({ text: statusText(), fontSize: 11, fontWeight: "bold", color: C.primary, maxLines: 1 })
       ])
+    ])
     ])
   ]));
 
@@ -666,15 +686,15 @@ function Screen(ctx) {
     }
     banner.push(ctx.UI.Row({ spacing: 8, fillMaxWidth: true }, [
       ctx.UI.Button({ containerColor: C.primary, contentColor: C.onPrimary, shape: { cornerRadius: 12, type: "rounded" }, text: (dlSt === 'running' ? '正在下载…' : (dlSt === 'done' ? '重新下载' : '下载更新包')), onClick: doDownloadUpdate, fillMaxWidth: true, weight: 1 }),
-      ctx.UI.Button({ containerColor: C.card, contentColor: C.text, shape: { cornerRadius: 12, type: "rounded" }, text: "稍后", onClick: function () { setUpdHide(true); }, weight: 1 }),
-      ctx.UI.Button({ containerColor: C.card, contentColor: C.text, shape: { cornerRadius: 12, type: "rounded" }, text: "跳过此版本", onClick: doSkipUpdate, weight: 1 })
+      ctx.UI.Button({ containerColor: C.card, border: { width: 1, color: C.line }, contentColor: C.text, shape: { cornerRadius: 12, type: "rounded" }, text: "稍后", onClick: function () { setUpdHide(true); }, weight: 1 }),
+      ctx.UI.Button({ containerColor: C.card, border: { width: 1, color: C.line }, contentColor: C.text, shape: { cornerRadius: 12, type: "rounded" }, text: "跳过此版本", onClick: doSkipUpdate, weight: 1 })
     ]));
     banner.push(ctx.UI.Row({ spacing: 8, fillMaxWidth: true }, [
-      ctx.UI.Button({ containerColor: C.card, contentColor: C.text, shape: { cornerRadius: 12, type: "rounded" }, text: "打开官网下载", onClick: doOpenSite, fillMaxWidth: true })
+      ctx.UI.Button({ containerColor: C.card, border: { width: 1, color: C.line }, contentColor: C.text, shape: { cornerRadius: 12, type: "rounded" }, text: "打开官网下载", onClick: doOpenSite, fillMaxWidth: true })
     ]));
     if (updPath) banner.push(ctx.UI.Text({ text: '已下载到 ' + updPath + '（用「包管理 → 导入」安装）', fontSize: 11, color: C.dim }));
     if (updMsg && dlSt !== 'done') banner.push(ctx.UI.Text({ text: updMsg, fontSize: 12, color: C.dim }));
-    children.push(ctx.UI.Card({ containerColor: C.soft, shape: { cornerRadius: 16, type: "rounded" }, border: { width: 1, color: C.primary, alpha: 0.4 }, elevation: 0, fillMaxWidth: true }, [
+    children.push(ctx.UI.Card({ containerColor: C.card, shape: { cornerRadius: 16, type: "rounded" }, border: { width: 1, color: C.primary, alpha: 0.4 }, elevation: 0, fillMaxWidth: true }, [
       ctx.UI.Column({ padding: 14, spacing: 10, fillMaxWidth: true }, banner)
     ]));
   }
@@ -685,7 +705,7 @@ function Screen(ctx) {
   var boundChatCount = (fm && Array.isArray(fm.chat_ids)) ? fm.chat_ids.length : 0;
   var cardTxt = boundChatCount ? ("已绑 " + boundChatCount + " 个") : "当前对话";
   children.push(ctx.UI.Card({
-    containerColor: C.card, shape: { cornerRadius: 20, type: "rounded" },
+    containerColor: C.card, border: { width: 1, color: C.line }, shape: { cornerRadius: 20, type: "rounded" },
     border: { width: 1, color: C.line }, elevation: 2, fillMaxWidth: true
   }, [
     ctx.UI.Column({ padding: 18, spacing: 12, fillMaxWidth: true }, [
@@ -717,7 +737,7 @@ function Screen(ctx) {
       return navRow(it[3], it[0], it[2], it[1]);
     })(NAV_ITEMS[ni]));
   }
-  children.push(ctx.UI.Card({ containerColor: C.card, shape: { cornerRadius: 18, type: "rounded" }, border: { width: 1, color: C.line }, elevation: 1, fillMaxWidth: true }, [
+  children.push(ctx.UI.Card({ containerColor: C.card, border: { width: 1, color: C.line }, shape: { cornerRadius: 18, type: "rounded" }, border: { width: 1, color: C.line }, elevation: 1, fillMaxWidth: true }, [
     ctx.UI.Column({ padding: 0, spacing: 0, fillMaxWidth: true }, navRows)
   ]));
 
@@ -728,21 +748,21 @@ function Screen(ctx) {
     text: "立即触发唤醒", fillMaxWidth: true, onClick: doAwake
   }));
   children.push(ctx.UI.Row({ spacing: 8, fillMaxWidth: true }, [
-    ctx.UI.Button({ containerColor: C.card, contentColor: C.text, shape: { cornerRadius: 12, type: "rounded" }, text: "刷新状态", weight: 1, onClick: doRefresh }),
-    ctx.UI.Button({ containerColor: C.card, contentColor: C.text, shape: { cornerRadius: 12, type: "rounded" }, text: "重置冷却", weight: 1, onClick: doResetCool }),
-    ctx.UI.Button({ containerColor: C.card, contentColor: C.text, shape: { cornerRadius: 12, type: "rounded" }, text: "重置计数", weight: 1, onClick: doCoax })
+    ctx.UI.Button({ containerColor: C.card, border: { width: 1, color: C.line }, contentColor: C.text, shape: { cornerRadius: 12, type: "rounded" }, text: "刷新状态", weight: 1, onClick: doRefresh }),
+    ctx.UI.Button({ containerColor: C.card, border: { width: 1, color: C.line }, contentColor: C.text, shape: { cornerRadius: 12, type: "rounded" }, text: "重置冷却", weight: 1, onClick: doResetCool }),
+    ctx.UI.Button({ containerColor: C.card, border: { width: 1, color: C.line }, contentColor: C.text, shape: { cornerRadius: 12, type: "rounded" }, text: "重置计数", weight: 1, onClick: doCoax })
   ]));
 
   // ---- 消息 ----
   if (msg) {
-    children.push(ctx.UI.Card({ containerColor: C.soft, shape: { cornerRadius: 12, type: "rounded" }, elevation: 0, fillMaxWidth: true }, [
+    children.push(ctx.UI.Card({ containerColor: C.card, shape: { cornerRadius: 12, type: "rounded" }, elevation: 0, fillMaxWidth: true }, [
       ctx.UI.Row({ padding: 12, verticalAlignment: "center", spacing: 8, fillMaxWidth: true }, [
         ctx.UI.Icon({ name: "CheckCircle", size: 18, tint: C.primary }),
         ctx.UI.Text({ text: msg, fontSize: 13, color: C.text })
       ])
     ]));
   }
-  children.push(ctx.UI.Button({ containerColor: C.card, contentColor: C.text, shape: { cornerRadius: 12, type: "rounded" }, text: "检查更新", fillMaxWidth: true, onClick: doForceCheck }));
+  children.push(ctx.UI.Button({ containerColor: C.card, border: { width: 1, color: C.line }, contentColor: C.text, shape: { cornerRadius: 12, type: "rounded" }, text: "检查更新", fillMaxWidth: true, onClick: doForceCheck }));
   children.push(ctx.UI.Text({ text: 'v' + ((st && st.current_version) ? String(st.current_version) : '—') + ' · 打开面板时自动检查更新', fontSize: 11, color: C.dim }));
 
   // v2.2.2：每次进入/回到本页都刷新一次（节流 1.5s，避免渲染循环）
@@ -755,6 +775,7 @@ function Screen(ctx) {
     onLoad: async function () {
       await initOnce();
       await checkUpdateUI();
+      startAutoRefresh();
     },
     fillMaxSize: true,
     padding: 16,
