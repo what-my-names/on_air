@@ -52,8 +52,11 @@ function Screen(ctx) {
     var scheme = (ctx.MaterialTheme && ctx.MaterialTheme.colorScheme) ? ctx.MaterialTheme.colorScheme : {};
     var onSurface = scheme.onSurface || "#222222";
     var onSurfaceVariant = scheme.onSurfaceVariant || "#666666";
+    var outlineVariant = scheme.outlineVariant || scheme.outline || "#C9C9C9";
     var surfaceVariant = scheme.surfaceVariant || "#F2F2F2";
+    var cardBg = surfaceVariant;
     var primary = scheme.primary || "#222222";
+    var onPrimary = scheme.onPrimary || "#FFFFFF";
     var errColor = scheme.error || "#B00020";
 
     // ===== 输入值状态 =====
@@ -289,7 +292,7 @@ function Screen(ctx) {
 
     // ---- 错误提示 ----
     if (errMsg) {
-        children.push(ctx.UI.Card({ containerColor: C.soft, shape: { cornerRadius: 12, type: "rounded" }, border: { width: 1, color: C.err, alpha: 0.5 }, elevation: 0, fillMaxWidth: true }, [
+        children.push(ctx.UI.Card({ containerColor: C.card, shape: { cornerRadius: 12, type: "rounded" }, border: { width: 1, color: C.err, alpha: 0.5 }, elevation: 0, fillMaxWidth: true }, [
             ctx.UI.Row({ padding: 12, spacing: 8, verticalAlignment: "center", fillMaxWidth: true }, [
                 ctx.UI.Icon({ name: "Warning", size: 18, tint: C.err }),
                 ctx.UI.Text({ text: errMsg, fontSize: 12, color: C.err })
@@ -299,8 +302,8 @@ function Screen(ctx) {
 
     // ---- 批量操作 ----
     children.push(ctx.UI.Row({ spacing: 8, fillMaxWidth: true }, [
-        ctx.UI.Button({ containerColor: C.card, contentColor: C.text, shape: { cornerRadius: 12, type: "rounded" }, text: "全部展开", weight: 1, onClick: function () { setAll(true); } }),
-        ctx.UI.Button({ containerColor: C.card, contentColor: C.text, shape: { cornerRadius: 12, type: "rounded" }, text: "全部收起", weight: 1, onClick: function () { setAll(false); } }),
+        ctx.UI.Button({ containerColor: C.card, border: { width: 1, color: C.line }, contentColor: C.text, shape: { cornerRadius: 12, type: "rounded" }, text: "全部展开", weight: 1, onClick: function () { setAll(true); } }),
+        ctx.UI.Button({ containerColor: C.card, border: { width: 1, color: C.line }, contentColor: C.text, shape: { cornerRadius: 12, type: "rounded" }, text: "全部收起", weight: 1, onClick: function () { setAll(false); } }),
         ctx.UI.Button({ containerColor: (scheme.primaryContainer || C.card), contentColor: (scheme.onPrimaryContainer || C.primary), shape: { cornerRadius: 12, type: "rounded" }, text: "恢复默认", weight: 1, onClick: doReset })
     ]));
 
@@ -332,17 +335,17 @@ function Screen(ctx) {
                 box.push(ctx.UI.Box({ height: 10 }));
             })(grp.items[ii2]);
         }
-        children.push(ctx.UI.Card({ containerColor: C.card, shape: { cornerRadius: 18, type: "rounded" }, border: { width: 1, color: C.line, alpha: 0.35 }, elevation: 1, fillMaxWidth: true }, [
+        children.push(ctx.UI.Card({ containerColor: C.card, border: { width: 1, color: C.line }, shape: { cornerRadius: 18, type: "rounded" }, border: { width: 1, color: C.line, alpha: 0.35 }, elevation: 1, fillMaxWidth: true }, [
             ctx.UI.Column({ padding: 0, spacing: 0, fillMaxWidth: true }, box)
         ]));
     }
 
     // ---- 保存 / 返回 ----
     children.push(ctx.UI.Button({ containerColor: C.primary, contentColor: C.soft, shape: { cornerRadius: 14, type: "rounded" }, text: "保存全部修改", fillMaxWidth: true, onClick: doSave }));
-    children.push(ctx.UI.Button({ containerColor: C.card, contentColor: C.text, shape: { cornerRadius: 12, type: "rounded" }, text: "返回主页", fillMaxWidth: true, onClick: goHome }));
+    children.push(ctx.UI.Button({ containerColor: C.card, border: { width: 1, color: C.line }, contentColor: C.text, shape: { cornerRadius: 12, type: "rounded" }, text: "返回主页", fillMaxWidth: true, onClick: goHome }));
 
     if (msg) {
-        children.push(ctx.UI.Card({ containerColor: C.soft, shape: { cornerRadius: 12, type: "rounded" }, elevation: 0, fillMaxWidth: true }, [
+        children.push(ctx.UI.Card({ containerColor: C.card, shape: { cornerRadius: 12, type: "rounded" }, elevation: 0, fillMaxWidth: true }, [
             ctx.UI.Row({ padding: 12, spacing: 8, verticalAlignment: "center", fillMaxWidth: true }, [
                 ctx.UI.Icon({ name: "CheckCircle", size: 18, tint: C.primary }),
                 ctx.UI.Text({ text: msg, fontSize: 13, color: C.text })

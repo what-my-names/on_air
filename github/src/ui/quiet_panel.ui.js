@@ -44,8 +44,11 @@ function Screen(ctx) {
     var scheme = (ctx.MaterialTheme && ctx.MaterialTheme.colorScheme) ? ctx.MaterialTheme.colorScheme : {};
     var onSurface = scheme.onSurface || "#222222";
     var onSurfaceVariant = scheme.onSurfaceVariant || "#666666";
+    var outlineVariant = scheme.outlineVariant || scheme.outline || "#C9C9C9";
     var surfaceVariant = scheme.surfaceVariant || "#F2F2F2";
+    var cardBg = surfaceVariant;
     var primary = scheme.primary || "#222222";
+    var onPrimary = scheme.onPrimary || "#FFFFFF";
 
     var onS = ctx.useState("r_on", false); var on = onS[0], setOn = onS[1];
     var dOnS = ctx.useState("r_don", true); var dOn = dOnS[0], setDOn = dOnS[1];
@@ -80,26 +83,6 @@ function Screen(ctx) {
         setLoaded(true);
     }
 
-    // v1.9.3：静默建议（补回免打扰页缺失的 suggest_quiet 入口）
-    async function doSuggestQuiet(apply) {
-        setBusy(true);
-        setMsg("");
-        try {
-            var params = {};
-            if (String(chatName || "").trim()) params.chat_name = String(chatName).trim();
-            if (apply) params.apply = true;
-            var r = await callTool("on_air:suggest_quiet", params);
-            if (r && r.success) {
-                var d = r.data || {};
-                var sg = d.suggestion || {};
-                setSugOut("白天段 " + (sg.day_start || "?") + "~" + (sg.day_end || "?") + "  夜间段 " + (sg.night_start || "?") + "~" + (sg.night_end || "?") + "  样本 " + (d.sample_count != null ? d.sample_count : "?") + " 条" + (apply ? "（已应用并开启静默）" : "") + "  理由：" + (sg.reason || ""));
-                if (apply) await load();
-            } else {
-                setMsg("生成失败：" + ((r && r.message) || ""));
-            }
-        } catch (e) { setMsg("生成出错：" + String((e && e.message) || e)); }
-        setBusy(false);
-    }
     // v1.9.3：静默建议（补回免打扰页缺失的 suggest_quiet 入口）
     async function doSave() {
         setBusy(true);
@@ -152,13 +135,13 @@ function Screen(ctx) {
         ctx.UI.Button({ contentColor: surfaceVariant, color: surfaceVariant, textColor: surfaceVariant, containerColor: on ? primary : surfaceVariant, shape: { cornerRadius: 12, type: "rounded" }, text: (on ? "当前 · " : "") + "开启", weight: 1, onClick: function () { setOn(true); saveImmediate({ quiet_enabled: true }, "静默总开关：已开启并保存"); } }),
         ctx.UI.Button({ contentColor: onSurface, color: onSurface, textColor: onSurface, containerColor: !on ? primary : surfaceVariant, shape: { cornerRadius: 12, type: "rounded" }, text: (!on ? "当前 · " : "") + "关闭", weight: 1, onClick: function () { setOn(false); saveImmediate({ quiet_enabled: false }, "静默总开关：已关闭并保存"); } })
     ]));
-    children.push(ctx.UI.Card({ containerColor: surfaceVariant, border: { width: 1, color: scheme.outline || surfaceVariant }, backgroundColor: surfaceVariant, shape: { cornerRadius: 16, type: "rounded" }, padding: 0, elevation: 0, fillMaxWidth: true }, [
-        ctx.UI.Column({ backgroundColor: surfaceVariant, fillMaxWidth: true, padding: 14, spacing: 6 }, b1)
+    children.push(ctx.UI.Card({ containerColor: surfaceVariant, border: { width: 1, color: scheme.outline || surfaceVariant }, backgroundColor: cardBg, shape: { cornerRadius: 16, type: "rounded" }, padding: 0, elevation: 0, fillMaxWidth: true }, [
+        ctx.UI.Column({ backgroundColor: cardBg, fillMaxWidth: true, padding: 14, spacing: 6 }, b1)
     ]));
 
     var b2 = [];
     b2.push(ctx.UI.Text({ text: "白天段（如白天补觉 09:00~18:00）", style: "bodySmall", color: onSurfaceVariant }));
-    b2.push(ctx.UI.Button({ contentColor: onSurface, color: onSurface, textColor: onSurface, containerColor: surfaceVariant, shape: { cornerRadius: 12, type: "rounded" }, text: dOn ? "白天静默：开（点击切换）" : "白天静默：关（点击切换）", fillMaxWidth: true, onClick: function () { var v = !dOn; setDOn(v); saveImmediate({ quiet_day_enabled: v, quiet_enabled: true }, v ? "白天静默：已开启并保存" : "白天静默：已关闭并保存"); } }));
+    b2.push(ctx.UI.Button({ contentColor: onSurface, color: onSurface, textColor: onSurface, containerColor: cardBg, border: { width: 1, color: outlineVariant }, shape: { cornerRadius: 12, type: "rounded" }, text: dOn ? "白天静默：开（点击切换）" : "白天静默：关（点击切换）", fillMaxWidth: true, onClick: function () { var v = !dOn; setDOn(v); saveImmediate({ quiet_day_enabled: v, quiet_enabled: true }, v ? "白天静默：已开启并保存" : "白天静默：已关闭并保存"); } }));
     b2.push(ctx.UI.Row({ spacing: 8, fillMaxWidth: true }, [
         ctx.UI.Column({ weight: 1 }, [
             ctx.UI.Text({ text: "开始 HH:MM", style: "bodySmall", color: onSurfaceVariant }),
@@ -169,13 +152,13 @@ function Screen(ctx) {
             ctx.UI.TextField({ value: dEnd, onValueChange: setDEnd, singleLine: true, placeholder: ctx.UI.Text({ text: "18:00", color: onSurfaceVariant }), style: { color: onSurface } })
         ])
     ]));
-    children.push(ctx.UI.Card({ containerColor: surfaceVariant, border: { width: 1, color: scheme.outline || surfaceVariant }, backgroundColor: surfaceVariant, shape: { cornerRadius: 16, type: "rounded" }, padding: 0, elevation: 0, fillMaxWidth: true }, [
-        ctx.UI.Column({ backgroundColor: surfaceVariant, fillMaxWidth: true, padding: 14, spacing: 6 }, b2)
+    children.push(ctx.UI.Card({ containerColor: surfaceVariant, border: { width: 1, color: scheme.outline || surfaceVariant }, backgroundColor: cardBg, shape: { cornerRadius: 16, type: "rounded" }, padding: 0, elevation: 0, fillMaxWidth: true }, [
+        ctx.UI.Column({ backgroundColor: cardBg, fillMaxWidth: true, padding: 14, spacing: 6 }, b2)
     ]));
 
     var b3 = [];
     b3.push(ctx.UI.Text({ text: "夜间段（如睡觉 22:00~09:00，支持跨天）", style: "bodySmall", color: onSurfaceVariant }));
-    b3.push(ctx.UI.Button({ contentColor: onSurface, color: onSurface, textColor: onSurface, containerColor: surfaceVariant, shape: { cornerRadius: 12, type: "rounded" }, text: nOn ? "夜间静默：开（点击切换）" : "夜间静默：关（点击切换）", fillMaxWidth: true, onClick: function () { var v = !nOn; setNOn(v); saveImmediate({ quiet_night_enabled: v, quiet_enabled: true }, v ? "夜间静默：已开启并保存" : "夜间静默：已关闭并保存"); } }));
+    b3.push(ctx.UI.Button({ contentColor: onSurface, color: onSurface, textColor: onSurface, containerColor: cardBg, border: { width: 1, color: outlineVariant }, shape: { cornerRadius: 12, type: "rounded" }, text: nOn ? "夜间静默：开（点击切换）" : "夜间静默：关（点击切换）", fillMaxWidth: true, onClick: function () { var v = !nOn; setNOn(v); saveImmediate({ quiet_night_enabled: v, quiet_enabled: true }, v ? "夜间静默：已开启并保存" : "夜间静默：已关闭并保存"); } }));
     b3.push(ctx.UI.Row({ spacing: 8, fillMaxWidth: true }, [
         ctx.UI.Column({ weight: 1 }, [
             ctx.UI.Text({ text: "开始 HH:MM", style: "bodySmall", color: onSurfaceVariant }),
@@ -186,27 +169,17 @@ function Screen(ctx) {
             ctx.UI.TextField({ value: nEnd, onValueChange: setNEnd, singleLine: true, placeholder: ctx.UI.Text({ text: "09:00", color: onSurfaceVariant }), style: { color: onSurface } })
         ])
     ]));
-    b3.push(ctx.UI.Button({ contentColor: surfaceVariant, color: surfaceVariant, textColor: surfaceVariant, containerColor: primary, shape: { cornerRadius: 12, type: "rounded" }, text: "保存静默设置", fillMaxWidth: true, onClick: doSave }));
-    children.push(ctx.UI.Card({ containerColor: surfaceVariant, border: { width: 1, color: scheme.outline || surfaceVariant }, backgroundColor: surfaceVariant, shape: { cornerRadius: 16, type: "rounded" }, padding: 0, elevation: 0, fillMaxWidth: true }, [
-        ctx.UI.Column({ backgroundColor: surfaceVariant, fillMaxWidth: true, padding: 14, spacing: 6 }, b3)
+    b3.push(ctx.UI.Button({ contentColor: onPrimary, color: onPrimary, textColor: onPrimary, containerColor: primary, shape: { cornerRadius: 12, type: "rounded" }, text: "保存静默设置", fillMaxWidth: true, onClick: doSave }));
+    children.push(ctx.UI.Card({ containerColor: surfaceVariant, border: { width: 1, color: scheme.outline || surfaceVariant }, backgroundColor: cardBg, shape: { cornerRadius: 16, type: "rounded" }, padding: 0, elevation: 0, fillMaxWidth: true }, [
+        ctx.UI.Column({ backgroundColor: cardBg, fillMaxWidth: true, padding: 14, spacing: 6 }, b3)
     ]));
 
     // 目标对话已统一到「参数设置」页（chat_ids），本页不再提供入口
 
-    var b5 = [];
-    b5.push(ctx.UI.Text({ text: "AI 静默建议（按你的发言习惯算，可选填对话名）", style: "bodySmall", color: onSurfaceVariant }));
-    b5.push(ctx.UI.Row({ spacing: 8, fillMaxWidth: true }, [
-        ctx.UI.Button({ contentColor: onSurface, color: onSurface, textColor: onSurface, containerColor: surfaceVariant, shape: { cornerRadius: 12, type: "rounded" }, text: "生成建议", weight: 1, onClick: function () { doSuggestQuiet(false); } }),
-        ctx.UI.Button({ contentColor: surfaceVariant, color: surfaceVariant, textColor: surfaceVariant, containerColor: primary, shape: { cornerRadius: 12, type: "rounded" }, text: "生成并应用", weight: 1, onClick: function () { doSuggestQuiet(true); } })
-    ]));
-    if (sugOut) b5.push(ctx.UI.Text({ text: sugOut, style: "bodySmall", color: onSurfaceVariant }));
-    children.push(ctx.UI.Card({ containerColor: surfaceVariant, border: { width: 1, color: scheme.outline || surfaceVariant }, backgroundColor: surfaceVariant, shape: { cornerRadius: 16, type: "rounded" }, padding: 0, elevation: 0, fillMaxWidth: true }, [
-        ctx.UI.Column({ backgroundColor: surfaceVariant, fillMaxWidth: true, padding: 14, spacing: 6 }, b5)
-    ]));
-children.push(ctx.UI.Button({ contentColor: onSurface, color: onSurface, textColor: onSurface, containerColor: surfaceVariant, shape: { cornerRadius: 12, type: "rounded" }, text: "返回主页", fillMaxWidth: true, onClick: goHome }));
+children.push(ctx.UI.Button({ contentColor: onPrimary, color: onPrimary, textColor: onPrimary, containerColor: primary, shape: { cornerRadius: 12, type: "rounded" }, text: "返回主页", fillMaxWidth: true, onClick: goHome }));
     if (msg) {
-        children.push(ctx.UI.Card({ containerColor: surfaceVariant, border: { width: 1, color: scheme.outline || surfaceVariant }, backgroundColor: surfaceVariant, shape: { cornerRadius: 16, type: "rounded" }, padding: 0, elevation: 0, fillMaxWidth: true }, [
-            ctx.UI.Row({ backgroundColor: surfaceVariant, fillMaxWidth: true, padding: 14, verticalAlignment: "center" }, [
+        children.push(ctx.UI.Card({ containerColor: surfaceVariant, border: { width: 1, color: scheme.outline || surfaceVariant }, backgroundColor: cardBg, shape: { cornerRadius: 16, type: "rounded" }, padding: 0, elevation: 0, fillMaxWidth: true }, [
+            ctx.UI.Row({ backgroundColor: cardBg, fillMaxWidth: true, padding: 14, verticalAlignment: "center" }, [
                 ctx.UI.Text({ text: msg, style: "bodyMedium", color: onSurface, weight: 1 })
             ])
         ]));
