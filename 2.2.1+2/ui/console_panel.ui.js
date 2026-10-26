@@ -113,8 +113,7 @@ function Screen(ctx) {
             "手动静默日：" + Object.keys(qd).length + " 天",
             "节假日表：" + ((f1.holiday_dates && f1.holiday_dates.length) ? f1.holiday_dates.length + " 天" : "未拉取") + "（更新于 " + (f1.holiday_fetch_date || "—") + "）"
         ];
-        setRawRead(lines.join("
-"));
+        setRawRead(lines.join(String.fromCharCode(10)));
         if (f1.idle_threshold_minutes != null) setThr(String(f1.idle_threshold_minutes));
         if (!r.success && !r2.success) setErrMsg("读取失败：" + (r.message || ""));
     }
