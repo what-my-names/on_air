@@ -59,6 +59,7 @@ function Screen(ctx) {
     var aS = ctx.useState("q_a", "");  var av = aS[0], setAv = aS[1];
     var bS = ctx.useState("q_b", "");  var bv = bS[0], setBv = bS[1];
     var cS = ctx.useState("q_c", "");  var cv = cS[0], setCv = cS[1];
+    var thrS = ctx.useState("q_thr", ""); var thrv = thrS[0], setThrv = thrS[1];
     var coolS = ctx.useState("q_cool", ""); var coolv = coolS[0], setCoolv = coolS[1];
     var stopS = ctx.useState("q_stop", ""); var stopv = stopS[0], setStopv = stopS[1];
     var msgS = ctx.useState("q_msg", ""); var msg = msgS[0], setMsg = msgS[1];
@@ -78,6 +79,7 @@ function Screen(ctx) {
             if (d) {
                 setAv(String(d.a)); setBv(String(d.b)); setCv(String(d.c));
                 setCoolv(String(d.cooldown_minutes != null ? d.cooldown_minutes : ""));
+                setThrv(String(d.idle_threshold_minutes != null ? d.idle_threshold_minutes : ""));
                 setChatIds(Array.isArray(d.chat_ids) ? d.chat_ids : []);
                 setStopv(String(d.max_wake_stops != null ? d.max_wake_stops : 5));
             }
@@ -155,6 +157,9 @@ function Screen(ctx) {
     ]));
 
     var box3 = [];
+    box3.push(ctx.UI.Text({ text: "沉默阈值（分钟）：你多久不说话才开始累计 X，调大 = 更不容易被想起来", style: "bodySmall", color: onSurfaceVariant }));
+    box3.push(ctx.UI.TextField({ value: thrv, onValueChange: setThrv, singleLine: true, placeholder: ctx.UI.Text({ text: "10", color: onSurfaceVariant }), style: { color: onSurface } }));
+    box3.push(ctx.UI.Button({ contentColor: onPrimary, color: onPrimary, textColor: onPrimary, containerColor: primary, shape: { cornerRadius: 12, type: "rounded" }, text: "保存沉默阈值", fillMaxWidth: true, onClick: function () { save({ idle_threshold_minutes: thrv }, "沉默阈值已保存"); } }));
     box3.push(ctx.UI.Text({ text: "唤醒后冷却（分钟）", style: "bodySmall", color: onSurfaceVariant }));
     box3.push(ctx.UI.TextField({ value: coolv, onValueChange: setCoolv, singleLine: true, placeholder: ctx.UI.Text({ text: "15", color: onSurfaceVariant }), style: { color: onSurface } }));
     box3.push(ctx.UI.Button({ contentColor: onPrimary, color: onPrimary, textColor: onPrimary, containerColor: primary, shape: { cornerRadius: 12, type: "rounded" }, text: "保存冷却", fillMaxWidth: true, onClick: function () { save({ cooldown_minutes: coolv }, "冷却时间已保存"); } }));
