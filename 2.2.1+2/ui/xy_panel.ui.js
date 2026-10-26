@@ -2,6 +2,7 @@
 var __dlPolling = false;
 var __xyLastKick = 0;
 var __xyKickBusy = false;
+var __xyCache = { st: null, fm: null };   // 页面重建时先用上次数据渲染，避免「未加载」闪断
 var __xyPollTimer = null;   // 页面存活期间的自动刷新定时器
 var __xyPollCount = 0;
 var __dlPollGen = 0;
@@ -34,7 +35,7 @@ function Screen(ctx) {
     dim: scheme.onSurfaceVariant || "#666666"
   };
   // ===== 状态 =====
-  var loadingState = ctx.useState("loading", true);
+  var loadingState = ctx.useState("loading", !__xyCache.st);
   var setLoading = loadingState[1];
 
   var msgState = ctx.useState("msg", "");
@@ -53,11 +54,11 @@ function Screen(ctx) {
   var updData = {};
   try { updData = JSON.parse(updRaw || "{}"); } catch (e0) { updData = {}; }
 
-  var stState = ctx.useState("st", null);   // get_xy 的 data
+  var stState = ctx.useState("st", __xyCache.st);   // get_xy 的 data（初值取缓存）
   var st = stState[0];
   var setSt = stState[1];
 
-  var fmState = ctx.useState("fm", null);   // get_formula 的 data
+  var fmState = ctx.useState("fm", __xyCache.fm);   // get_formula 的 data（初值取缓存）
   var fm = fmState[0];
   var setFm = fmState[1];
 
@@ -250,9 +251,9 @@ function Screen(ctx) {
   async function refresh() {
     setLoading(true);
     var r1 = await callTool("on_air:get_xy");
-    if (r1.success && r1.data) setSt(r1.data);
+    if (r1.success && r1.data) { setSt(r1.data); __xyCache.st = r1.data; }
     var r2 = await callTool("on_air:get_formula");
-    if (r2.success && r2.data) setFm(r2.data);
+    if (r2.success && r2.data) { setFm(r2.data); __xyCache.fm = r2.data; }
     setLoading(false);
     return { st: r1.success ? r1.data : null, fm: r2.success ? r2.data : null };
   }
@@ -503,21 +504,6 @@ function Screen(ctx) {
       await sleepMs(600);
     }
   }
-  // v2.2.2：页面存活期间每 3 秒自动刷新一次（最多 40 次 ≈ 2 分钟）
-  // 原因：手势返回子页时宿主不销毁主页、也不重跑 onLoad，只能靠定时刷新兜底
-  function startAutoRefresh() {
-    if (__xyPollTimer) return;
-    __xyPollCount = 0;
-    try {
-      __xyPollTimer = setInterval(function () {
-        __xyPollCount++;
-        if (__xyPollCount > 40) { try { clearInterval(__xyPollTimer); } catch (eC) { } __xyPollTimer = null; return; }
-        if (__xyKickBusy) return;
-        __xyKickBusy = true;
-        refresh().then(function () { __xyKickBusy = false; }).catch(function () { __xyKickBusy = false; });
-      }, 3000);
-    } catch (eT) { __xyPollTimer = null; }
-  }
   function startPollOnce() {
     if (__dlPolling) return;
     __dlPolling = true;
@@ -762,17 +748,16 @@ function Screen(ctx) {
   children.push(ctx.UI.Button({ containerColor: C.card, border: { width: 1, color: C.line }, contentColor: C.text, shape: { cornerRadius: 12, type: "rounded" }, text: "检查更新", fillMaxWidth: true, onClick: doForceCheck }));
   children.push(ctx.UI.Text({ text: 'v' + ((st && st.current_version) ? String(st.current_version) : '—') + ' · 打开面板时自动检查更新', fontSize: 11, color: C.dim }));
 
-  // v2.2.2：每次进入/回到本页都刷新一次（节流 1.5s，避免渲染循环）
-  if (!__xyKickBusy && (Date.now() - __xyLastKick) > 1500) {
-    __xyLastKick = Date.now();
-    __xyKickBusy = true;
-    refresh().then(function () { __xyKickBusy = false; }).catch(function () { __xyKickBusy = false; });
-  }
   return ctx.UI.LazyColumn({ containerColor: P.bg, backgroundColor: P.bg,
     onLoad: async function () {
       await initOnce();
       await checkUpdateUI();
-      startAutoRefresh();
+      // v2.2.2：compose_dsl 的异步 setState 不触发重绘，必须在 onLoad（action 分发期）内周期刷新
+      // 时长覆盖「进子页再手势返回」的常见间隔：3 秒 × 200 次 ≈ 10 分钟
+      for (var __qi = 0; __qi < 40; __qi++) {
+        await sleepMs(3000);
+        try { await refresh(); } catch (eQ) { }
+      }
     },
     fillMaxSize: true,
     padding: 16,
