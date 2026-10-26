@@ -120,22 +120,6 @@ function Screen(ctx) {
         var r = await run("thr", "on_air:update_formula", { idle_threshold_minutes: v });
         if (r.success) setMsg("沉默阈值已保存：" + v + " 分钟");
     }
-    async function doSuggest(apply) {
-        setBusy(apply ? "sug_apply" : "sug_preview");
-        setErrMsg("");
-        var params = {};
-        if (String(chatName || "").trim()) params.chat_name = String(chatName).trim();
-        if (apply) params.apply = true;
-        var r = await callTool("on_air:suggest_quiet", params);
-        if (r.success) {
-            var d = r.data || {};
-            var sg = d.suggestion || {};
-            setSug("白天段 " + (sg.day_start || "?") + " 至 " + (sg.day_end || "?") + "　夜间段 " + (sg.night_start || "?") + " 至 " + (sg.night_end || "?") + "　样本 " + (d.sample_count != null ? d.sample_count : "?") + " 条" + (apply ? "（已应用并开启静默）" : "") + "　理由：" + (sg.reason || ""));
-        } else {
-            setErrMsg("生成失败：" + (r.message || ""));
-        }
-        setBusy("");
-    }
     function goHome() { if (ctx.navigate) ctx.navigate("toolpkg:com.operit.on_air:ui:on_air_sidebar"); }
     function goPrompts() { if (ctx.navigate) ctx.navigate("toolpkg:com.operit.on_air:ui:on_air_prompts"); }
     function goParams() { if (ctx.navigate) ctx.navigate("toolpkg:com.operit.on_air:ui:on_air_params"); }
@@ -218,7 +202,6 @@ function Screen(ctx) {
     if (out["thr"]) g3.push(resultBlock(out["thr"]));
     g3.push(note("静默时间建议：按你的发言习惯算（可选填对话名，留空用已配置的目标对话）。"));
     g3.push(ctx.UI.TextField({ value: chatName, onValueChange: setChatName, singleLine: true, placeholder: ctx.UI.Text({ text: "对话名（可留空）", color: onSurfaceVariant }), style: { color: onSurface } }));
-    g3.push(softBtnRow([["生成建议", function () { doSuggest(false); }], ["生成并应用", function () { doSuggest(true); }]]));
     if (sugText) g3.push(resultBlock(sugText));
     g3.push(action("立即拉取节假日", "联网更新今年与明年的法定节假日表，平时每天 12 点会自动拉一次。", "拉取节假日", "fh", "on_air:fetch_holidays", {}));
     g3.push(softBtnRow([["去参数页", goParams], ["去免打扰页", goQuiet], ["去日期页", goDates]]));

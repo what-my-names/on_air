@@ -46,6 +46,7 @@ function Screen(ctx) {
     var onSurfaceVariant = scheme.onSurfaceVariant || "#666666";
     var surfaceVariant = scheme.surfaceVariant || "#F2F2F2";
     var primary = scheme.primary || "#222222";
+    var onPrimary2 = scheme.onPrimary || "#FFFFFF";
 
     var onS = ctx.useState("r_on", false); var on = onS[0], setOn = onS[1];
     var dOnS = ctx.useState("r_don", true); var dOn = dOnS[0], setDOn = dOnS[1];
@@ -80,26 +81,6 @@ function Screen(ctx) {
         setLoaded(true);
     }
 
-    // v1.9.3：静默建议（补回免打扰页缺失的 suggest_quiet 入口）
-    async function doSuggestQuiet(apply) {
-        setBusy(true);
-        setMsg("");
-        try {
-            var params = {};
-            if (String(chatName || "").trim()) params.chat_name = String(chatName).trim();
-            if (apply) params.apply = true;
-            var r = await callTool("on_air:suggest_quiet", params);
-            if (r && r.success) {
-                var d = r.data || {};
-                var sg = d.suggestion || {};
-                setSugOut("白天段 " + (sg.day_start || "?") + "~" + (sg.day_end || "?") + "  夜间段 " + (sg.night_start || "?") + "~" + (sg.night_end || "?") + "  样本 " + (d.sample_count != null ? d.sample_count : "?") + " 条" + (apply ? "（已应用并开启静默）" : "") + "  理由：" + (sg.reason || ""));
-                if (apply) await load();
-            } else {
-                setMsg("生成失败：" + ((r && r.message) || ""));
-            }
-        } catch (e) { setMsg("生成出错：" + String((e && e.message) || e)); }
-        setBusy(false);
-    }
     // v1.9.3：静默建议（补回免打扰页缺失的 suggest_quiet 入口）
     async function doSave() {
         setBusy(true);
@@ -193,17 +174,7 @@ function Screen(ctx) {
 
     // 目标对话已统一到「参数设置」页（chat_ids），本页不再提供入口
 
-    var b5 = [];
-    b5.push(ctx.UI.Text({ text: "AI 静默建议（按你的发言习惯算，可选填对话名）", style: "bodySmall", color: onSurfaceVariant }));
-    b5.push(ctx.UI.Row({ spacing: 8, fillMaxWidth: true }, [
-        ctx.UI.Button({ contentColor: onSurface, color: onSurface, textColor: onSurface, containerColor: surfaceVariant, shape: { cornerRadius: 12, type: "rounded" }, text: "生成建议", weight: 1, onClick: function () { doSuggestQuiet(false); } }),
-        ctx.UI.Button({ contentColor: surfaceVariant, color: surfaceVariant, textColor: surfaceVariant, containerColor: primary, shape: { cornerRadius: 12, type: "rounded" }, text: "生成并应用", weight: 1, onClick: function () { doSuggestQuiet(true); } })
-    ]));
-    if (sugOut) b5.push(ctx.UI.Text({ text: sugOut, style: "bodySmall", color: onSurfaceVariant }));
-    children.push(ctx.UI.Card({ containerColor: surfaceVariant, border: { width: 1, color: scheme.outline || surfaceVariant }, backgroundColor: surfaceVariant, shape: { cornerRadius: 16, type: "rounded" }, padding: 0, elevation: 0, fillMaxWidth: true }, [
-        ctx.UI.Column({ backgroundColor: surfaceVariant, fillMaxWidth: true, padding: 14, spacing: 6 }, b5)
-    ]));
-children.push(ctx.UI.Button({ contentColor: onSurface, color: onSurface, textColor: onSurface, containerColor: surfaceVariant, shape: { cornerRadius: 12, type: "rounded" }, text: "返回主页", fillMaxWidth: true, onClick: goHome }));
+children.push(ctx.UI.Button({ contentColor: onPrimary2, color: onPrimary2, textColor: onPrimary2, containerColor: primary, shape: { cornerRadius: 12, type: "rounded" }, text: "返回主页", fillMaxWidth: true, onClick: goHome }));
     if (msg) {
         children.push(ctx.UI.Card({ containerColor: surfaceVariant, border: { width: 1, color: scheme.outline || surfaceVariant }, backgroundColor: surfaceVariant, shape: { cornerRadius: 16, type: "rounded" }, padding: 0, elevation: 0, fillMaxWidth: true }, [
             ctx.UI.Row({ backgroundColor: surfaceVariant, fillMaxWidth: true, padding: 14, verticalAlignment: "center" }, [

@@ -1,5 +1,7 @@
 // DL14/DL15：跨重载保留的轮询状态（UI 重载不会重置这两个）
 var __dlPolling = false;
+var __xyLastKick = 0;
+var __xyKickBusy = false;
 var __dlPollGen = 0;
 
 
@@ -261,8 +263,11 @@ function Screen(ctx) {
     try {
       var d0 = await callTool('on_air:get_download_status');
       if (d0 && d0.success && d0.data && d0.data.status && d0.data.status !== 'idle') {
-        applyDl(d0.data);
-        if (d0.data.status === 'running') startPollOnce();
+        var __staleFail = (d0.data.status === 'failed' && !d0.data.path && (Date.now() - Number(d0.data.updated_at || 0)) > 600000);
+        if (!__staleFail) {
+          applyDl(d0.data);
+          if (d0.data.status === 'running') startPollOnce();
+        }
       }
     } catch (eD0) { }
     if (alreadyInited) return;     // 输入框只在首次回填，避免覆盖正在编辑的内容
@@ -514,13 +519,18 @@ function Screen(ctx) {
       }
       if (dl && dl.status === 'running') { startPollOnce(); return; }
       var total0 = Number((updData && updData.asset_size) || 0);
+      try { if (ctx.showToast) await ctx.showToast('开始下载' + (total0 > 0 ? '（约 ' + kbTxt(total0) + '）' : '') + '：下载期间面板不会刷新，完成后会提示'); } catch (eT0) { }
       setDl(JSON.stringify({ status: 'running', received: 0, total: total0, percent: 0, message: '正在获取最新版本信息…' }));
       setUpdMsg('正在获取最新版本信息…');
       callTool('on_air:download_update', { force: true }).then(function (r) {
-        if (r && r.data && r.success) applyDl({ status: 'done', received: r.data.size || 0, total: r.data.total || r.data.size || 0, percent: 100, path: r.data.path, message: r.message });
+        if (r && r.data && r.success) {
+          applyDl({ status: 'done', received: r.data.size || 0, total: r.data.total || r.data.size || 0, percent: 100, path: r.data.path, message: r.message });
+          try { if (ctx.showToast) ctx.showToast('下载完成：' + kbTxt(r.data.size || 0)); } catch (eT1) { }
+        }
         else if (r && !r.success) {
           var isBusy = !!(r.data && r.data.busy);
           setUpdMsg(isBusy ? '下载仍在进行中，等它完成就好' : ('下载失败：' + ((r && r.message) || '')));
+          try { if (ctx.showToast && !isBusy) ctx.showToast('下载失败：' + ((r && r.message) || '')); } catch (eT2) { }
         }
       });
       startPollOnce();
@@ -735,6 +745,12 @@ function Screen(ctx) {
   children.push(ctx.UI.Button({ containerColor: C.card, contentColor: C.text, shape: { cornerRadius: 12, type: "rounded" }, text: "检查更新", fillMaxWidth: true, onClick: doForceCheck }));
   children.push(ctx.UI.Text({ text: 'v' + ((st && st.current_version) ? String(st.current_version) : '—') + ' · 打开面板时自动检查更新', fontSize: 11, color: C.dim }));
 
+  // v2.2.2：每次进入/回到本页都刷新一次（节流 1.5s，避免渲染循环）
+  if (!__xyKickBusy && (Date.now() - __xyLastKick) > 1500) {
+    __xyLastKick = Date.now();
+    __xyKickBusy = true;
+    refresh().then(function () { __xyKickBusy = false; }).catch(function () { __xyKickBusy = false; });
+  }
   return ctx.UI.LazyColumn({ containerColor: P.bg, backgroundColor: P.bg,
     onLoad: async function () {
       await initOnce();
