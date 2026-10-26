@@ -580,7 +580,7 @@ function Screen(ctx) {
     ["控制台", "toolpkg:com.operit.on_air:ui:on_air_console", "直调 API：掷骰 / 查沉默 / 全量读数 / 工具清单", "Terminal"]
   ];
 
-  // ===== 渲染（v2.2.1 视觉层次）=====
+  // ===== 渲染（v2.2.2 视觉层次）=====
     var C = {
     bg: P.bg,
     card: P.card,
