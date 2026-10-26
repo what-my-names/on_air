@@ -641,14 +641,11 @@ function Screen(ctx) {
       ctx.UI.Text({ text: "随机上线", fontSize: 26, fontWeight: "bold", color: C.text }),
       ctx.UI.Text({ text: "装成真人的主动消息 · v" + ((st && st.current_version) ? String(st.current_version) : '—'), fontSize: 12, color: C.dim })
     ]),
-    ctx.UI.Row({ spacing: 8, verticalAlignment: "center" }, [
-    ctx.UI.Button({ containerColor: C.card, contentColor: C.text, border: { width: 1, color: C.line }, shape: { cornerRadius: 10, type: "rounded" }, text: "刷新", onClick: function () { __xyLastKick = 0; doRefresh(); } }),
     ctx.UI.Surface({ containerColor: C.primary, alpha: 0.14, shape: { cornerRadius: 100, type: "rounded" } }, [
       ctx.UI.Row({ padding: { horizontal: 10, vertical: 6 }, spacing: 6, verticalAlignment: "center" }, [
         ctx.UI.Box({ width: 7, height: 7, background: C.primary, shape: { cornerRadius: 4, type: "rounded" } }),
         ctx.UI.Text({ text: statusText(), fontSize: 11, fontWeight: "bold", color: C.primary, maxLines: 1 })
       ])
-    ])
     ])
   ]));
 

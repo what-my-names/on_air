@@ -48,7 +48,7 @@ function Screen(ctx) {
     var surfaceVariant = scheme.surfaceVariant || "#F2F2F2";
     var cardBg = surfaceVariant;
     var primary = scheme.primary || "#222222";
-    var onPrimary2 = scheme.onPrimary || "#FFFFFF";
+    var onPrimary = scheme.onPrimary || "#FFFFFF";
 
     var onS = ctx.useState("r_on", false); var on = onS[0], setOn = onS[1];
     var dOnS = ctx.useState("r_don", true); var dOn = dOnS[0], setDOn = dOnS[1];
@@ -176,7 +176,7 @@ function Screen(ctx) {
 
     // 目标对话已统一到「参数设置」页（chat_ids），本页不再提供入口
 
-children.push(ctx.UI.Button({ contentColor: onPrimary2, color: onPrimary2, textColor: onPrimary2, containerColor: primary, shape: { cornerRadius: 12, type: "rounded" }, text: "返回主页", fillMaxWidth: true, onClick: goHome }));
+children.push(ctx.UI.Button({ contentColor: onPrimary, color: onPrimary, textColor: onPrimary, containerColor: primary, shape: { cornerRadius: 12, type: "rounded" }, text: "返回主页", fillMaxWidth: true, onClick: goHome }));
     if (msg) {
         children.push(ctx.UI.Card({ containerColor: surfaceVariant, border: { width: 1, color: scheme.outline || surfaceVariant }, backgroundColor: cardBg, shape: { cornerRadius: 16, type: "rounded" }, padding: 0, elevation: 0, fillMaxWidth: true }, [
             ctx.UI.Row({ backgroundColor: cardBg, fillMaxWidth: true, padding: 14, verticalAlignment: "center" }, [

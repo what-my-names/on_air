@@ -57,6 +57,7 @@ function Screen(ctx) {
     var holS = ctx.useState("s_hol", []); var holidays = holS[0], setHolidays = holS[1];
     var holFetchS = ctx.useState("s_hf", ""); var holFetch = holFetchS[0], setHolFetch = holFetchS[1];
     var busyS = ctx.useState("s_busy", false); var busy = busyS[0], setBusy = busyS[1];
+    var holBusyS = ctx.useState("s_hbusy", false); var holBusy = holBusyS[0], setHolBusy = holBusyS[1];
     var onS = ctx.useState("s_on", true); var dateQuietOn = onS[0], setDateQuietOn = onS[1];
     var schS = ctx.useState("s_sch", false); var schoolAuto = schS[0], setSchoolAuto = schS[1];
     var stuS = ctx.useState("s_stu", true); var studentMode = stuS[0], setStudentMode = stuS[1];
@@ -112,15 +113,16 @@ function Screen(ctx) {
     }
 
     async function doFetchHolidays() {
+        setHolBusy(true);
         setBusy(true);
         try {
             var r = await callTool("on_air:fetch_holidays", {});
             setMsg(r && r.success ? "节假日表已更新" : ("更新失败：" + ((r && r.message) || "")));
             if (r && r.success) await load();
         } catch (e) { setMsg("出错：" + String((e && e.message) || e)); }
+        setHolBusy(false);
         setBusy(false);
     }
-
     function goHome() { if (ctx.navigate) ctx.navigate("toolpkg:com.operit.on_air:ui:on_air_sidebar"); }
 
     var first = new Date(cy, cm, 1);
@@ -184,7 +186,7 @@ function Screen(ctx) {
         return parts.join(" · ");
     })();
     flags.push(ctx.UI.Text({ text: (holFetch ? ("节假日表更新于 " + holFetch) : "节假日表尚未联网更新（暂用内置表）") + " · " + holYrStat, style: "bodySmall", color: onSurfaceVariant }));
-    flags.push(ctx.UI.Button({ contentColor: onPrimary, color: onPrimary, textColor: onPrimary, containerColor: primary, shape: { cornerRadius: 12, type: "rounded" }, text: busy ? "正在更新节假日表…" : "立即更新节假日表", fillMaxWidth: true, onClick: doFetchHolidays }));
+    flags.push(ctx.UI.Button({ contentColor: onPrimary, color: onPrimary, textColor: onPrimary, containerColor: primary, shape: { cornerRadius: 12, type: "rounded" }, text: holBusy ? "正在更新节假日表…" : "立即更新节假日表", fillMaxWidth: true, onClick: doFetchHolidays }));
     children.push(ctx.UI.Card({ containerColor: surfaceVariant, border: { width: 1, color: scheme.outline || surfaceVariant }, backgroundColor: cardBg, shape: { cornerRadius: 16, type: "rounded" }, padding: 0, elevation: 0, fillMaxWidth: true }, [
         ctx.UI.Column({ backgroundColor: cardBg, fillMaxWidth: true, padding: 14, spacing: 6 }, flags)
     ]));
