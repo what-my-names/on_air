@@ -2,7 +2,7 @@
 
 [中文](README.md)
 
-> **Current Release Status**: v2.2.1+2 (Pre-release). Functional but still being polished; feedback welcome.
+> **Current Release Status**: **v2.2.2 (stable)**. A usability cleanup of v2.2.1: holiday table now really updates, home readings no longer stick at "not loaded", console trimmed, colors and button borders unified.
 
 > **Authorship Notice**: This project is a "novice × AI creation" — co-developed by a novice developer together with an AI assistant. The code and docs are still growing; corrections, issues and PRs are welcome.
 
@@ -106,7 +106,7 @@ Every tool exported by this plugin is auto-registered by the Operit framework, s
 | check_update | Check remote releases (Beta aware) | `on_air:check_update {force:true}` |
 | download_update | Download the latest .toolpkg into Download/Operit | `on_air:download_update {force:true}` |
 | get_download_status | Read download progress/result | `on_air:get_download_status` |
-| skip_update | Skip a version | `on_air:skip_update {version:"2.2.1+2"}` |
+| skip_update | Skip a version | `on_air:skip_update {version:"2.2.2"}` |
 | open_url | Open a link in the browser | `on_air:open_url {url:"https://…"}` |
 | get_chats | List local chats | `on_air:get_chats` |
 | get_character_cards | List local character cards (tool-only) | `on_air:get_character_cards` |
