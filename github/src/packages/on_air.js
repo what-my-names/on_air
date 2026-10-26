@@ -763,7 +763,7 @@ function createHttpClient(timeoutMs) {
 }
 
 // ==================== v2.2.0：GitHub Release 更新检测 ====================
-var CURRENT_VERSION = "2.2.2";  // 每次发布同步修改
+var CURRENT_VERSION = "v2.2.2";  // 每次发布同步修改
 var UPDATE_REPO = "what-my-names/on_air";
 var UPDATE_API = 'https://api.github.com/repos/' + UPDATE_REPO + '/releases?per_page=5';
 var UPDATE_TTL_MS = 6 * 60 * 60 * 1000; // 6 小时缓存

@@ -625,7 +625,7 @@ function Screen(ctx) {
   children.push(ctx.UI.Row({ fillMaxWidth: true, horizontalArrangement: "spaceBetween", verticalAlignment: "center" }, [
     ctx.UI.Column({ spacing: 3 }, [
       ctx.UI.Text({ text: "随机上线", fontSize: 26, fontWeight: "bold", color: C.text }),
-      ctx.UI.Text({ text: "装成真人的主动消息 · v" + ((st && st.current_version) ? String(st.current_version) : '—'), fontSize: 12, color: C.dim })
+      ctx.UI.Text({ text: "装成真人的主动消息 · " + ((st && st.current_version) ? (/^v/i.test(String(st.current_version)) ? String(st.current_version) : ("v" + String(st.current_version))) : "v—"), fontSize: 12, color: C.dim })
     ]),
     ctx.UI.Surface({ containerColor: C.primary, alpha: 0.14, shape: { cornerRadius: 100, type: "rounded" } }, [
       ctx.UI.Row({ padding: { horizontal: 10, vertical: 6 }, spacing: 6, verticalAlignment: "center" }, [
@@ -746,7 +746,7 @@ function Screen(ctx) {
     ]));
   }
   children.push(ctx.UI.Button({ containerColor: C.card, border: { width: 1, color: C.line }, contentColor: C.text, shape: { cornerRadius: 12, type: "rounded" }, text: "检查更新", fillMaxWidth: true, onClick: doForceCheck }));
-  children.push(ctx.UI.Text({ text: 'v' + ((st && st.current_version) ? String(st.current_version) : '—') + ' · 打开面板时自动检查更新', fontSize: 11, color: C.dim }));
+  children.push(ctx.UI.Text({ text: ((st && st.current_version) ? (/^v/i.test(String(st.current_version)) ? String(st.current_version) : ('v' + String(st.current_version))) : 'v—') + ' · 打开面板时自动检查更新', fontSize: 11, color: C.dim }));
 
   return ctx.UI.LazyColumn({ containerColor: P.bg, backgroundColor: P.bg,
     onLoad: async function () {
