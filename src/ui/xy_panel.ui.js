@@ -1,5 +1,10 @@
 // DL14/DL15：跨重载保留的轮询状态（UI 重载不会重置这两个）
 var __dlPolling = false;
+var __xyLastKick = 0;
+var __xyKickBusy = false;
+var __xyCache = { st: null, fm: null };   // 页面重建时先用上次数据渲染，避免「未加载」闪断
+var __xyPollTimer = null;   // 页面存活期间的自动刷新定时器
+var __xyPollCount = 0;
 var __dlPollGen = 0;
 
 
@@ -30,7 +35,7 @@ function Screen(ctx) {
     dim: scheme.onSurfaceVariant || "#666666"
   };
   // ===== 状态 =====
-  var loadingState = ctx.useState("loading", true);
+  var loadingState = ctx.useState("loading", !__xyCache.st);
   var setLoading = loadingState[1];
 
   var msgState = ctx.useState("msg", "");
@@ -49,11 +54,11 @@ function Screen(ctx) {
   var updData = {};
   try { updData = JSON.parse(updRaw || "{}"); } catch (e0) { updData = {}; }
 
-  var stState = ctx.useState("st", null);   // get_xy 的 data
+  var stState = ctx.useState("st", __xyCache.st);   // get_xy 的 data（初值取缓存）
   var st = stState[0];
   var setSt = stState[1];
 
-  var fmState = ctx.useState("fm", null);   // get_formula 的 data
+  var fmState = ctx.useState("fm", __xyCache.fm);   // get_formula 的 data（初值取缓存）
   var fm = fmState[0];
   var setFm = fmState[1];
 
@@ -246,9 +251,9 @@ function Screen(ctx) {
   async function refresh() {
     setLoading(true);
     var r1 = await callTool("on_air:get_xy");
-    if (r1.success && r1.data) setSt(r1.data);
+    if (r1.success && r1.data) { setSt(r1.data); __xyCache.st = r1.data; }
     var r2 = await callTool("on_air:get_formula");
-    if (r2.success && r2.data) setFm(r2.data);
+    if (r2.success && r2.data) { setFm(r2.data); __xyCache.fm = r2.data; }
     setLoading(false);
     return { st: r1.success ? r1.data : null, fm: r2.success ? r2.data : null };
   }
@@ -261,8 +266,11 @@ function Screen(ctx) {
     try {
       var d0 = await callTool('on_air:get_download_status');
       if (d0 && d0.success && d0.data && d0.data.status && d0.data.status !== 'idle') {
-        applyDl(d0.data);
-        if (d0.data.status === 'running') startPollOnce();
+        var __staleFail = (d0.data.status === 'failed' && !d0.data.path && (Date.now() - Number(d0.data.updated_at || 0)) > 600000);
+        if (!__staleFail) {
+          applyDl(d0.data);
+          if (d0.data.status === 'running') startPollOnce();
+        }
       }
     } catch (eD0) { }
     if (alreadyInited) return;     // 输入框只在首次回填，避免覆盖正在编辑的内容
@@ -514,13 +522,18 @@ function Screen(ctx) {
       }
       if (dl && dl.status === 'running') { startPollOnce(); return; }
       var total0 = Number((updData && updData.asset_size) || 0);
+      try { if (ctx.showToast) await ctx.showToast('开始下载' + (total0 > 0 ? '（约 ' + kbTxt(total0) + '）' : '') + '：下载期间面板不会刷新，完成后会提示'); } catch (eT0) { }
       setDl(JSON.stringify({ status: 'running', received: 0, total: total0, percent: 0, message: '正在获取最新版本信息…' }));
       setUpdMsg('正在获取最新版本信息…');
       callTool('on_air:download_update', { force: true }).then(function (r) {
-        if (r && r.data && r.success) applyDl({ status: 'done', received: r.data.size || 0, total: r.data.total || r.data.size || 0, percent: 100, path: r.data.path, message: r.message });
+        if (r && r.data && r.success) {
+          applyDl({ status: 'done', received: r.data.size || 0, total: r.data.total || r.data.size || 0, percent: 100, path: r.data.path, message: r.message });
+          try { if (ctx.showToast) ctx.showToast('下载完成：' + kbTxt(r.data.size || 0)); } catch (eT1) { }
+        }
         else if (r && !r.success) {
           var isBusy = !!(r.data && r.data.busy);
           setUpdMsg(isBusy ? '下载仍在进行中，等它完成就好' : ('下载失败：' + ((r && r.message) || '')));
+          try { if (ctx.showToast && !isBusy) ctx.showToast('下载失败：' + ((r && r.message) || '')); } catch (eT2) { }
         }
       });
       startPollOnce();
@@ -656,15 +669,15 @@ function Screen(ctx) {
     }
     banner.push(ctx.UI.Row({ spacing: 8, fillMaxWidth: true }, [
       ctx.UI.Button({ containerColor: C.primary, contentColor: C.onPrimary, shape: { cornerRadius: 12, type: "rounded" }, text: (dlSt === 'running' ? '正在下载…' : (dlSt === 'done' ? '重新下载' : '下载更新包')), onClick: doDownloadUpdate, fillMaxWidth: true, weight: 1 }),
-      ctx.UI.Button({ containerColor: C.card, contentColor: C.text, shape: { cornerRadius: 12, type: "rounded" }, text: "稍后", onClick: function () { setUpdHide(true); }, weight: 1 }),
-      ctx.UI.Button({ containerColor: C.card, contentColor: C.text, shape: { cornerRadius: 12, type: "rounded" }, text: "跳过此版本", onClick: doSkipUpdate, weight: 1 })
+      ctx.UI.Button({ containerColor: C.card, border: { width: 1, color: C.line }, contentColor: C.text, shape: { cornerRadius: 12, type: "rounded" }, text: "稍后", onClick: function () { setUpdHide(true); }, weight: 1 }),
+      ctx.UI.Button({ containerColor: C.card, border: { width: 1, color: C.line }, contentColor: C.text, shape: { cornerRadius: 12, type: "rounded" }, text: "跳过此版本", onClick: doSkipUpdate, weight: 1 })
     ]));
     banner.push(ctx.UI.Row({ spacing: 8, fillMaxWidth: true }, [
-      ctx.UI.Button({ containerColor: C.card, contentColor: C.text, shape: { cornerRadius: 12, type: "rounded" }, text: "打开官网下载", onClick: doOpenSite, fillMaxWidth: true })
+      ctx.UI.Button({ containerColor: C.card, border: { width: 1, color: C.line }, contentColor: C.text, shape: { cornerRadius: 12, type: "rounded" }, text: "打开官网下载", onClick: doOpenSite, fillMaxWidth: true })
     ]));
     if (updPath) banner.push(ctx.UI.Text({ text: '已下载到 ' + updPath + '（用「包管理 → 导入」安装）', fontSize: 11, color: C.dim }));
     if (updMsg && dlSt !== 'done') banner.push(ctx.UI.Text({ text: updMsg, fontSize: 12, color: C.dim }));
-    children.push(ctx.UI.Card({ containerColor: C.soft, shape: { cornerRadius: 16, type: "rounded" }, border: { width: 1, color: C.primary, alpha: 0.4 }, elevation: 0, fillMaxWidth: true }, [
+    children.push(ctx.UI.Card({ containerColor: C.card, shape: { cornerRadius: 16, type: "rounded" }, border: { width: 1, color: C.primary, alpha: 0.4 }, elevation: 0, fillMaxWidth: true }, [
       ctx.UI.Column({ padding: 14, spacing: 10, fillMaxWidth: true }, banner)
     ]));
   }
@@ -675,7 +688,7 @@ function Screen(ctx) {
   var boundChatCount = (fm && Array.isArray(fm.chat_ids)) ? fm.chat_ids.length : 0;
   var cardTxt = boundChatCount ? ("已绑 " + boundChatCount + " 个") : "当前对话";
   children.push(ctx.UI.Card({
-    containerColor: C.card, shape: { cornerRadius: 20, type: "rounded" },
+    containerColor: C.card, border: { width: 1, color: C.line }, shape: { cornerRadius: 20, type: "rounded" },
     border: { width: 1, color: C.line }, elevation: 2, fillMaxWidth: true
   }, [
     ctx.UI.Column({ padding: 18, spacing: 12, fillMaxWidth: true }, [
@@ -707,7 +720,7 @@ function Screen(ctx) {
       return navRow(it[3], it[0], it[2], it[1]);
     })(NAV_ITEMS[ni]));
   }
-  children.push(ctx.UI.Card({ containerColor: C.card, shape: { cornerRadius: 18, type: "rounded" }, border: { width: 1, color: C.line }, elevation: 1, fillMaxWidth: true }, [
+  children.push(ctx.UI.Card({ containerColor: C.card, border: { width: 1, color: C.line }, shape: { cornerRadius: 18, type: "rounded" }, border: { width: 1, color: C.line }, elevation: 1, fillMaxWidth: true }, [
     ctx.UI.Column({ padding: 0, spacing: 0, fillMaxWidth: true }, navRows)
   ]));
 
@@ -718,27 +731,33 @@ function Screen(ctx) {
     text: "立即触发唤醒", fillMaxWidth: true, onClick: doAwake
   }));
   children.push(ctx.UI.Row({ spacing: 8, fillMaxWidth: true }, [
-    ctx.UI.Button({ containerColor: C.card, contentColor: C.text, shape: { cornerRadius: 12, type: "rounded" }, text: "刷新状态", weight: 1, onClick: doRefresh }),
-    ctx.UI.Button({ containerColor: C.card, contentColor: C.text, shape: { cornerRadius: 12, type: "rounded" }, text: "重置冷却", weight: 1, onClick: doResetCool }),
-    ctx.UI.Button({ containerColor: C.card, contentColor: C.text, shape: { cornerRadius: 12, type: "rounded" }, text: "重置计数", weight: 1, onClick: doCoax })
+    ctx.UI.Button({ containerColor: C.card, border: { width: 1, color: C.line }, contentColor: C.text, shape: { cornerRadius: 12, type: "rounded" }, text: "刷新状态", weight: 1, onClick: doRefresh }),
+    ctx.UI.Button({ containerColor: C.card, border: { width: 1, color: C.line }, contentColor: C.text, shape: { cornerRadius: 12, type: "rounded" }, text: "重置冷却", weight: 1, onClick: doResetCool }),
+    ctx.UI.Button({ containerColor: C.card, border: { width: 1, color: C.line }, contentColor: C.text, shape: { cornerRadius: 12, type: "rounded" }, text: "重置计数", weight: 1, onClick: doCoax })
   ]));
 
   // ---- 消息 ----
   if (msg) {
-    children.push(ctx.UI.Card({ containerColor: C.soft, shape: { cornerRadius: 12, type: "rounded" }, elevation: 0, fillMaxWidth: true }, [
+    children.push(ctx.UI.Card({ containerColor: C.card, shape: { cornerRadius: 12, type: "rounded" }, elevation: 0, fillMaxWidth: true }, [
       ctx.UI.Row({ padding: 12, verticalAlignment: "center", spacing: 8, fillMaxWidth: true }, [
         ctx.UI.Icon({ name: "CheckCircle", size: 18, tint: C.primary }),
         ctx.UI.Text({ text: msg, fontSize: 13, color: C.text })
       ])
     ]));
   }
-  children.push(ctx.UI.Button({ containerColor: C.card, contentColor: C.text, shape: { cornerRadius: 12, type: "rounded" }, text: "检查更新", fillMaxWidth: true, onClick: doForceCheck }));
+  children.push(ctx.UI.Button({ containerColor: C.card, border: { width: 1, color: C.line }, contentColor: C.text, shape: { cornerRadius: 12, type: "rounded" }, text: "检查更新", fillMaxWidth: true, onClick: doForceCheck }));
   children.push(ctx.UI.Text({ text: 'v' + ((st && st.current_version) ? String(st.current_version) : '—') + ' · 打开面板时自动检查更新', fontSize: 11, color: C.dim }));
 
   return ctx.UI.LazyColumn({ containerColor: P.bg, backgroundColor: P.bg,
     onLoad: async function () {
       await initOnce();
       await checkUpdateUI();
+      // v2.2.2：compose_dsl 的异步 setState 不触发重绘，必须在 onLoad（action 分发期）内周期刷新
+      // 时长覆盖「进子页再手势返回」的常见间隔：3 秒 × 200 次 ≈ 10 分钟
+      for (var __qi = 0; __qi < 40; __qi++) {
+        await sleepMs(3000);
+        try { await refresh(); } catch (eQ) { }
+      }
     },
     fillMaxSize: true,
     padding: 16,

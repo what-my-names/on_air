@@ -199,6 +199,11 @@ var __dlRunning = false;
 var __dlStartedAt = 0;
 
 var BASE_DIR = "/sdcard/Download/Operit/plugins/on_air/";
+// v2.2.2：统一的消息提示（系统 toast）。任何入口（面板/别的插件/工作流）操作后都能看到反馈
+function notifyUser(msg, title) {
+    try { if (Tools.System && Tools.System.toast) Tools.System.toast(String(msg || "")); } catch (e1) { }
+    if (title) { try { if (Tools.System && Tools.System.sendNotification) Tools.System.sendNotification(String(msg || ""), String(title)); } catch (e2) { } }
+}
 var STATE_PATH = BASE_DIR + "state.json";
 var FORMULA_PATH = BASE_DIR + "formula.json";
 
@@ -758,7 +763,7 @@ function createHttpClient(timeoutMs) {
 }
 
 // ==================== v2.2.0：GitHub Release 更新检测 ====================
-var CURRENT_VERSION = "2.2.1+2";  // 每次发布同步修改
+var CURRENT_VERSION = "2.2.2";  // 每次发布同步修改
 var UPDATE_REPO = "what-my-names/on_air";
 var UPDATE_API = 'https://api.github.com/repos/' + UPDATE_REPO + '/releases?per_page=5';
 var UPDATE_TTL_MS = 6 * 60 * 60 * 1000; // 6 小时缓存
@@ -883,38 +888,42 @@ async function fetchLatestRelease(state, opts) {
     }
 }
 
-// ============ 节假日联网拉取（v1.5.8）============
-// 数据源：timor.tech 免费节假日 API（无需 key）。GET /api/holiday/year/{year}
-// 返回 JSON：{ code:0, holiday: { "MM-DD": { holiday:true|false, name:"春节", date:"YYYY-MM-DD", ... } } }
-// 我们只取 holiday=true（法定放假）的日期。零 token 消耗：这是普通 HTTP 请求，不经过任何 AI。
+// ============ 节假日联网拉取（v2.2.2 换源）============
+// 旧源已被 Cloudflare 拦截（返回 HTML 挑战页，JSON 解析必失败），换用静态 JSON 镜像
+// 数据：NateScarlet/holiday-cn，三路镜像依次尝试
+// 结构：{ year, days: [{ date:"YYYY-MM-DD", isOffDay:true|false, name }] }，只取 isOffDay=true
 var holidayFetching = false; // 模块级防并发标记
-
 async function fetchHolidayYear(year) {
-    try {
-        var client = createHttpClient(15000);
-        var req = client.newRequest()
-            .url("https://timor.tech/api/holiday/year/" + year)
-            .method("GET")
-            .headers({ "User-Agent": "Operit/on_air" })
-            .build();
-        var resp = await req.execute();
-        if (!resp.isSuccessful()) return [];
-        var data = resp.json();
-        var holiday = data && data.holiday;
-        if (!holiday || typeof holiday !== "object") return [];
-        var out = [];
-        for (var k in holiday) {
-            var item = holiday[k];
-            if (!item || item.holiday !== true) continue;
-            var d = item.date || (year + "-" + k);
-            if (/^\d{4}-\d{2}-\d{2}$/.test(String(d))) out.push(String(d));
-        }
-        return out;
-    } catch (e) {
-        return [];
+    var urls = [
+        "https://fastly.jsdelivr.net/gh/NateScarlet/holiday-cn@master/" + year + ".json",
+        "https://gcore.jsdelivr.net/gh/NateScarlet/holiday-cn@master/" + year + ".json",
+        "https://ghproxy.net/https://raw.githubusercontent.com/NateScarlet/holiday-cn/master/" + year + ".json"
+    ];
+    for (var ui = 0; ui < urls.length; ui++) {
+        try {
+            var client = createHttpClient(15000);
+            var req = client.newRequest()
+                .url(urls[ui])
+                .method("GET")
+                .headers({ "User-Agent": "Operit/on_air", "Accept": "application/json" })
+                .build();
+            var resp = await req.execute();
+            if (!resp.isSuccessful()) continue;
+            var data = resp.json();
+            var days = (data && data.days) || [];
+            if (!days.length) continue;
+            var out = [];
+            for (var i = 0; i < days.length; i++) {
+                var it = days[i];
+                if (!it || it.isOffDay !== true) continue;
+                var d = String(it.date || "");
+                if (/^[0-9]{4}-[0-9]{2}-[0-9]{2}$/.test(d)) out.push(d);
+            }
+            if (out.length) return out;
+        } catch (e) { }
     }
+    return [];
 }
-
 // 拉取今年+明年的节假日（12月时明年信息通常已公布），合并去重。
 async function fetchHolidaysAll() {
     var now = new Date();
@@ -1674,8 +1683,10 @@ exports.manual_awake = async function (params) {
     try {
         var sentRef = await sendToAi(formula, msg);
         chatRef = { mode: "manual_self_chat", ok: true, dispatched: true, role_card_id: (sentRef && sentRef.role_card_id) || "" };
+        notifyUser("已手动发出：" + String(msg || "").slice(0, 40), "随机上线");
     } catch (e) {
         chatRef = { mode: "manual_self_chat", ok: false, error: String(e && e.message || e) };
+        notifyUser("手动触发失败：" + String((e && e.message) || e), "随机上线");
     }
     complete({
         success: true,
@@ -1996,6 +2007,7 @@ exports.update_formula = async function (params) {
     for (k in formula) merged[k] = formula[k];
     for (k in patch) merged[k] = patch[k];
     await saveFormula(merged);
+    notifyUser("已保存：" + Object.keys(patch).join("、"));
     complete({
         success: true,
         message: "公式参数已更新",
@@ -2788,6 +2800,8 @@ exports.download_update = async function (params) {
             await Tools.Files.move(part, path);
             var finTotal = total > 0 ? total : realSize;
             await writeDlState({ status: 'done', received: realSize, total: finTotal, path: path, version: rel.tag, attempts: attempt, message: '已下载 ' + fmtSize(realSize) + ' / 共 ' + fmtSize(finTotal) + ' → ' + path });
+            try { if (Tools.System && Tools.System.sendNotification) Tools.System.sendNotification('更新包已下载（' + fmtSize(realSize) + '）：' + path + ' → 去包管理导入', '随机上线 更新下载完成'); } catch (eN) { }
+            try { if (Tools.System && Tools.System.toast) Tools.System.toast('更新包已下载：' + fmtSize(realSize)); } catch (eT) { }
             complete({ success: true, message: '更新包已下载（' + fmtSize(realSize) + '）', data: { path: path, size: realSize, total: finTotal, version: rel.tag, attempts: attempt } });
             return;
         } catch (e) {
@@ -2841,6 +2855,7 @@ exports.fetch_holidays = async function (params) {
         }
         formula.holiday_fetch_date = todayStr();
         await saveFormula(formula);
+        notifyUser("节假日表已更新：" + formula.holiday_dates.length + " 天" + (dates.length ? "" : "（联网失败，用内置表）"));
         complete({
             success: true,
             message: "节假日信息已更新，共 " + formula.holiday_dates.length + " 个节假日日期（联网" + (dates.length ? "成功" : "失败，使用内置表") + "）",
@@ -2852,6 +2867,7 @@ exports.fetch_holidays = async function (params) {
             }
         });
     } catch (e) {
+        notifyUser("节假日拉取失败：" + String((e && e.message) || e));
         complete({ success: false, message: "拉取失败：" + String((e && e.message) || e) });
     } finally {
         holidayFetching = false;
