@@ -198,12 +198,7 @@ function Screen(ctx) {
     g2.push(softBtn("刷新读数", function () { load(); }));
     if (rawRead) g2.push(resultBlock(rawRead));
     children.push(card("二、全量读数", g2));
-    var g4 = [];
-    g4.push(note("本插件共 17 个工具，其它插件 / 工作流可直接调用（前缀 on_air:）。括号里是它在哪个页面能点到。"));
-    g4.push(note("get_xy 读状态（主页）｜ compute_y 算概率（参数页）｜ set_x 设 X（参数页 / 本页）｜ increment_x X+1（工作流）｜ check_activity 查沉默（本页）｜ roll_dice 掷骰（本页）｜ manual_awake 手动唤醒（主页）｜ coax 安抚复位（主页）｜ reset_cooldown 重置冷却（主页）｜ update_formula 改配置（各页保存）｜ get_formula 读配置（各页加载）｜ maybe_awake 运行态掷骰（本页）｜ enter_running 进运行态（本页）｜ suggest_quiet 静默建议（本页 / 免打扰页）｜ link_agent 目标对话（免打扰页）｜ fetch_holidays 拉节假日（本页 / 日期页）｜ api_docs 本文档"));
-    g4.push(note("完整字段说明见仓库 README 的「工具」章节；上面已列出全部 17 个工具与调用位置。"));
-    g4.push(softBtn("去提示词页（发消息的每一句话都能改）", goPrompts));
-    children.push(card("三、API 清单", g4));
+
     children.push(softBtn("返回主页", goHome));
     if (msg) {
         children.push(ctx.UI.Card({ containerColor: cardBg, border: { width: 1, color: scheme.outline || surfaceVariant }, backgroundColor: cardBg, shape: { cornerRadius: 12, type: "rounded" }, padding: 0, elevation: 0, fillMaxWidth: true }, [
