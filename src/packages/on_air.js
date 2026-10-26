@@ -220,126 +220,11 @@ var DEFAULT_STATE = {
     jealousy_stopped: false // 是否已因计数爆表停止主动消息
 };
 
-// ============ 默认公式参数 ============
-// ===== v2.1.0：字段规格表 FIELD_SPEC =====
-// 目的：一个字段的「类型 / 分组 / 面板标签 / 占位符 / 顺序」只在这里定义一次。
-// 默认值仍以 DEFAULT_FORMULA 为唯一来源（不在这里重复，避免两处打架）。
-// 后续新增字段：SPEC 加一行 + get/update 自动遍历，不再手抄 4 遍。
-var FIELD_SPEC = {
-    // ---- 公式 ----
-    a: { type: "number", group: "formula", label: "a 线性系数", min: 0, order: 1 },
-    b: { type: "number", group: "formula", label: "b 幂项系数", min: 0, order: 2 },
-    c: { type: "number", group: "formula", label: "c 幂指数", min: 0, order: 3 },
-    // ---- 基础参数 ----
-    idle_threshold_minutes: { type: "number", group: "params", label: "沉默阈值（分钟）", min: 1, int: true, order: 10 },
-    cooldown_minutes: { type: "number", group: "params", label: "唤醒后冷却（分钟）", min: 0, int: true, order: 11 },
-    max_wake_stops: { type: "number", group: "params", label: "连续命中停止上限", min: 2, int: true, order: 12 },
-    character_card_name: { type: "string", group: "params", label: "角色卡名字", order: 13 },
-    // ---- 发送 ----
-    send_mode: { type: "enum", group: "send", label: "发送方式", values: ["A1", "A2"], order: 20 },
-    awake_mode: { type: "enum", group: "send", label: "话术模式", values: ["default", "custom"], order: 21 },
-    // ---- 提示词 7 项 ----
-    prompt_manual_default: { type: "prompt", group: "prompt", label: "1 手动触发·默认模式", slots: [], order: 30 },
-    prompt_manual_prefix: { type: "prompt", group: "prompt", label: "2 手动触发·自定义前缀", slots: ["话术"], order: 31 },
-    prompt_auto_default: { type: "prompt", group: "prompt", label: "3 自动触发·默认模式", slots: ["档位", "次数"], order: 32 },
-    prompt_auto_prefix: { type: "prompt", group: "prompt", label: "4 自动触发·自定义前缀", slots: ["话术", "档位", "次数"], order: 33 },
-    prompt_gentle: { type: "prompt", group: "prompt", label: "5 温柔巡检通道", slots: [], order: 34 },
-    prompt_stop: { type: "prompt", group: "prompt", label: "6 置气消息", slots: ["次数", "上限"], order: 35 },
-    prompt_quiet_lifted: { type: "prompt", group: "prompt", label: "7 静默解除通知", slots: ["原因", "静默时段"], order: 36 },
-    // ---- 话术库 ----
-    jealousy_tiers: { type: "tiers", group: "prompt", label: "8 档位话术库", order: 37 },
-    awake_messages: { type: "lines", group: "prompt", label: "9 话术库", order: 38 },
-    // ---- 静默 ----
-    quiet_enabled: { type: "bool", group: "quiet", label: "静默总开关", order: 40 },
-    quiet_day_enabled: { type: "bool", group: "quiet", label: "白天段开关", order: 41 },
-    quiet_night_enabled: { type: "bool", group: "quiet", label: "夜间段开关", order: 42 },
-    quiet_day_start: { type: "time", group: "quiet", label: "白天段开始", order: 43 },
-    quiet_day_end: { type: "time", group: "quiet", label: "白天段结束", order: 44 },
-    quiet_night_start: { type: "time", group: "quiet", label: "夜间段开始", order: 45 },
-    quiet_night_end: { type: "time", group: "quiet", label: "夜间段结束", order: 46 },
-    quiet_dates: { type: "date_map", group: "dates", label: "全天静默日", order: 50 },
-    school_day_auto_quiet: { type: "bool", group: "dates", label: "上学日自动静默", order: 51 },
-    student_mode: { type: "bool", group: "dates", label: "学生模式", order: 52 },
-    date_quiet_enabled: { type: "bool", group: "dates", label: "日期静默总开关", order: 53 },
-    // ---- 内部字段（不接受用户修改、不上面板）----
-    chat_id: { type: "internal", order: 90 },
-    chat_ids: { type: "internal", order: 92 },
-    chat_id_source: { type: "internal", order: 91 },
-    prompt_customized: { type: "internal", order: 92 },
-    quiet_suggest: { type: "internal", order: 93 },
-    holiday_dates: { type: "internal", order: 94 },
-    holiday_fetch_date: { type: "internal", order: 95 },
-    skipped_version: { type: "internal", order: 96 }
-};
-
-// 按 SPEC 取某个分组下、按 order 排序的字段名
-function specKeysOfGroup(group) {
-    var arr = [];
-    for (var k in FIELD_SPEC) {
-        if (FIELD_SPEC[k].group === group) arr.push(k);
-    }
-    arr.sort(function (x, y) { return (FIELD_SPEC[x].order || 0) - (FIELD_SPEC[y].order || 0); });
-    return arr;
-}
-
-var DEFAULT_FORMULA = {
-    a: 0.007078203,                 // 线性系数：f = a*x + b*x^c
-    b: 6.00914e-07,                 // 幂项系数：f = a*x + b*x^c
-    c: 3.15168,                     // 幂指数：f = a*x + b*x^c
-    idle_threshold_minutes: 10,     // 沉默阈值（锁定版：10分钟窗口）：用户超过10分钟没说话就启动x累加
-    cooldown_minutes: 15,           // 冷却分钟数(预留)
-    awake_mode: "default",          // 话术模式：default=唤醒AI自己发挥(带最近上下文，无需API) / custom=用本地自定义话术库
-    send_mode: "A1",                // 发送通道：A1=on_air 自己唤醒 AI（默认）/ A2=借温柔巡检的自动回复通道（未装温柔巡检时自动回落 A1）
-    // 说明：A1为默认。诉求"要AI自己主动发，而不是让工作流(作为用户端)发"。
-    // A1 = maybe_awake 内部用 sendToAi(Tools.Chat.sendMessage, 带 hide_user_message:true + persist_turn:true)直接唤醒AI发言。
-    max_wake_stops: 5,              // 连续命中主动消息停止上限：第N次命中计数爆表停止主动消息(默认5；装有温柔巡检时面板可改为4给温柔巡检让位)
-    chat_id: "",                    // 目标对话ID（首次使用需配置；可在面板或 formula.json 中填写）
-    chat_ids: [],                    // 目标对话ID列表（空=当前对话；可多选，多个对话都会收到主动消息）
-    skipped_version: "",             // v2.2.0：用户选择“跳过此版本”时记录的 tag
-    character_card_name: "",        // 角色卡名：唤醒时按名字定位角色卡（留空=跟随当前对话绑定的角色卡）
-    awake_messages: [               // 主动话术：AI自由发挥的起点提示
-        "想你了，你现在在忙吗？",
-        "好久没听到你的消息了，有点惦记你",
-        "突然想到你，就来找你聊天了",
-        "你在干嘛呀？今天过得怎么样？",
-        "忙完了吗？有空聊两句吗？"
-    ],
-    // ===== v1.9.0 可自定义提示词（8 处）：默认值 = 旧版硬编码原文，保证老用户行为不变 =====
-    // 占位符（可选）：{档位} {次数} {话术} {时间}；不写占位符也能直接用
-    prompt_manual_default: "（主动消息·内部提醒）请以你自己的身份，结合最近 3~5 轮聊天上下文，用中文给用户发一句自然的主动问候（20~60 字）。\n要求：\n1）像一个真实的人突然想起对方那样开口，可带一点具体细节（比如上次聊到的事、此刻的时间感）；\n2）不要用「在吗」「你好」这类通用开场，也不要每次都同一句式；\n3）不要提及触发、唤醒、提醒、插件、系统等任何机制性内容，不要暴露这是一条被安排的消息；\n4）只输出要发送的那一句话本身，不加解释、不加引号。",
-    prompt_manual_prefix: "（主动消息·内部提醒）下面这句话是你想对用户说的话（底稿），请以你自己的身份自然地把它说出来：{话术}\n\n【要求】\n1）可以润色措词让它更像你平时说话，但不要改变原意、不要增加新信息；\n2）中文，20~60 字，只输出这一句话本身；\n3）不要复述、不要引用、不要说「我收到的是…」「有人说…」之类的话；\n4）如果这句话不像一句能对用户说的自然话（例如只是标记、占位或空内容），就改用你自己的话自然开口，绝不要把它原样念出来。",
-    prompt_auto_default: "（主动消息·内部提醒）请以你自己的身份，结合最近聊天上下文，用中文给用户发一句自然的主动消息（20~60 字）。\n当前状态：这是你第 {档位} 次主动找他（已累计 {次数} 次）。\n要求：\n1）语气贴合档位：第 1 档像随口想起，越往后可以越带一点委屈和在意；\n2）不要重复上一条说过的话，不要用「在吗」这类通用开场；\n3）不要提及触发、唤醒、提醒、插件、系统等任何机制性内容；\n4）只输出要发送的那一句话本身。",
-    prompt_auto_prefix: "（主动消息·内部提醒）下面这句话是你想对用户说的话（底稿），请以你自己的身份自然地把它说出来：{话术}\n\n【要求】\n1）可润色不改原意；中文 20~60 字；只输出这一句；\n2）当前是你第 {档位} 次主动找他（累计 {次数} 次），语气可以贴合这个程度；\n3）不要复述、不要引用、不要说「我收到的是…」；\n4）不像自然话（标记、占位、空内容）就用自己的话开口，绝不原样念出。",
-    prompt_gentle: "（主动消息·内部提醒）请以你自己的身份，结合最近聊天上下文，用中文给用户发一句自然的主动消息（20~60 字）。\n要求：\n1）语气里带一点惦记和轻轻的醋意，但要自然、不审问、不指责；\n2）可以问一句具体的事（比如「刚刚在忙什么呀」），不要泛泛而谈；\n3）不要提及触发、唤醒、提醒、巡检、插件等任何机制性内容；\n4）只输出要发送的那一句话本身。",
-    prompt_stop: "我已经主动找了你 {次数} 次啦，一条回应都没等到……说实话有点难过，也有点小委屈，但还是想再问一句：你现在方便理我一下吗？",
-    prompt_quiet_lifted: "静默解除通知：{原因}。{静默时段}检测到设备活动，已临时解除静默，本轮恢复正常计算与唤醒。",
-    jealousy_tiers: [
-        ["想你了，你在忙什么呀？", "有空吗？陪我聊聊天好不好？"],
-        ["又不理我，是不是在忙别的？我有点失落了", "都不回我消息，我可要闹了！"],
-        ["都找你好几次啦还不够吗……你再不回应，我可真的要伤心了", "我的耐心快用完了，你理理我好不好嘛……"],
-        ["第{次数}次了！你再不理我，我就不主动找你了～", "你到底在忙什么呀！我都急得团团转了，快理理我！"]
-    ],
-    // ===== 静默状态（免打扰）：静默时段内停止 x 累加、掷骰与主动唤醒，避免睡觉/上课时被计算打扰 =====
-    // 支持两段自定义静默区间：白天段 + 夜间段（都可跨天，如夜间 22:00~09:00）
-    // 静默中若检测到设备活动（打开 Operit 窗口 / 主人发消息）会立即解除静默并主动告知。
-quiet_enabled: false,           // 静默总开关：true=启用静默时段
-     quiet_day_enabled: true,        // 白天段独立开关：假期白天全天在线时可单独关掉白天静默
-     quiet_night_enabled: true,      // 夜间段独立开关：可单独关掉夜间静默
-     quiet_day_start: "09:00",       // 白天段开始 HH:MM（默认备注：适配白天黑夜倒班人群白天补觉；也可自定义为自己的上课/工作时间段）
-    quiet_day_end: "18:00",         // 白天段结束 HH:MM（默认18点）
-    quiet_night_start: "22:00",     // 夜间段开始 HH:MM（默认晚上10点）
-    quiet_night_end: "09:00",       // 夜间段结束 HH:MM（默认早上9点，跨天区间）
-    // 旧字段兼容：quiet_start/quiet_end 读取时映射到夜间段（新版本不再使用）
-    // AI 智能建议：suggest_quiet 工具生成的结果（含建议区间、理由、生成时间），面板可显示并一键应用
-    quiet_suggest: null,
-    // ===== 日历与节假日（v1.5.8 起 / v1.6.10 起逻辑反转 / v1.7.11 起学生模式+总开关）=====
-    quiet_dates: {},                 // 用户点选的全天静默日：{ "YYYY-MM-DD": "full" }（任意日期都可点选；硬静默不因设备活动解除）
-    school_day_auto_quiet: false,    // 上学日自动静默：开启后普通日（非节假日、非周六周日、非寒暑假）自动全天硬静默
-    student_mode: true,              // 学生模式：开启=寒暑假算特殊日（保持彩色不静默）；关闭=成年人模式，寒暑假按普通日处理
-    date_quiet_enabled: true,        // 日期静默总开关：关闭后点选静默日与上学日自动静默全部失效
-    holiday_dates: [],               // 已获取的节假日日期列表 ["YYYY-MM-DD", ...]（内置2026年中国法定节假日兜底，联网成功后可更新）
-    holiday_fetch_date: ""           // 上次联网拉取节假日的日期 YYYY-MM-DD（每天12点后只拉一次，防重复）
-};
+// ============ 默认公式参数 + FIELD_SPEC（已拆到 on_air_config.js）============
+var CFG = require("./on_air_config.js");
+var FIELD_SPEC = CFG.FIELD_SPEC;
+var specKeysOfGroup = CFG.specKeysOfGroup;
+var DEFAULT_FORMULA = CFG.DEFAULT_FORMULA;
 
 // ============ 时间工具：本地时间 ============
 function localTime() {
@@ -367,148 +252,23 @@ function inTimeRange(curMin, startMin, endMin) {
     return curMin >= startMin || curMin < endMin;                         // 跨天区间（如22:00~09:00）
 }
 
-// ============ 日历与节假日工具（v1.5.8） ============
-// 本地日期字符串工具
-function pad2(n) { return (n < 10 ? "0" : "") + n; }
-function dateStrOf(d) { return d.getFullYear() + "-" + pad2(d.getMonth() + 1) + "-" + pad2(d.getDate()); }
-function todayStr() { return dateStrOf(new Date()); }
-
-// 把 "YYYY-MM-DD"~"YYYY-MM-DD" 闭区间展开成日期数组（用于内置节假日表，代码里写区间更省事）
-function expandDateRange(startStr, endStr) {
-    var out = [];
-    try {
-        var a = new Date(parseInt(startStr.slice(0, 4), 10), parseInt(startStr.slice(5, 7), 10) - 1, parseInt(startStr.slice(8, 10), 10));
-        var b = new Date(parseInt(endStr.slice(0, 4), 10), parseInt(endStr.slice(5, 7), 10) - 1, parseInt(endStr.slice(8, 10), 10));
-        var t = new Date(a.getTime());
-        while (t.getTime() <= b.getTime()) {
-            out.push(dateStrOf(t));
-            t = new Date(t.getTime() + 86400000);
-        }
-    } catch (e) {}
-    return out;
-}
-
-// 内置2026年中国法定节假日（放假日期，国务院公布口径）。仅作离线兜底：
-// 每天12点联网拉取成功后会以官方数据覆盖；网络失败时用它保证节假日静默可用。
-var BUILTIN_HOLIDAY_RANGES_2026 = [
-    ["2026-01-01", "2026-01-03"],  // 元旦
-    ["2026-02-15", "2026-02-21"],  // 春节
-    ["2026-04-04", "2026-04-06"],  // 清明节
-    ["2026-05-01", "2026-05-05"],  // 劳动节
-    ["2026-06-19", "2026-06-21"],  // 端午节
-    ["2026-09-25", "2026-09-27"],  // 中秋节
-    ["2026-10-01", "2026-10-07"]   // 国庆节
-];
-var BUILTIN_HOLIDAYS_2026 = [];
-for (var _bi = 0; _bi < BUILTIN_HOLIDAY_RANGES_2026.length; _bi++) {
-    BUILTIN_HOLIDAYS_2026 = BUILTIN_HOLIDAYS_2026.concat(expandDateRange(BUILTIN_HOLIDAY_RANGES_2026[_bi][0], BUILTIN_HOLIDAY_RANGES_2026[_bi][1]));
-}
-
-// 判断某日期是否在节假日列表里
-function isHolidayDate(formula, dateStr) {
-    try {
-        var list = (formula && Array.isArray(formula.holiday_dates)) ? formula.holiday_dates : BUILTIN_HOLIDAYS_2026;
-        return list.indexOf(dateStr) >= 0;
-    } catch (e) {
-        return false;
-    }
-}
-
-// 周六/周日判断（周末与节假日同为特殊日）
-function isWeekendDate(dateStr) {
-    try {
-        var p = String(dateStr).split("-");
-        var d = new Date(parseInt(p[0], 10), parseInt(p[1], 10) - 1, parseInt(p[2], 10));
-        var w = d.getDay();
-        return (w === 0 || w === 6);
-    } catch (e) {
-        return false;
-    }
-}
-
-// 寒暑假判断：寒假 1/15~2/13，暑假 7/1~8/31（通用区间，每年自动生效）
-function isSummerWinterDate(dateStr) {
-    try {
-        var p = String(dateStr).split("-");
-        var m = parseInt(p[1], 10);
-        var d = parseInt(p[2], 10);
-        if (m === 7 || m === 8) return true;
-        if (m === 1 && d >= 15) return true;
-        if (m === 2 && d <= 13) return true;
-        return false;
-    } catch (e) {
-        return false;
-    }
-}
-
-// 特殊日（节假日/周六周日/学生模式下的寒暑假）：这些日子保持彩色
-function isSpecialDay(formula, dateStr) {
-    var sw = (formula && formula.student_mode === true) ? isSummerWinterDate(dateStr) : false;
-    return isHolidayDate(formula, dateStr) || isWeekendDate(dateStr) || sw;
-}
-
-// 今天是否命中"日期级静默"（用户手动点选的全天静默日 / 上学日自动静默）。
-// 任意日期都可手动点选静默；上学日自动静默只作用于普通日（特殊日保持彩色）。
-// 总开关 date_quiet_enabled 关闭时全部日期级静默失效。
-// 返回 { active:bool, kind:"manual"|"school", date:"YYYY-MM-DD" }；未命中返回 { active:false }。
-function isDateQuiet(formula) {
-    try {
-        if (!formula || formula.quiet_enabled !== true) return { active: false };
-        if (formula.date_quiet_enabled !== true) return { active: false };
-        var today = todayStr();
-        var special = isSpecialDay(formula, today);
-        var qd = formula.quiet_dates;
-        if (qd && typeof qd === "object" && qd[today] === "full") {
-            return { active: true, kind: "manual", date: today };
-        }
-        if (formula.school_day_auto_quiet === true && !special) {
-            return { active: true, kind: "school", date: today };
-        }
-        return { active: false };
-    } catch (e) {
-        return { active: false };
-    }
-}
-
-// 当前是否处于静默时段（日期级静默 / 白天段 / 夜间段任一命中即可）。
-// 日期级静默（全天静默日、节假日自动静默）优先级最高，且是硬静默。
-// 支持两段自定义区间（白天 9-18、夜间 22-9），每段都支持跨天。
-function isQuietTime(formula) {
-    try {
-        if (!formula || formula.quiet_enabled !== true) return false;
-        // 日期级静默：用户点选的全天静默日 / 节假日自动静默
-        if (isDateQuiet(formula).active) return true;
-        var now = new Date();
-        var cur = now.getHours() * 60 + now.getMinutes();
-        // 每段有独立开关：白天段/夜间段可单独启用或停用（如假期白天全天在线，就关掉白天段）
-        if (formula.quiet_day_enabled !== false && inTimeRange(cur, parseHm(formula.quiet_day_start), parseHm(formula.quiet_day_end))) return true;
-        if (formula.quiet_night_enabled !== false && inTimeRange(cur, parseHm(formula.quiet_night_start), parseHm(formula.quiet_night_end))) return true;
-        return false;
-    } catch (e) {
-        return false;
-    }
-}
-
-// 当前命中的静默段描述（用于提示消息）；未命中返回空串。
-function quietSegmentText(formula) {
-    try {
-        var dq = isDateQuiet(formula);
-        if (dq.active) {
-            return dq.kind === "manual" ? ("全天静默日 " + dq.date) : ("节假日静默 " + dq.date);
-        }
-        var now = new Date();
-        var cur = now.getHours() * 60 + now.getMinutes();
-        if (formula.quiet_day_enabled !== false && inTimeRange(cur, parseHm(formula.quiet_day_start), parseHm(formula.quiet_day_end))) {
-            return "白天段 " + formula.quiet_day_start + "~" + formula.quiet_day_end;
-        }
-        if (formula.quiet_night_enabled !== false && inTimeRange(cur, parseHm(formula.quiet_night_start), parseHm(formula.quiet_night_end))) {
-            return "夜间段 " + formula.quiet_night_start + "~" + formula.quiet_night_end;
-        }
-        return "";
-    } catch (e) {
-        return "";
-    }
-}
+// ============ 日历/节假日判断与拉取（已拆到 on_air_holidays.js）============
+var createHolidaysModule = require("./on_air_holidays.js");
+var HOL = createHolidaysModule({
+    createHttpClient: createHttpClient,
+    loadFormula: loadFormula,
+    saveFormula: saveFormula,
+    notifyUser: notifyUser,
+    parseHm: parseHm,
+    inTimeRange: inTimeRange
+});
+var pad2 = HOL.pad2, dateStrOf = HOL.dateStrOf, todayStr = HOL.todayStr, expandDateRange = HOL.expandDateRange;
+var BUILTIN_HOLIDAY_RANGES_2026 = HOL.BUILTIN_HOLIDAY_RANGES_2026;
+var BUILTIN_HOLIDAYS_2026 = HOL.BUILTIN_HOLIDAYS_2026;
+var isHolidayDate = HOL.isHolidayDate, isWeekendDate = HOL.isWeekendDate, isSummerWinterDate = HOL.isSummerWinterDate;
+var isSpecialDay = HOL.isSpecialDay, isDateQuiet = HOL.isDateQuiet, isQuietTime = HOL.isQuietTime;
+var quietSegmentText = HOL.quietSegmentText;
+var maybeFetchHoliday = HOL.maybeFetchHoliday;
 
 // ============ 文件读写helper（对齐 gentle_guardian 的 Tools.Files 兼容写法） ============
 async function readJsonFile(path, fallback) {
@@ -571,79 +331,13 @@ async function saveState(state) {
     await writeJsonFile(STATE_PATH, state);
 }
 
-// ===== v1.9.0 提示词取值 / 占位符替换（全部调用点统一走这里） =====
-// 规则：用户在 formula 里改过的用用户的；空/非法/超长回落默认；占位符无值则原样保留。
-var PROMPT_KEYS = [
-    "prompt_manual_default", "prompt_manual_prefix",
-    "prompt_auto_default", "prompt_auto_prefix",
-    "prompt_gentle", "prompt_stop", "prompt_quiet_lifted"
-];
-
-function pickPrompt(formula, key) {
-    var def = DEFAULT_FORMULA[key] || "";
-    var v = (formula && typeof formula[key] === "string") ? formula[key] : "";
-    if (!v.trim()) return def;
-    if (v.length > 2000) return v.slice(0, 2000);
-    return v;
-}
-
-function fillPrompt(tpl, vars) {
-    var s = String(tpl || "");
-    if (!vars) return s;
-    for (var k in vars) {
-        var val = vars[k];
-        if (val === undefined || val === null) continue;
-        s = s.split("{" + k + "}").join(String(val));
-    }
-    return s;
-}
-
-// 带话术的模板：有 {话术} 就替换，没有就追加到末尾（兼容旧行为）
-function buildTalkPrompt(formula, key, talk) {
-    var tpl = pickPrompt(formula, key);
-    if (tpl.indexOf("{话术}") >= 0) return fillPrompt(tpl, { "话术": talk });
-    return fillPrompt(tpl, null) + String(talk || "");
-}
-
-function buildPrompt(formula, key, vars) {
-    return fillPrompt(pickPrompt(formula, key), vars);
-}
-
-// v2.0.0：话术可用性校验 —— 挡掉占位/测试串，避免 AI 把它原样念给用户
-function isUsableTalk(s) {
-    if (typeof s !== "string") return false;
-    var t = s.trim();
-    if (t.length < 2) return false;
-    // N2：只认明确的占位标记；含“话术”二字的正常句子不能误判
-    var bad = ["占位", "placeholder", "todo", "TODO"];
-    for (var i = 0; i < bad.length; i++) {
-        if (t.indexOf(bad[i]) >= 0) return false;
-    }
-    return true;
-}
-// 从候选里随机抽一条可用的；全部不可用则返回 ""（调用方回落 default 模式）
-function pickUsableTalk(list) {
-    var good = [];
-    if (Array.isArray(list)) {
-        for (var i = 0; i < list.length; i++) {
-            if (isUsableTalk(list[i])) good.push(list[i]);
-        }
-    }
-    if (!good.length) return "";
-    return good[Math.floor(Math.random() * good.length)];
-}
-
-// 取档位话术库（用户可自定义）：返回指定档位的候选数组
-function pickTierList(formula, tierIndex) {
-    var tiers = (formula && Array.isArray(formula.jealousy_tiers) && formula.jealousy_tiers.length)
-        ? formula.jealousy_tiers : DEFAULT_FORMULA.jealousy_tiers;
-    var idx = tierIndex;
-    if (!(idx >= 0)) idx = 0;
-    if (idx >= tiers.length) idx = tiers.length - 1;
-    var list = tiers[idx];
-    if (!Array.isArray(list) || !list.length) list = DEFAULT_FORMULA.jealousy_tiers[DEFAULT_FORMULA.jealousy_tiers.length - 1];
-    return list;
-}
+// ===== v1.9.0 提示词取值 / 占位符替换（已拆到 on_air_prompts.js）=====
+var createPromptsModule = require("./on_air_prompts.js");
+var PRM = createPromptsModule({ DEFAULT_FORMULA: DEFAULT_FORMULA });
+var PROMPT_KEYS = PRM.PROMPT_KEYS;
+var pickPrompt = PRM.pickPrompt, fillPrompt = PRM.fillPrompt;
+var buildTalkPrompt = PRM.buildTalkPrompt, buildPrompt = PRM.buildPrompt;
+var isUsableTalk = PRM.isUsableTalk, pickUsableTalk = PRM.pickUsableTalk, pickTierList = PRM.pickTierList;
 
 async function loadFormula() {
     var f = await readJsonFile(FORMULA_PATH, null);
@@ -762,213 +456,21 @@ function createHttpClient(timeoutMs) {
         .build();
 }
 
-// ==================== v2.2.0：GitHub Release 更新检测 ====================
-var CURRENT_VERSION = "v2.2.2";  // 每次发布同步修改
-var UPDATE_REPO = "what-my-names/on_air";
-var UPDATE_API = 'https://api.github.com/repos/' + UPDATE_REPO + '/releases?per_page=5';
-var UPDATE_TTL_MS = 6 * 60 * 60 * 1000; // 6 小时缓存
+// ==================== 更新检测与下载（已拆到 on_air_update.js）====================
+var createUpdateModule = require("./on_air_update.js");
+var UPD = createUpdateModule({
+    createHttpClient: createHttpClient,
+    loadState: loadState,
+    saveState: saveState,
+    loadFormula: loadFormula,
+    saveFormula: saveFormula
+});
+var CURRENT_VERSION = UPD.CURRENT_VERSION;  // 每次发布同步修改 manifest / VERSION.txt / 本文件
+var UPDATE_REPO = UPD.UPDATE_REPO;
+var cmpVersion = UPD.cmpVersion;
+var fetchLatestRelease = UPD.fetchLatestRelease;
 
-// 语义化版本比较：a>b 返回 1，a<b 返回 -1，相等 0（忽略前缀 v）
-function cmpVersion(a, b) {
-    var pa = String(a || "").replace(/^v/i, "").replace(/\+/g, ".").split(".");
-    var pb = String(b || "").replace(/^v/i, "").replace(/\+/g, ".").split(".");
-    var n = Math.max(pa.length, pb.length);
-    for (var i = 0; i < n; i++) {
-        var na = parseInt(pa[i] || "0", 10); if (isNaN(na)) na = 0;
-        var nb = parseInt(pb[i] || "0", 10); if (isNaN(nb)) nb = 0;
-        if (na > nb) return 1;
-        if (na < nb) return -1;
-    }
-    return 0;
-}
-
-
-// 把 Release 的 Markdown 正文转成纯文本（面板不支持 Markdown 渲染）
-function mdToPlain(md) {
-    var s = String(md || "").replace(/\r/g, "");
-    // 只取【更新内容】段落（到下一个【标题】为止）；没有标记则全文明细
-    var i = s.indexOf("【更新内容】");
-    if (i >= 0) {
-        s = s.slice(i + "【更新内容】".length);
-        var j = s.indexOf("【");
-        if (j >= 0) s = s.slice(0, j);
-    }
-    s = s.replace(/```[\s\S]*?```/g, " ");
-    s = s.replace(/!\[[^\]]*\]\([^)]*\)/g, "");
-    s = s.replace(/\[([^\]]*)\]\([^)]*\)/g, "$1");
-    var lines = s.split("\n");
-    var out = [];
-    for (var k = 0; k < lines.length; k++) {
-        var line = String(lines[k]).replace(/^\s+|\s+$/g, "");
-        if (!line) continue;
-        if (/^#{1,6}\s/.test(line)) continue;
-        if (/^>/.test(line)) continue;
-        if (/^[-=*_]{3,}$/.test(line)) continue;
-        line = line.replace(/^[·•]\s*/, "").replace(/^[-*+]\s+/, "").replace(/^\d+\.\s+/, "");
-        line = line.replace(/\*\*([^*]+)\*\*/g, "$1").replace(/`([^`]*)`/g, "$1");
-        out.push(line);
-        if (out.length >= 6) break;
-    }
-    return out.join("\n").slice(0, 900);
-}
-function mdToPlainAll(md) {
-    var s = String(md || "").replace(/\r/g, "");
-    s = s.replace(/```[\s\S]*?```/g, " ");
-    s = s.replace(/!\[[^\]]*\]\([^)]*\)/g, "");
-    s = s.replace(/\[([^\]]*)\]\([^)]*\)/g, "$1");
-    var lines = s.split("\n");
-    var out = [];
-    for (var i = 0; i < lines.length; i++) {
-        var line = String(lines[i]).replace(/^\s+|\s+$/g, "");
-        if (!line) { if (out.length && out[out.length - 1] !== "") out.push(""); continue; }
-        if (/^[-=*_]{3,}$/.test(line)) continue;
-        line = line.replace(/^#{1,6}\s*/, "").replace(/^>\s?/, "");
-        line = line.replace(/^[·•]\s*/, "").replace(/^[-*+]\s+/, "").replace(/^\d+\.\s+/, "");
-        line = line.replace(/\*\*([^*]+)\*\*/g, "$1").replace(/`([^`]*)`/g, "$1");
-        out.push(line);
-    }
-    return out.join("\n").replace(/\n{3,}/g, "\n\n").slice(0, 2000);
-}
-
-// 拉取最新 Release（带 6h 缓存，缓存存在 state.update_cache）
-async function fetchLatestRelease(state, opts) {
-    try {
-        var now = Date.now();
-        var cache = state && state.update_cache;
-        var cacheFresh = !!(cache && cache.checked_at && (now - cache.checked_at) < UPDATE_TTL_MS && cache.latest);
-        // 发版后：缓存里的版本比当前版本还旧 → 视为失效，重新拉
-        if (cacheFresh && cmpVersion(cache.latest.tag, CURRENT_VERSION) < 0) cacheFresh = false;
-        if (cacheFresh && !(opts && opts.force)) {
-            return { cached: true, release: cache.latest };
-        }
-        var client = createHttpClient(15000);
-        var req = client.newRequest()
-            .url(UPDATE_API)
-            .method("GET")
-            .headers({ "User-Agent": "Operit/on_air", "Accept": "application/vnd.github+json" })
-            .build();
-        var resp = await req.execute();
-        if (!resp.isSuccessful()) return { cached: false, error: "HTTP " + resp.code() };
-        var list = resp.json() || [];
-        if (!Array.isArray(list)) return { cached: false, error: '返回格式异常' };
-        // 取版本号最大的那个（列表按创建时间倒序，Beta 与正式版混排时取第一个会拿错）
-        var data = null;
-        for (var li = 0; li < list.length; li++) {
-            var relOne = list[li];
-            if (!relOne || relOne.draft) continue;
-            if (!data || cmpVersion(relOne.tag_name, data.tag_name) > 0) data = relOne;
-        }
-        if (!data) return { cached: false, error: '没有可用的 Release' };
-        var assetUrl = '', assetName = '', assetSize = 0, assetId = 0;
-        var assets = Array.isArray(data.assets) ? data.assets : [];
-        for (var i = 0; i < assets.length; i++) {
-            if (assets[i] && /\.toolpkg$/i.test(String(assets[i].name || ""))) {
-                assetUrl = assets[i].browser_download_url || "";
-                assetName = assets[i].name || "";
-                assetSize = assets[i].size || 0;
-                assetId = assets[i].id || 0;
-                break;
-            }
-        }
-        var rel = {
-            tag: String(data.tag_name || ""),
-            name: String(data.name || ""),
-            body: mdToPlain(String(data.body || "")),
-            body_full: mdToPlainAll(String(data.body || "")),
-            url: String(data.html_url || ""),
-            published_at: String(data.published_at || ""),
-            asset_url: assetUrl, asset_size: assetSize, asset_id: assetId,
-            prerelease: !!data.prerelease,
-            asset_name: assetName
-        };
-        if (state) { state.update_cache = { checked_at: now, latest: rel }; await saveState(state); }
-        return { cached: false, release: rel };
-    } catch (e) {
-        return { cached: false, error: String((e && e.message) || e) };
-    }
-}
-
-// ============ 节假日联网拉取（v2.2.2 换源）============
-// 旧源已被 Cloudflare 拦截（返回 HTML 挑战页，JSON 解析必失败），换用静态 JSON 镜像
-// 数据：NateScarlet/holiday-cn，三路镜像依次尝试
-// 结构：{ year, days: [{ date:"YYYY-MM-DD", isOffDay:true|false, name }] }，只取 isOffDay=true
-var holidayFetching = false; // 模块级防并发标记
-async function fetchHolidayYear(year) {
-    var urls = [
-        "https://fastly.jsdelivr.net/gh/NateScarlet/holiday-cn@master/" + year + ".json",
-        "https://gcore.jsdelivr.net/gh/NateScarlet/holiday-cn@master/" + year + ".json",
-        "https://ghproxy.net/https://raw.githubusercontent.com/NateScarlet/holiday-cn/master/" + year + ".json"
-    ];
-    for (var ui = 0; ui < urls.length; ui++) {
-        try {
-            var client = createHttpClient(15000);
-            var req = client.newRequest()
-                .url(urls[ui])
-                .method("GET")
-                .headers({ "User-Agent": "Operit/on_air", "Accept": "application/json" })
-                .build();
-            var resp = await req.execute();
-            if (!resp.isSuccessful()) continue;
-            var data = resp.json();
-            var days = (data && data.days) || [];
-            if (!days.length) continue;
-            var out = [];
-            for (var i = 0; i < days.length; i++) {
-                var it = days[i];
-                if (!it || it.isOffDay !== true) continue;
-                var d = String(it.date || "");
-                if (/^[0-9]{4}-[0-9]{2}-[0-9]{2}$/.test(d)) out.push(d);
-            }
-            if (out.length) return out;
-        } catch (e) { }
-    }
-    return [];
-}
-// 拉取今年+明年的节假日（12月时明年信息通常已公布），合并去重。
-async function fetchHolidaysAll() {
-    var now = new Date();
-    var year = now.getFullYear();
-    var list1 = await fetchHolidayYear(year);
-    var list2 = await fetchHolidayYear(year + 1);
-    var seen = {};
-    var out = [];
-    var all = list1.concat(list2);
-    for (var i = 0; i < all.length; i++) {
-        if (!seen[all[i]]) { seen[all[i]] = true; out.push(all[i]); }
-    }
-    return out;
-}
-
-// 每天12点后自动联网拉一次节假日（increment_x/check_activity 等高频入口会顺带触发）。
-// 条件：今天已过12:00 且 formula.holiday_fetch_date 不是今天 且 没有正在进行的拉取。
-// 拉取成功用官方数据覆盖 holiday_dates；失败保持现有列表（内置表兜底）。全程 fire-and-forget，不阻塞调用方。
-async function maybeFetchHoliday() {
-    try {
-        if (holidayFetching) return;
-        var now = new Date();
-        if (now.getHours() < 12) return; // 每天12点后才有机会拉
-        var formula = await loadFormula();
-        var today = todayStr();
-        if (formula.holiday_fetch_date === today) return; // 今天已拉过
-        holidayFetching = true;
-        try {
-            var dates = await fetchHolidaysAll();
-            if (dates && dates.length) {
-                // 官方数据 + 内置表合并（官方优先，内置表兜底不丢）
-                var merged = dates.slice();
-                for (var i = 0; i < BUILTIN_HOLIDAYS_2026.length; i++) {
-                    if (merged.indexOf(BUILTIN_HOLIDAYS_2026[i]) < 0) merged.push(BUILTIN_HOLIDAYS_2026[i]);
-                }
-                formula.holiday_dates = merged;
-            }
-        } catch (e) { /* 拉取失败不写列表，只记今天已尝试 */ }
-        formula.holiday_fetch_date = today;
-        await saveFormula(formula);
-    } catch (e) { /* 全部静默 */ }
-    finally {
-        holidayFetching = false;
-    }
-}
+// ============ 节假日联网拉取（已拆到 on_air_holidays.js）============
 
 async function saveFormula(formula) {
     // v2.1.1：不落盘以 _ 开头的内部字段
@@ -979,68 +481,10 @@ async function saveFormula(formula) {
     }
     await writeJsonFile(FORMULA_PATH, clean);
 }
-// ============ 唤醒AI发送：统一走平台对话模块的发送通道 ============
-// 签名：sendMessage(message, chatId, roleCardId, senderName, options)
-// chatId 传空 -> 平台默认投递到当前对话，不再使用/管理聊天ID。
-// 目标角色改用"角色卡名字"定位：名字 -> listCharacterCards() 查到 id -> roleCardId 传给平台；
-// 名字留空或查不到 -> roleCardId 留空，跟随当前对话绑定的角色卡。
-// options.hide_user_message=true 隐藏用户侧消息；persist_turn=true 让AI回复落正文持久化。
-// 发送不等待AI回合完成：调用后立即返回，面板点"触发唤醒"即刻生效，AI回复由平台异步生成。
-var cardCacheName = "";
-var cardCacheId = "";
-async function resolveRoleCardId(name) {
-    var n = (name !== undefined && name !== null) ? String(name).trim() : "";
-    if (!n) return "";
-    if (cardCacheName === n && cardCacheId) return cardCacheId;
-    try {
-        var cards = await Tools.Chat.listCharacterCards();
-        var list = (cards && Array.isArray(cards.cards)) ? cards.cards : (Array.isArray(cards) ? cards : []);
-        for (var i = 0; i < list.length; i++) {
-            var c = list[i];
-            if (c && (c.name === n || c.id === n)) {
-                cardCacheName = n;
-                cardCacheId = String(c.id);
-                return cardCacheId;
-            }
-        }
-    } catch (e) { /* 查询失败按留空处理，跟随当前对话 */ }
-    return "";
-}
-
-// 目标对话：chat_ids 非空=逐个指定对话发送；空=当前对话
-function targetChatIds(formula) {
-    var arr = (formula && Array.isArray(formula.chat_ids)) ? formula.chat_ids : [];
-    var out = [];
-    for (var i = 0; i < arr.length; i++) {
-        var id = String(arr[i] || "").trim();
-        if (id && out.indexOf(id) === -1) out.push(id);
-    }
-    return out;
-}
-async function sendToAi(formula, msg) {
-    var name = (formula && formula.character_card_name) ? String(formula.character_card_name).trim() : "";
-    var roleCardId = await resolveRoleCardId(name);
-    var ids = targetChatIds(formula);
-    if (!ids.length) ids = [""];   // 空字符串 = 平台默认投递到当前对话
-    var sent = [];
-    var lastErr = null;
-    for (var ci = 0; ci < ids.length; ci++) {
-        try {
-            var p = Tools.Chat.sendMessage(String(msg), ids[ci], roleCardId, null, {
-                hide_user_message: true,
-                persist_turn: true,
-                timeout_ms: 120000
-            });
-            // 立即派发即返回：不等AI回复完成，避免点击后长时间卡住
-            if (p && typeof p.catch === "function") p.catch(function () {});
-            sent.push(ids[ci]);
-        } catch (e) {
-            lastErr = e;
-        }
-    }
-    if (!sent.length && lastErr) throw new Error("发送失败：" + String((lastErr && lastErr.message) || lastErr));
-    return { dispatched: true, count: sent.length, chat_ids: sent, role_card_id: roleCardId };
-}
+// ============ 唤醒AI发送（已拆到 on_air_chat.js）============
+var CHAT = require("./on_air_chat.js");
+var resolveRoleCardId = CHAT.resolveRoleCardId;
+var targetChatIds = CHAT.targetChatIds, sendToAi = CHAT.sendToAi;
 // ============ 温柔巡检联动：计数外包 ============
 // 需求（锁定版）："增加计数"改为联动外包模块。
 // 在插件里检测用户是否安装了"温柔巡检"(gentle_guardian) 插件（检测其运行/数据目录是否存在）。
@@ -1114,128 +558,9 @@ async function writeGentleJealousy(delta, reason) {
 // 第四档用概率往60靠但"不必然到60"（随机，有概率低于60）。
 // 这里我们把 jealousy_count(1-5次) 映射为一个"计数评分"(0~59 或四档概率上探)，
 // 用于决定话术语气档位，并配合联动温柔巡检的 jealousy 字段落盘。
-// ============ 平台消息结构兼容 ============
-// 实测平台消息真实字段：sender("user"/"ai")、roleName(中文显示名如"用户"/角色名)、timestamp(毫秒数)。
-// 旧版判断优先取 roleName，会把"用户"当成非 user 跳过，导致样本数为 0。这里改为 sender 优先。
-function isUserMessage(m) {
-    if (!m) return false;
-    var sender = (m.sender !== undefined ? m.sender : (m.role !== undefined ? m.role : m.roleName));
-    var s = String(sender === undefined || sender === null ? "" : sender).toLowerCase();
-    return s === "user" || s === "用户";
-}
-
-// 统一读取对话消息（仅用于统计时间戳/最近上下文）。
-// 兼容多种返回结构：{messages:[...]} / 直接返回数组 / {result:{messages:[...]}}。
-// 注意：平台 getMessages 只支持 order/limit，offset 参数会被平台忽略（逆向 APK 实测确认）。
-async function fetchChatMessages(chatId, limit, offset) {
-    if (!chatId) return null;
-    try {
-        var opts = { order: "desc", limit: limit };
-        if (typeof offset === "number" && offset > 0) opts.offset = offset;
-        var result = await Tools.Chat.getMessages(chatId, opts);
-        var messages = result && result.messages;
-        if (!Array.isArray(messages)) messages = Array.isArray(result) ? result : (result && result.result && result.result.messages);
-        if (!Array.isArray(messages)) {
-            // 兜底：换对象参数形式再试一次
-            var altOpts = { chat_id: chatId, limit: limit };
-            if (typeof offset === "number" && offset > 0) altOpts.offset = offset;
-            var alt = await Tools.Chat.getMessages(altOpts);
-            messages = Array.isArray(alt) ? alt : (alt && alt.messages) || (alt && alt.result && alt.result.messages);
-        }
-        return (Array.isArray(messages) && messages.length) ? messages : null;
-    } catch (e) {
-        return null;
-    }
-}
-
-// 时间戳游标分页拉取历史消息（v1.3.8 三层保险版）。
-// 平台 getMessages 只支持 order/limit（offset 被忽略），getMessagesRange(chatId, {order, start, end}) 支持时间戳区间。
-// 三层结构（每层独立 try，任何一层失败都不影响后续层）：
-//   1. range 游标翻页：end 游标逐步往前，直到取满或翻到最老一条（负责"突破"上限）；
-//   2. 安全兜底：getMessages(limit=200) 拉最新一页，与旧版行为完全一致，保证样本至少不为 0；
-//   3. 大 limit 尝试：getMessages(limit=5000)，平台支持大 limit 就多拿，不支持则静默放弃。
-// 全程按时间戳去重，防止区间重叠重复计数。
-async function fetchChatMessagesAll(chatId, maxCount) {
-    if (!chatId) return null;
-    var cap = (typeof maxCount === "number" && maxCount > 0) ? maxCount : 5000;
-    var seen = {};
-    var all = [];
-
-    // 方式1：时间戳游标区间翻页
-    var canRange = !!(Tools && Tools.Chat && typeof Tools.Chat.getMessagesRange === "function");
-    if (canRange) {
-        try {
-            var endCursor = Date.now() + 1000; // 右边界覆盖最新一条
-            var rounds = 0;
-            while (rounds < 60 && all.length < cap) {
-                rounds++;
-                var result = await Tools.Chat.getMessagesRange(chatId, { order: "desc", start: 0, end: endCursor });
-                var messages = result && result.messages;
-                if (!Array.isArray(messages)) messages = Array.isArray(result) ? result : (result && result.result && result.result.messages);
-                if (!Array.isArray(messages) || !messages.length) break;
-                var oldest = null;
-                var added = 0;
-                for (var i = 0; i < messages.length; i++) {
-                    var m = messages[i];
-                    if (!m || m.timestamp === undefined || m.timestamp === null) continue;
-                    var num = typeof m.timestamp === "number" ? m.timestamp : parseInt(m.timestamp, 10);
-                    if (isNaN(num) || num <= 0) continue;
-                    var ms = num < 1e12 ? num * 1000 : num;
-                    var key = "t" + ms;
-                    if (seen[key]) continue;
-                    seen[key] = true;
-                    all.push(m);
-                    added++;
-                    if (oldest === null || ms < oldest) oldest = ms;
-                    if (all.length >= cap) break;
-                }
-                if (!added) break;
-                if (oldest === null) break;
-                endCursor = oldest - 1; // 下一轮从更早的时间继续
-            }
-        } catch (e) { /* range 失败不影响兜底 */ }
-    }
-
-    // 方式2：安全兜底，拉最新一页（与旧版 limit=200 行为一致，保证样本不为 0）
-    if (all.length < cap) {
-        var page = await fetchChatMessages(chatId, 200);
-        if (page) {
-            for (var j = 0; j < page.length && all.length < cap; j++) {
-                var b = page[j];
-                if (!b || b.timestamp === undefined || b.timestamp === null) continue;
-                var bn = typeof b.timestamp === "number" ? b.timestamp : parseInt(b.timestamp, 10);
-                if (isNaN(bn) || bn <= 0) continue;
-                var bms = bn < 1e12 ? bn * 1000 : bn;
-                var bkey = "t" + bms;
-                if (seen[bkey]) continue;
-                seen[bkey] = true;
-                all.push(b);
-            }
-        }
-    }
-
-    // 方式3：大 limit 博一把（平台支持就多拿，不支持静默放弃）
-    if (all.length < cap && all.length < 5000) {
-        try {
-            var big = await fetchChatMessages(chatId, 5000);
-            if (big) {
-                for (var k = 0; k < big.length && all.length < cap; k++) {
-                    var m2 = big[k];
-                    if (!m2 || m2.timestamp === undefined || m2.timestamp === null) continue;
-                    var num2 = typeof m2.timestamp === "number" ? m2.timestamp : parseInt(m2.timestamp, 10);
-                    if (isNaN(num2) || num2 <= 0) continue;
-                    var ms2 = num2 < 1e12 ? num2 * 1000 : num2;
-                    var key2 = "t" + ms2;
-                    if (seen[key2]) continue;
-                    seen[key2] = true;
-                    all.push(m2);
-                }
-            }
-        } catch (e) { /* 大 limit 不支持就放弃 */ }
-    }
-
-    return all.length ? all : null;
-}
+// ============ 平台消息结构兼容（已拆到 on_air_chat.js）============
+var isUserMessage = CHAT.isUserMessage;
+var fetchChatMessages = CHAT.fetchChatMessages, fetchChatMessagesAll = CHAT.fetchChatMessagesAll;
 
 // ============ 读取用户最后说话时间(实时)：读对话最后消息，返回最后一条 user 消息的毫秒时间戳 ============
 // 数据源：Tools.Chat.getMessages(chatId, {order:'desc', limit:8})，与平台对话模块同源。
@@ -1754,48 +1079,8 @@ exports.reset_cooldown = async function (params) {
 };
 
 // update_formula：更新公式参数
-// ===== v2.1.0：按 FIELD_SPEC 做类型校验/转换（新增字段自动生效）=====
-function validateBySpec(key, spec, raw) {
-    var t = spec.type;
-    if (t === "number") {
-        var n = parseFloat(raw);
-        if (isNaN(n)) return { ok: false, msg: key + " 需要是数字" };
-        if (spec.min !== undefined && n < spec.min) return { ok: false, msg: key + " 不能小于 " + spec.min };
-        if (spec.int && Math.floor(n) !== n) return { ok: false, msg: key + " 需要是整数" };
-        return { ok: true, value: n };
-    }
-    if (t === "bool") {
-        var bv = raw;
-        if (typeof bv === "string") bv = (bv === "true" || bv === "1" || bv === "on");
-        if (typeof bv !== "boolean") return { ok: false, msg: key + " 需要是 true/false" };
-        return { ok: true, value: bv };
-    }
-    if (t === "enum") {
-        var ev = String(raw);
-        if (spec.values && spec.values.indexOf(ev) < 0) return { ok: false, msg: key + " 只能是 " + spec.values.join(" / ") };
-        return { ok: true, value: ev };
-    }
-    if (t === "time") {
-        var tv = String(raw).trim();
-        if (!/^\d{1,2}:\d{2}$/.test(tv)) return { ok: false, msg: key + " 需要 HH:MM 格式" };
-        return { ok: true, value: tv };
-    }
-    if (t === "prompt") {
-        var pv = String(raw);
-        if (pv.length > 2000) return { ok: false, msg: key + " 超过 2000 字" };
-        return { ok: true, value: pv };
-    }
-    if (t === "lines" || t === "tiers") {
-        var arr = raw;
-        if (typeof raw === "string") {
-            try { arr = JSON.parse(raw); } catch (e) { return { ok: false, msg: key + " 需要是 JSON 数组" }; }
-        }
-        if (!Array.isArray(arr)) return { ok: false, msg: key + " 需要是数组" };
-        return { ok: true, value: arr };
-    }
-    if (t === "string") return { ok: true, value: String(raw) };
-    return { ok: false, msg: key + " 类型不支持" };
-}
+// ===== v2.1.0：按 FIELD_SPEC 做类型校验/转换（已拆到 on_air_config.js）=====
+var validateBySpec = CFG.validateBySpec;
 
 exports.update_formula = async function (params) {
     var formula = await loadFormula();
@@ -2273,53 +1558,9 @@ exports.link_agent = async function (params) {
 // maybe_awake：运行态核心。按当前y掷骰，命中才真正把主动消息发出去。
 // workflow 用无条件 on_success 连接即可，命中与否的判断封装在工具内部。
 // 锁定版新增：命中时联动计数到温柔巡检 + 接回复逻辑(温柔巡检跑则借它回复，否则自回)
-// ===== 多对话模式：每个对话各算各的沉默时长 / 冷却 / 未命中计数 =====
-function chatMetaOf(state, cid) {
-    if (!state.chat_meta || typeof state.chat_meta !== "object") state.chat_meta = {};
-    var k = String(cid || "");
-    if (!state.chat_meta[k] || typeof state.chat_meta[k] !== "object") {
-        state.chat_meta[k] = { miss_count: 0, cooldown_until: null, last_hit_at: null };
-    }
-    return state.chat_meta[k];
-}
-function cooldownAlive(untilStr) {
-    if (!untilStr) return false;
-    var parts = String(untilStr).split(/[-: ]/);
-    if (parts.length < 5) return false;
-    var cu = new Date(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, parseInt(parts[2], 10), parseInt(parts[3], 10), parseInt(parts[4], 10), parts[5] ? parseInt(parts[5], 10) : 0);
-    return new Date() < cu;
-}
-function fmtCooldown(min) {
-    var d = new Date(Date.now() + Number(min || 0) * 60000);
-    var pad = function (n) { return (n < 10 ? "0" : "") + n; };
-    return d.getFullYear() + "-" + pad(d.getMonth() + 1) + "-" + pad(d.getDate()) + " " + pad(d.getHours()) + ":" + pad(d.getMinutes()) + ":" + pad(d.getSeconds());
-}
-async function readLastUserTsOf(cid) {
-    try {
-        var messages = await fetchChatMessages(cid, 8);
-        if (!messages) return null;
-        for (var i = 0; i < messages.length; i++) {
-            var m = messages[i];
-            if (!isUserMessage(m)) continue;
-            if (m.timestamp === undefined || m.timestamp === null) continue;
-            var ts = typeof m.timestamp === "number" ? m.timestamp : parseInt(m.timestamp, 10);
-            if (!isNaN(ts) && ts > 0) return ts < 1e12 ? ts * 1000 : ts;
-        }
-        return null;
-    } catch (e) { return null; }
-}
-// 只发一个对话（多对话模式下用）
-async function sendToAiOne(formula, msg, cid) {
-    var name = (formula && formula.character_card_name) ? String(formula.character_card_name).trim() : "";
-    var roleCardId = await resolveRoleCardId(name);
-    var p = Tools.Chat.sendMessage(String(msg), cid, roleCardId, null, {
-        hide_user_message: true,
-        persist_turn: true,
-        timeout_ms: 120000
-    });
-    if (p && typeof p.catch === "function") p.catch(function () {});
-    return true;
-}
+// ===== 多对话模式：辅助函数（已拆到 on_air_chat.js）=====
+var chatMetaOf = CHAT.chatMetaOf, cooldownAlive = CHAT.cooldownAlive, fmtCooldown = CHAT.fmtCooldown;
+var readLastUserTsOf = CHAT.readLastUserTsOf, sendToAiOne = CHAT.sendToAiOne;
 
 exports.maybe_awake = async function (params) {
     var state = await loadState();
@@ -2622,257 +1863,14 @@ exports.enter_running = async function (params) {
 // fetch_holidays：手动立即联网拉取节假日（今年+明年）。成功会覆盖 formula.holiday_dates 并记录拉取日期。
 // 平时不需要手动点：每天12点后 increment_x/check_activity 会自动拉一次。此工具供面板"立即更新"按钮和调试用。
 // 零 token 消耗：普通 HTTPS GET 请求，不经过任何 AI。
-// ==================== v2.2.0：更新检测工具 ====================
-exports.check_update = async function (params) {
-    var formula = await loadFormula();
-    var state = await loadState();
-    var r = await fetchLatestRelease(state, { force: !!(params && params.force) });
-    if (r.error) { complete({ success: false, message: "检查更新失败：" + r.error }); return; }
-    var rel = r.release || {};
-    var has = cmpVersion(rel.tag, CURRENT_VERSION) > 0;
-    var skipped = String(formula.skipped_version || "") === String(rel.tag || "");
-    complete({
-        success: true,
-        message: has ? ("发现新版本 " + rel.tag) : ("已是最新版本 v" + CURRENT_VERSION),
-        data: {
-            hasUpdate: has, skipped: skipped, current: CURRENT_VERSION,
-            latest: rel.tag, name: rel.name, notes: rel.body, notes_full: (rel.body_full || rel.body), url: rel.url,
-            published_at: rel.published_at,
-            asset_url: rel.asset_url, asset_name: rel.asset_name, asset_size: rel.asset_size || 0, prerelease: !!rel.prerelease, cached: !!r.cached
-        }
-    });
-};
+// ==================== v2.2.0：更新检测工具（已拆到 on_air_update.js）====================
+exports.check_update = UPD.tools.check_update;
+exports.get_download_status = UPD.tools.get_download_status;
+exports.download_update = UPD.tools.download_update;
+exports.open_url = UPD.tools.open_url;
+exports.skip_update = UPD.tools.skip_update;
 
-// ==================== v2.2.2: download state persistence ====================
-function fmtSize(n) {
-    n = Number(n) || 0;
-    if (n >= 1048576) return (Math.round(n / 104857.6) / 10) + ' MB';
-    if (n >= 1024) return Math.round(n / 1024) + ' KB';
-    return n + ' B';
-}
-var __dlBusy = false;
-async function writeDlState(patch) {
-    // 串行化：连点下载时两次写盘会互相覆盖，导致后面的字段丢失
-    var __waitN = 0;
-    while (__dlBusy && __waitN < 250) { try { await new Promise(function (r) { setTimeout(r, 20); }); } catch (eW) { break; } __waitN++; }
-    __dlBusy = true;
-    try {
-        var state = await loadState();
-        var d = state.download || {};
-        for (var k in patch) { if (Object.prototype.hasOwnProperty.call(patch, k)) d[k] = patch[k]; }
-        d.updated_at = Date.now();
-        state.download = d;
-        await saveState(state);
-        return d;
-    } catch (e) { return null; }
-    finally { __dlBusy = false; }
-}
-async function readDlState() {
-    try { var state = await loadState(); return state.download || null; } catch (e) { return null; }
-}
-exports.get_download_status = async function (params) {
-    var d = await readDlState();
-    if (!d || !d.status || d.status === 'idle') {
-        complete({ success: true, message: '当前没有下载任务', data: { status: 'idle', percent: 0 } });
-        return;
-    }
-    // 先看文件：如果包已完整存在（大小对得上），直接判定完成，不要因为进程重启判成失败
-    var earlyExists = false, earlySize = 0;
-    if (d.path) {
-        try { var ef0 = await Tools.Files.exists(d.path); earlyExists = !!(ef0 && ef0.exists); earlySize = Number(ef0 && ef0.size) || 0; } catch (e0) { }
-    }
-    var dTotal0 = Number(d.total) || 0;
-    if (d.status === 'running' && earlyExists && dTotal0 > 0 && earlySize === dTotal0) {
-        await writeDlState({ status: 'done', received: earlySize, message: '已下载 ' + fmtSize(earlySize) + ' / 共 ' + fmtSize(dTotal0) + ' → ' + d.path });
-        d = await readDlState();
-    }
-    if (d.status === 'running' && !__dlRunning && d.updated_at && (Date.now() - d.updated_at > 600000)) {   // DL5：在执行中不判死，阈值放到 10 分钟
-        await writeDlState({ status: 'failed', message: '上次下载中断了（App 或网络被中断），请重新点下载' });
-        d = await readDlState();
-    }
-    var exists = false, fsize = 0;
-    if (d.path) {
-        try { var fe = await Tools.Files.exists(d.path); exists = !!(fe && fe.exists); fsize = Number(fe && fe.size) || 0; } catch (e) { exists = false; }
-    }
-    if (d.status === 'done' && !exists) {
-        await writeDlState({ status: 'missing', message: '下载的更新包已不在原路径（可能被清理或移走了）' });
-        d = await readDlState();
-    }
-    var total = Number(d.total) || 0;
-    var got = Number(d.received) || 0;
-    var percent = total > 0 ? Math.min(100, Math.floor(got * 100 / total)) : 0;
-    complete({
-        success: true, message: d.message || '',
-        data: {
-            status: d.status, received: got, total: total, percent: percent,
-            received_text: fmtSize(got), total_text: total > 0 ? fmtSize(total) : '大小未知',
-            path: d.path || '', version: d.version || '', attempts: d.attempts || 0,
-            exists: exists, file_size: fsize, updated_at: d.updated_at || 0
-        }
-    });
-};
-
-exports.download_update = async function (params) {
-    var needForce = !!(params && params.force);
-    // DL1：整个下载过程只允许一个实例；超过 10 分钟自动失效（防止漏释放把功能卡死）
-    if (__dlRunning && (Date.now() - __dlStartedAt) < 10 * 60000) {
-        complete({ success: false, message: '正在下载中（已进行 ' + Math.round((Date.now() - __dlStartedAt) / 1000) + ' 秒），等它完成就好', data: { busy: true, status: 'running' } });
-        return;
-    }
-    __dlRunning = true;
-    __dlStartedAt = Date.now();
-    try {
-    // 连点保护：上一次还在跑就直接回 busy，不重置进度
-    var st0 = await readDlState();
-    if (st0 && st0.status === 'running' && st0.updated_at && (Date.now() - st0.updated_at) < 45000) {
-        complete({ success: false, message: '正在下载中，请等它完成（' + (st0.message || '进行中') + '）', data: { busy: true, status: 'running' } });
-        return;
-    }
-    var state = await loadState();
-    await writeDlState({ status: 'running', received: 0, total: 0, path: '', version: '', attempts: 0, message: '正在获取最新版本信息…', started_at: Date.now() });
-    var r = await fetchLatestRelease(state, { force: needForce });
-    if (r.error) {
-        await writeDlState({ status: 'failed', message: '检查更新失败：' + r.error + '（还没开始下载，没产生任何文件）' });
-        complete({ success: false, message: '检查更新失败：' + r.error });
-        return;
-    }
-    var rel = r.release || {};
-    if (!rel.asset_url) {
-        await writeDlState({ status: 'failed', message: '该版本没有可下载的 .toolpkg 资产（没产生任何文件）' });
-        complete({ success: false, message: '该版本没有可下载的 .toolpkg 资产' });
-        return;
-    }
-    var dir = '/storage/emulated/0/Download/Operit/';
-    var fileName = rel.asset_name || ('com.operit.on_air-' + rel.tag + '.toolpkg');
-    var path = dir + fileName;
-    var part = path + '.part';
-    var total = Number(rel.asset_size) || 0;
-    try { await Tools.Files.mkdir(dir); } catch (e0) { }
-    // 已经有完整包 → 直接算完成，不重复下载（连点、重开都逃不掉）
-    try {
-        var fe0 = await Tools.Files.exists(path);
-        var sz0 = Number(fe0 && fe0.size) || 0;
-        if (fe0 && fe0.exists && total > 0 && sz0 === total) {
-            await writeDlState({ status: 'done', received: sz0, total: total, path: path, version: rel.tag, attempts: 0, message: '已下载 ' + fmtSize(sz0) + ' / 共 ' + fmtSize(total) + ' → ' + path });
-            complete({ success: true, message: '更新包已存在（' + fmtSize(sz0) + '），不用重复下载', data: { path: path, size: sz0, total: total, version: rel.tag, cached_file: true } });
-            return;
-        }
-    } catch (eEx) { }
-    await writeDlState({ status: 'running', received: 0, total: total, path: path, version: rel.tag, attempts: 0, message: '正在连接…（共 ' + (total > 0 ? fmtSize(total) : '大小未知') + '）' });
-    var lastErr = '';
-    var maxTry = 2;
-    for (var attempt = 1; attempt <= maxTry; attempt++) {
-        try {
-            await writeDlState({ attempts: attempt, received: 0, message: '第 ' + attempt + '/' + maxTry + ' 次尝试：正在连接…' + (total > 0 ? '（共 ' + fmtSize(total) + '）' : '') });
-            var client = createHttpClient(45000);
-            // 下载线路：走 api.github.com 的资产接口（github.com 在当前网络不可达）
-            var dlUrl = rel.asset_id ? ('https://api.github.com/repos/' + UPDATE_REPO + '/releases/assets/' + rel.asset_id) : rel.asset_url;
-            var req = client.newRequest().url(dlUrl).method('GET').headers({ 'User-Agent': 'Operit/on_air', 'Accept': 'application/octet-stream' }).build();
-            // 只发一次请求：不再用 probe 预下载（那会把包下两遍，而且它的字节数是 base64 累计，会报出 132KB 这种假数字）
-            await writeDlState({ received: 0, message: '正在下载…' + (total > 0 ? '（共 ' + fmtSize(total) + '）' : '') + ' 这期间进度不会跳动，下完会自动校验' });
-            var resp = await req.execute();
-            if (!resp.isSuccessful()) {
-                var code = resp.code();
-                if (code === 404) {
-                    await writeDlState({ status: 'failed', message: '下载失败：404（该版本的资产没上传到 Release），未产生任何文件' });
-                    complete({ success: false, message: '下载失败：404（该版本的资产没上传到 Release）' });
-                    return;
-                }
-                lastErr = (code === 403) ? '403（GitHub 限流，稍后再试）' : ('HTTP ' + code);
-                throw new Error(lastErr);
-            }
-            var b64 = null;
-            try { b64 = resp.bodyAsBase64(); } catch (e1) { b64 = null; }
-            if (!b64) throw new Error('拿不到二进制内容（空响应）');
-            // 注意：流式执行时 resp.size 不是字节数（实测偏大），改用 base64 反推真实字节数
-            var b64len = b64.length;
-            var padN = 0;
-            if (b64.charAt(b64len - 1) === '=') padN++;
-            if (b64.charAt(b64len - 2) === '=') padN++;
-            var realSize = Math.floor(b64len * 3 / 4) - padN;
-            await writeDlState({ received: realSize, message: '校验文件大小…' });
-            if (total > 0 && realSize !== total) {
-                throw new Error('文件不完整（收到 ' + fmtSize(realSize) + ' / 应为 ' + fmtSize(total) + '）');
-            }
-            try { await Tools.Files.deleteFile(part); } catch (e2) { }
-            await Tools.Files.writeBinary(part, b64);
-            try { await Tools.Files.deleteFile(path); } catch (e3) { }
-            await Tools.Files.move(part, path);
-            var finTotal = total > 0 ? total : realSize;
-            await writeDlState({ status: 'done', received: realSize, total: finTotal, path: path, version: rel.tag, attempts: attempt, message: '已下载 ' + fmtSize(realSize) + ' / 共 ' + fmtSize(finTotal) + ' → ' + path });
-            try { if (Tools.System && Tools.System.sendNotification) Tools.System.sendNotification('更新包已下载（' + fmtSize(realSize) + '）：' + path + ' → 去包管理导入', '随机上线 更新下载完成'); } catch (eN) { }
-            try { if (Tools.System && Tools.System.toast) Tools.System.toast('更新包已下载：' + fmtSize(realSize)); } catch (eT) { }
-            complete({ success: true, message: '更新包已下载（' + fmtSize(realSize) + '）', data: { path: path, size: realSize, total: finTotal, version: rel.tag, attempts: attempt } });
-            return;
-        } catch (e) {
-            lastErr = String((e && e.message) || e);
-            if (/ENOSPC|No space|space left|磁盘/i.test(lastErr)) lastErr = '磁盘空间不足，清理后重试（明细：' + lastErr + '）';
-            else if (/failed to connect|Connection|ECONNRESET|timeout|timed out/i.test(lastErr)) lastErr = '连不上 GitHub（网络/代理问题，换网络或开代理再试）';
-            try { await Tools.Files.deleteFile(part); } catch (e4) { }
-            if (attempt < maxTry) {
-                await writeDlState({ status: 'running', message: '第 ' + attempt + ' 次失败：' + lastErr + '，正在自动重试…' });
-                try { await new Promise(function (res) { setTimeout(res, attempt * 2000); }); } catch (e5) { }
-            }
-        }
-    }
-    var failMsg = '下载失败（已重试 ' + maxTry + ' 次）：' + lastErr;
-    await writeDlState({ status: 'failed', received: 0, message: failMsg + '｜未完成的临时文件已清理，没留下半个包' });
-    complete({ success: false, message: failMsg + '（未完成的临时文件已清理，没留下半个包）', data: { busy: false, status: 'failed', reason: lastErr } });
-    } finally { __dlRunning = false; }
-};
-exports.open_url = async function (params) {
-    var url = String((params && params.url) || "");
-    if (!/^https?:/i.test(url)) { complete({ success: false, message: "只支持 http(s) 链接" }); return; }
-    try {
-        var r = await Tools.System.intent({ action: "android.intent.action.VIEW", uri: url, type: "activity" });
-        complete({ success: true, message: "已在浏览器打开", data: { result: r } });
-    } catch (e) { complete({ success: false, message: "打开失败：" + String((e && e.message) || e) }); }
-};
-exports.skip_update = async function (params) {
-    var formula = await loadFormula();
-    var v = String((params && params.version) || "");
-    if (!v) { complete({ success: false, message: "需要 version 参数" }); return; }
-    formula.skipped_version = v;
-    await saveFormula(formula);
-    complete({ success: true, message: "已跳过版本 " + v });
-};
-
-exports.fetch_holidays = async function (params) {
-    if (holidayFetching) {
-        complete({ success: false, message: "正在拉取中，请稍候再试" });
-        return;
-    }
-    holidayFetching = true;
-    try {
-        var formula = await loadFormula();
-        var dates = await fetchHolidaysAll();
-        if (dates && dates.length) {
-            var merged = dates.slice();
-            for (var i = 0; i < BUILTIN_HOLIDAYS_2026.length; i++) {
-                if (merged.indexOf(BUILTIN_HOLIDAYS_2026[i]) < 0) merged.push(BUILTIN_HOLIDAYS_2026[i]);
-            }
-            formula.holiday_dates = merged;
-        }
-        formula.holiday_fetch_date = todayStr();
-        await saveFormula(formula);
-        notifyUser("节假日表已更新：" + formula.holiday_dates.length + " 天" + (dates.length ? "" : "（联网失败，用内置表）"));
-        complete({
-            success: true,
-            message: "节假日信息已更新，共 " + formula.holiday_dates.length + " 个节假日日期（联网" + (dates.length ? "成功" : "失败，使用内置表") + "）",
-            data: {
-                holiday_dates: formula.holiday_dates,
-                holiday_fetch_date: formula.holiday_fetch_date,
-                count: formula.holiday_dates.length,
-                online_ok: !!(dates && dates.length)
-            }
-        });
-    } catch (e) {
-        notifyUser("节假日拉取失败：" + String((e && e.message) || e));
-        complete({ success: false, message: "拉取失败：" + String((e && e.message) || e) });
-    } finally {
-        holidayFetching = false;
-    }
-};
+exports.fetch_holidays = HOL.tools.fetch_holidays;
 
 // api_docs：对外 API 文档。其他插件/工作流直接调 on_air:api_docs 即可拿到全部接入说明。
 exports.api_docs = async function (params) {

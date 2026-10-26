@@ -463,7 +463,7 @@ function Screen(ctx) {
       var r = await callTool("on_air:check_update", { force: true });
       if (r && r.success && r.data) {
         if (r.data.hasUpdate && !r.data.skipped) { setUpd(JSON.stringify(r.data)); await showMsg('发现新版本 ' + r.data.latest + (r.data.prerelease ? '（Beta）' : '')); }
-        else { setUpd(""); await showMsg("已是最新版本 v" + r.data.current); }
+        else { setUpd(""); await showMsg("已是最新版本 " + r.data.current); }
       } else {
         await showMsg("检查失败：" + ((r && r.message) || ""));
       }
