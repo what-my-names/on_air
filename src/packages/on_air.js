@@ -147,7 +147,7 @@ METADATA
             "name": "skip_update",
             "description": { "zh": "跳过指定版本：记录后同一版本不再提示更新", "en": "Skip a specific version so it won't be prompted again" },
             "parameters": [
-                { "name": "version", "type": "string", "description": "要跳过的版本 tag（如 v2.2.1）", "required": true }
+                { "name": "version", "type": "string", "description": "要跳过的版本 tag（如 v2.2.2）", "required": true }
             ]
         },
         {
