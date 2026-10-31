@@ -338,6 +338,7 @@ var PROMPT_KEYS = PRM.PROMPT_KEYS;
 var pickPrompt = PRM.pickPrompt, fillPrompt = PRM.fillPrompt;
 var buildTalkPrompt = PRM.buildTalkPrompt, buildPrompt = PRM.buildPrompt;
 var isUsableTalk = PRM.isUsableTalk, pickUsableTalk = PRM.pickUsableTalk, pickTierList = PRM.pickTierList;
+var sceneTextNow = PRM.sceneTextNow, sceneKeyNow = PRM.sceneKeyNow, nowHM = PRM.nowHM, pickTalkByScene = PRM.pickTalkByScene;
 
 async function loadFormula() {
     var f = await readJsonFile(FORMULA_PATH, null);
@@ -351,6 +352,25 @@ async function loadFormula() {
         if (f[k] !== undefined && f[k] !== null) { out[k] = f[k]; provided[k] = true; }
     }
     out._provided = provided;
+    // ===== v2.2.3 迁移：旧默认提示词/话术库 → 新版场景化版本（仅当未被用户改过） =====
+    var OLD_DEFAULT_V223 = {"prompt_manual_default": "（主动消息·内部提醒）请以你自己的身份，结合最近 3~5 轮聊天上下文，用中文给用户发一句自然的主动问候（20~60 字）。\n要求：\n1）像一个真实的人突然想起对方那样开口，可带一点具体细节（比如上次聊到的事、此刻的时间感）；\n2）不要用「在吗」「你好」这类通用开场，也不要每次都同一句式；\n3）不要提及触发、唤醒、提醒、插件、系统等任何机制性内容，不要暴露这是一条被安排的消息；\n4）只输出要发送的那一句话本身，不加解释、不加引号。", "prompt_manual_prefix": "（主动消息·内部提醒）下面这句话是你想对用户说的话（底稿），请以你自己的身份自然地把它说出来：{话术}\n\n【要求】\n1）可以润色措词让它更像你平时说话，但不要改变原意、不要增加新信息；\n2）中文，20~60 字，只输出这一句话本身；\n3）不要复述、不要引用、不要说「我收到的是…」「有人说…」之类的话；\n4）如果这句话不像一句能对用户说的自然话（例如只是标记、占位或空内容），就改用你自己的话自然开口，绝不要把它原样念出来。", "prompt_auto_default": "（主动消息·内部提醒）请以你自己的身份，结合最近聊天上下文，用中文给用户发一句自然的主动消息（20~60 字）。\n当前状态：这是你第 {档位} 次主动找他（已累计 {次数} 次）。\n要求：\n1）语气贴合档位：第 1 档像随口想起，越往后可以越带一点委屈和在意；\n2）不要重复上一条说过的话，不要用「在吗」这类通用开场；\n3）不要提及触发、唤醒、提醒、插件、系统等任何机制性内容；\n4）只输出要发送的那一句话本身。", "prompt_auto_prefix": "（主动消息·内部提醒）下面这句话是你想对用户说的话（底稿），请以你自己的身份自然地把它说出来：{话术}\n\n【要求】\n1）可润色不改原意；中文 20~60 字；只输出这一句；\n2）当前是你第 {档位} 次主动找他（累计 {次数} 次），语气可以贴合这个程度；\n3）不要复述、不要引用、不要说「我收到的是…」；\n4）不像自然话（标记、占位、空内容）就用自己的话开口，绝不原样念出。", "awake_messages": ["想你了，你现在在忙吗？", "好久没听到你的消息了，有点惦记你", "突然想到你，就来找你聊天了", "你在干嘛呀？今天过得怎么样？", "忙完了吗？有空聊两句吗？"]};
+    (function migrateV223(o) {
+        var keysP = ["prompt_manual_default", "prompt_manual_prefix", "prompt_auto_default", "prompt_auto_prefix"];
+        for (var ip = 0; ip < keysP.length; ip++) {
+            var kp = keysP[ip];
+            if (typeof o[kp] === "string" && o[kp] === OLD_DEFAULT_V223[kp]) {
+                o[kp] = DEFAULT_FORMULA[kp];
+            }
+        }
+        var od = OLD_DEFAULT_V223.awake_messages;
+        if (Array.isArray(o.awake_messages) && Array.isArray(od) && o.awake_messages.length === od.length) {
+            var allSame = true;
+            for (var ia = 0; ia < od.length; ia++) {
+                if (String(o.awake_messages[ia]).trim() !== od[ia]) { allSame = false; break; }
+            }
+            if (allSame) o.awake_messages = DEFAULT_FORMULA.awake_messages.slice();
+        }
+    })(out);
     // 保证数组
     if (!Array.isArray(out.awake_messages) || out.awake_messages.length === 0) {
         out.awake_messages = DEFAULT_FORMULA.awake_messages;
@@ -996,10 +1016,12 @@ exports.manual_awake = async function (params) {
     // 话术模式：default=AI自己发挥(带上下文) / custom=本地话术库随机抽一条
     var msg;
     if (formula.awake_mode === "default") {
-        msg = buildPrompt(formula, "prompt_manual_default", null);
+        msg = buildPrompt(formula, "prompt_manual_default", { "场景": sceneTextNow(), "时间": nowHM() });
     } else {
         var list = (formula.awake_messages && formula.awake_messages.length) ? formula.awake_messages : DEFAULT_FORMULA.awake_messages;
-        msg = buildTalkPrompt(formula, "prompt_manual_prefix", list[Math.floor(Math.random() * list.length)]);
+                var talkPick = pickTalkByScene(list, sceneKeyNow());
+        if (!talkPick) talkPick = pickUsableTalk(list);
+        msg = buildTalkPrompt(formula, "prompt_manual_prefix", talkPick, { "场景": sceneTextNow(), "时间": nowHM() });
     }
     state.last_hit_at = localTime();
     state.miss_count = 0;
@@ -1009,6 +1031,17 @@ exports.manual_awake = async function (params) {
         var sentRef = await sendToAi(formula, msg);
         chatRef = { mode: "manual_self_chat", ok: true, dispatched: true, role_card_id: (sentRef && sentRef.role_card_id) || "" };
         notifyUser("已手动发出：" + String(msg || "").slice(0, 40), "随机上线");
+        // v2.2.3：唤醒同时联动温柔巡检吃醋值（封顶 58，不触发藏应用）
+        try {
+            var gjOn = await isGentleGuardianRunning();
+            if (gjOn) {
+                var curGj = await readGentleJealousy();
+                var curGjV = (curGj && curGj.state && typeof curGj.state.jealousy === "number") ? curGj.state.jealousy : 0;
+                var dGj = 8 + Math.round(Math.random() * 4);
+                if (curGjV + dGj > 58) dGj = Math.max(0, 58 - curGjV);
+                if (dGj > 0) await writeGentleJealousy(dGj, "手动唤醒计入");
+            }
+        } catch (eGj) { }
     } catch (e) {
         chatRef = { mode: "manual_self_chat", ok: false, error: String(e && e.message || e) };
         notifyUser("手动触发失败：" + String((e && e.message) || e), "随机上线");
@@ -1652,10 +1685,10 @@ exports.maybe_awake = async function (params) {
             var tierI = Math.min(Math.max((state.jealousy_count || 0), 1) - 1, 3);
             var msg2;
             if (formula.awake_mode === "default") {
-                msg2 = buildPrompt(formula, "prompt_auto_default", { "档位": String(tierI + 1), "次数": String((state.jealousy_count || 0) + 1) });
+                msg2 = buildPrompt(formula, "prompt_auto_default", { "档位": String(tierI + 1), "次数": String((state.jealousy_count || 0) + 1), "场景": sceneTextNow(), "时间": nowHM() });
             } else {
-                var talk2 = pickUsableTalk(pickTierList(formula, tierI));
-                msg2 = talk2 ? buildTalkPrompt(formula, "prompt_auto_prefix", talk2) : buildPrompt(formula, "prompt_auto_default", { "档位": String(tierI + 1), "次数": String((state.jealousy_count || 0) + 1) });
+                var talk2 = pickTalkByScene(pickTierList(formula, tierI), sceneKeyNow()); if (!talk2) talk2 = pickUsableTalk(pickTierList(formula, tierI));
+                msg2 = talk2 ? buildTalkPrompt(formula, "prompt_auto_prefix", talk2, { "档位": String(tierI + 1), "次数": String((state.jealousy_count || 0) + 1), "场景": sceneTextNow(), "时间": nowHM() }) : buildPrompt(formula, "prompt_auto_default", { "档位": String(tierI + 1), "次数": String((state.jealousy_count || 0) + 1), "场景": sceneTextNow(), "时间": nowHM() });
             }
             var sendOk = false;
             try { await sendToAiOne(formula, msg2, cid); sendOk = true; } catch (e2) { sendOk = false; }
@@ -1671,6 +1704,21 @@ exports.maybe_awake = async function (params) {
                     try { await sendToAiOne(formula, fierceM, cid); } catch (eStopM) { }
                     state.jealousy_stopped = true;
                 }
+                // v2.2.3：命中即联动温柔巡检吃醋值（按档位递增，封顶 58）
+                try {
+                    var gjOn2 = await isGentleGuardianRunning();
+                    if (gjOn2) {
+                        var curG2 = await readGentleJealousy();
+                        var curG2V = (curG2 && curG2.state && typeof curG2.state.jealousy === "number") ? curG2.state.jealousy : 0;
+                        var dG2;
+                        if (tierI <= 0) dG2 = 8 + Math.round(Math.random() * 4);
+                        else if (tierI === 1) dG2 = 10 + Math.round(Math.random() * 6);
+                        else if (tierI === 2) dG2 = 12 + Math.round(Math.random() * 6);
+                        else dG2 = 12 + Math.round(Math.random() * 8);
+                        if (curG2V + dG2 > 58) dG2 = Math.max(0, 58 - curG2V);
+                        if (dG2 > 0) await writeGentleJealousy(dG2, "自动唤醒档位" + (tierI + 1));
+                    }
+                } catch (eGj2) { }
                 sentCount++;
             }
             results.push({ chat_id: cid, hit: true, sent: sendOk, y: Math.round(y2 * 10) / 10, roll: roll2, cooldown_until: meta.cooldown_until });
@@ -1769,14 +1817,14 @@ exports.maybe_awake = async function (params) {
     if (tierIndex2 < 0) tierIndex2 = 0;
     var msg;
     if (formula.awake_mode === "default") {
-        msg = buildPrompt(formula, "prompt_auto_default", { "档位": String(tierIndex2 + 1), "次数": String(state.jealousy_count) });
+        msg = buildPrompt(formula, "prompt_auto_default", { "档位": String(tierIndex2 + 1), "次数": String(state.jealousy_count), "场景": sceneTextNow(), "时间": nowHM() });
     } else {
         var list = pickTierList(formula, tierIndex2);
-        var talk = pickUsableTalk(list);
+        var talk = pickTalkByScene(list, sceneKeyNow()); if (!talk) talk = pickUsableTalk(list);
         if (talk) {
-            msg = buildTalkPrompt(formula, "prompt_auto_prefix", talk);
+            msg = buildTalkPrompt(formula, "prompt_auto_prefix", talk, { "档位": String(tierIndex2 + 1), "次数": String(state.jealousy_count), "场景": sceneTextNow(), "时间": nowHM() });
         } else {
-            msg = buildPrompt(formula, "prompt_auto_default", { "档位": String(tierIndex2 + 1), "次数": String(state.jealousy_count) });
+            msg = buildPrompt(formula, "prompt_auto_default", { "档位": String(tierIndex2 + 1), "次数": String(state.jealousy_count), "场景": sceneTextNow(), "时间": nowHM() });
         }
     }
 
