@@ -2,7 +2,11 @@
 
 [中文](README.md)
 
-> **Current Release Status**: **v2.2.2+1 (stable)**. This release splits the 2900-line `packages/on_air.js` into 6 modules (update / holidays / chat / config / prompts). No behavior change; still 24 tools; `on_air.js` down to 1901 lines.
+> **Current Release Status**: **v2.2.3 (stable)**. Wakes are now scene-aware: the phrase library grew from 5 to 29 lines grouped by scene (late night / early morning / morning / noon / afternoon / evening / night / unwell / long silence), and the wake prompt now carries the current time and scene so the AI first checks what it is doing before speaking. Manual wake now also adds to Gentle Guardian's jealousy score (+8~12, capped at 58).
+>
+> Previous release **v2.2.2+1** split the 2900-line `packages/on_air.js` into 6 modules (update / holidays / chat / config / prompts). No behavior change; still 24 tools; `on_air.js` down to 1901 lines.
+>
+> Previous release **v2.2.2+1** split the 2900-line `packages/on_air.js` into 6 modules (update / holidays / chat / config / prompts). No behavior change; still 24 tools; `on_air.js` down to 1901 lines.
 
 > **Authorship Notice**: This project is a "novice × AI creation" — co-developed by a novice developer together with an AI assistant. The code and docs are still growing; corrections, issues and PRs are welcome.
 
