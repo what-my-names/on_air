@@ -33,10 +33,12 @@ function fillPrompt(tpl, vars) {
 }
 
 // 带话术的模板：有 {话术} 就替换，没有就追加到末尾（兼容旧行为）
-function buildTalkPrompt(formula, key, talk) {
+function buildTalkPrompt(formula, key, talk, vars) {
     var tpl = pickPrompt(formula, key);
-    if (tpl.indexOf("{话术}") >= 0) return fillPrompt(tpl, { "话术": talk });
-    return fillPrompt(tpl, null) + String(talk || "");
+    var all = { "话术": talk };
+    if (vars) { for (var k in vars) { if (vars[k] !== undefined && vars[k] !== null) all[k] = vars[k]; } }
+    if (tpl.indexOf("{话术}") >= 0) return fillPrompt(tpl, all);
+    return fillPrompt(tpl, vars || null) + String(talk || "");
 }
 
 function buildPrompt(formula, key, vars) {
@@ -78,6 +80,56 @@ function pickTierList(formula, tierIndex) {
     if (!Array.isArray(list) || !list.length) list = DEFAULT_FORMULA.jealousy_tiers[DEFAULT_FORMULA.jealousy_tiers.length - 1];
     return list;
 }
+
+// ===== v2.2.3 场景感知（时间 → 场景标签 / 场景描述 / 剥标签抽取） =====
+function sceneKeyNow() {
+    var h = new Date().getHours();
+    if (h >= 23 || h < 6) return "sleep";
+    if (h < 9) return "wake";
+    if (h < 12) return "morning";
+    if (h < 14) return "noon";
+    if (h < 18) return "afternoon";
+    if (h < 20) return "evening";
+    return "night";
+}
+function nowHM() {
+    var d = new Date();
+    var h = d.getHours(), m = d.getMinutes();
+    return (h < 10 ? "0" : "") + h + ":" + (m < 10 ? "0" : "") + m;
+}
+function sceneTextNow() {
+    var map = {
+        sleep: "深夜，多半已经睡了或者躺着",
+        wake: "清晨，刚醒不久",
+        morning: "上午，通常正在上学或上班",
+        noon: "中午，多半在午休或吃饭",
+        afternoon: "下午，容易忙或犯困",
+        evening: "傍晚，多半在吃饭或刚收工",
+        night: "晚间，可能刚歇下来"
+    };
+    var k = sceneKeyNow();
+    return (map[k] || "时段未知") + "（本地时间 " + nowHM() + "，场景标签 " + k + "）";
+}
+function stripSceneTag(s) {
+    return String(s == null ? "" : s).replace(/^\s*\[[a-z]+\]\s*/i, "");
+}
+function pickTalkByScene(list, sceneKey) {
+    var pool = [], fallback = [], all = [];
+    if (Array.isArray(list)) {
+        for (var i = 0; i < list.length; i++) {
+            var t = String(list[i] == null ? "" : list[i]);
+            var m = t.match(/^\s*\[([a-z]+)\]\s*/i);
+            var plain = stripSceneTag(t);
+            if (!plain) continue;
+            all.push(plain);
+            if (m) { if (m[1].toLowerCase() === sceneKey) pool.push(plain); }
+            else fallback.push(plain);
+        }
+    }
+    var use = pool.length ? pool : (fallback.length ? fallback : all);
+    if (!use.length) return "";
+    return use[Math.floor(Math.random() * use.length)];
+}
     return {
         PROMPT_KEYS: PROMPT_KEYS,
         pickPrompt: pickPrompt,
@@ -86,7 +138,12 @@ function pickTierList(formula, tierIndex) {
         buildPrompt: buildPrompt,
         isUsableTalk: isUsableTalk,
         pickUsableTalk: pickUsableTalk,
-        pickTierList: pickTierList
+        pickTierList: pickTierList,
+        sceneKeyNow: sceneKeyNow,
+        sceneTextNow: sceneTextNow,
+        nowHM: nowHM,
+        stripSceneTag: stripSceneTag,
+        pickTalkByScene: pickTalkByScene
     };
 }
 module.exports = createPromptsModule;
