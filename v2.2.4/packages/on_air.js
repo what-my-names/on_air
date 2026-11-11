@@ -286,15 +286,44 @@ async function readJsonFile(path, fallback) {
     }
 }
 
+// 原子写：先写 .tmp，读回校验 JSON 可解析，再 rename 覆盖。
+// 直接 write 目标文件时，若写入中途失败（磁盘满 / 进程被杀），
+// 原文件会被截断成半个 JSON，下次 readJsonFile 解析失败就回落默认值——
+// 等于把用户的 formula.json / state.json 静默清空。
 async function writeJsonFile(path, obj) {
+    var text = JSON.stringify(obj, null, 2);
+    var tmp = path + ".tmp";
+    var ok = false;
     try {
-        await Tools.Files.write(path, JSON.stringify(obj, null, 2));
+        await Tools.Files.write(tmp, text);
+        // 读回校验：确认落盘的确实是完整可解析的 JSON
+        var back = await Tools.Files.read(tmp);
+        var content = typeof back === "string" ? back : (back && (back.content || (back.data && back.data.content))) || "";
+        if (content && JSON.parse(content) !== null) ok = true;
     } catch (e) {
-        // 目录不存在时尝试创建（静默失败也没关系，兜底在下一行）
+        ok = false;
+    }
+    if (ok) {
         try {
-            await Tools.Files.mkdir(BASE_DIR);
-            await Tools.Files.write(path, JSON.stringify(obj, null, 2));
-        } catch (e2) {}
+            try { await Tools.Files.deleteFile(path); } catch (eD) { }
+            await Tools.Files.move(tmp, path);
+            return true;
+        } catch (eM) {
+            // rename 失败：退回直写（至少还能存上，不至于丢数据）
+            try { await Tools.Files.write(path, text); } catch (eW) { }
+            try { await Tools.Files.deleteFile(tmp); } catch (eT) { }
+            return false;
+        }
+    }
+    // .tmp 写失败：目录可能不存在，建一次再直写兜底
+    try {
+        await Tools.Files.mkdir(BASE_DIR);
+        await Tools.Files.write(path, text);
+        try { await Tools.Files.deleteFile(tmp); } catch (eC) { }
+        return true;
+    } catch (e2) {
+        try { await Tools.Files.deleteFile(tmp); } catch (e3) { }
+        return false;
     }
 }
 

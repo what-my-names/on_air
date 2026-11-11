@@ -2,7 +2,9 @@
 
 [中文](README.md)
 
-> **Current Release Status**: **v2.2.3 (stable)**. Wakes are now scene-aware: the phrase library grew from 5 to 29 lines grouped by scene (late night / early morning / morning / noon / afternoon / evening / night / unwell / long silence), and the wake prompt now carries the current time and scene so the AI first checks what it is doing before speaking. Manual wake now also adds to Gentle Guardian's jealousy score (+8~12, capped at 58).
+> **Current Release Status**: **2.2.4 (stable)**. Version-string normalization only: `manifest.json`, `VERSION.txt` and `CURRENT_VERSION` in code are now all `2.2.4` without the `v` prefix, matching the market registry format. No behavior change from 2.2.3.
+>
+> 2.2.3 made wakes scene-aware: the phrase library grew from 5 to 29 lines grouped by scene (late night / early morning / morning / noon / afternoon / evening / night / unwell / long silence), and the wake prompt now carries the current time and scene so the AI first checks what it is doing before speaking. Manual wake now also adds to Gentle Guardian's jealousy score (+8~12, capped at 58).
 >
 > Previous release **v2.2.2+1** split the 2900-line `packages/on_air.js` into 6 modules (update / holidays / chat / config / prompts). No behavior change; still 24 tools; `on_air.js` down to 1901 lines.
 >

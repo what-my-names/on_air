@@ -12,15 +12,18 @@ function createUpdateModule(deps) {
     var saveFormula = deps.saveFormula;
 
 // ==================== v2.2.0：GitHub Release 更新检测 ====================
-var CURRENT_VERSION = "2.2.3";  // 每次发布同步修改
+var CURRENT_VERSION = "2.2.4";  // 每次发布同步修改
 var UPDATE_REPO = "what-my-names/on_air";
 var UPDATE_API = 'https://api.github.com/repos/' + UPDATE_REPO + '/releases?per_page=5';
 var UPDATE_TTL_MS = 6 * 60 * 60 * 1000; // 6 小时缓存
 
 // 语义化版本比较：a>b 返回 1，a<b 返回 -1，相等 0（忽略前缀 v）
+// 预发布后缀（-beta / -alpha / -rc）比同号正式版低：2.2.4-beta < 2.2.4
 function cmpVersion(a, b) {
-    var pa = String(a || "").replace(/^v/i, "").replace(/\+/g, ".").split(".");
-    var pb = String(b || "").replace(/^v/i, "").replace(/\+/g, ".").split(".");
+    var ra = String(a || ""), rb = String(b || "");
+    var preA = /-/.test(ra), preB = /-/.test(rb);
+    var pa = ra.replace(/^v/i, "").replace(/\+/g, ".").split("-")[0].split(".");
+    var pb = rb.replace(/^v/i, "").replace(/\+/g, ".").split("-")[0].split(".");
     var n = Math.max(pa.length, pb.length);
     for (var i = 0; i < n; i++) {
         var na = parseInt(pa[i] || "0", 10); if (isNaN(na)) na = 0;
@@ -28,6 +31,9 @@ function cmpVersion(a, b) {
         if (na > nb) return 1;
         if (na < nb) return -1;
     }
+    // 数字部分相同：带后缀的是预发布版，比正式版低
+    if (preA && !preB) return -1;
+    if (!preA && preB) return 1;
     return 0;
 }
 
