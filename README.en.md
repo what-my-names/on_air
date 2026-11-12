@@ -2,7 +2,7 @@
 
 [中文](README.md)
 
-> **Current Release Status**: **2.2.4 (stable)**. Version-string normalization only: `manifest.json`, `VERSION.txt` and `CURRENT_VERSION` in code are now all `2.2.4` without the `v` prefix, matching the market registry format. No behavior change from 2.2.3.
+> **Current Release Status**: **2.2.5 (stable)**. No behavior change; market-listing fixes only: version declarations unified and a leftover origin marker removed (flagged as non-compliant by the market). Also fixes atomic config writes and prerelease-suffix version comparison.
 >
 > 2.2.3 made wakes scene-aware: the phrase library grew from 5 to 29 lines grouped by scene (late night / early morning / morning / noon / afternoon / evening / night / unwell / long silence), and the wake prompt now carries the current time and scene so the AI first checks what it is doing before speaking. Manual wake now also adds to Gentle Guardian's jealousy score (+8~12, capped at 58).
 >
