@@ -2,6 +2,7 @@
   "schema_version": 1,
   "toolpkg_id": "com.operit.on_air",
   "version": "2.2.5",
+  "api_version": "1.0.0",
   "author": [
     "时空指令"
   ],
